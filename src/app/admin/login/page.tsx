@@ -57,34 +57,6 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleQuickAdminLogin = async (role: "super_admin" | "admin" | "staff") => {
-    setLoading(true);
-    setError(null);
-
-    const creds = {
-      super_admin: { email: "superadmin@ecommerce.test", password: "password123" },
-      admin: { email: "admin@ecommerce.test", password: "password123" },
-      staff: { email: "staff@ecommerce.test", password: "password123" },
-    }[role];
-
-    try {
-      const res = await adminApi.login(creds);
-      setAdminAuth(res.user, res.token);
-      toast.success(`Welcome back, ${res.user.name}`);
-      router.push("/admin");
-    } catch (err: any) {
-      if (err.response?.status === 500) {
-        setError(err.response?.data?.message || "Database connection error: Please ensure MySQL is running and seeded.");
-      } else if (!err.response) {
-        setError("Unable to connect to backend server (http://localhost:8000).");
-      } else {
-        setError(err.response?.data?.message || "Demo login failed.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#07080c] flex flex-col justify-center items-center p-4 py-8 sm:py-12 relative overflow-y-auto">
       {/* Background Gradients */}
@@ -180,41 +152,37 @@ export default function AdminLoginPage() {
           </button>
         </form>
 
-        {/* 1-Click Operational Test Accounts */}
-        <div className="pt-5 border-t border-white/10 space-y-2.5">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block text-center">
-            Instant Test Authentications (Staff / Admin)
-          </span>
-
+        {/* Role Access Badges (Design Only) */}
+        <div className="pt-4 border-t border-white/10">
           <div className="grid grid-cols-3 gap-2 text-[11px]">
             <button
               type="button"
-              onClick={() => handleQuickAdminLogin("super_admin")}
-              disabled={loading}
-              className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 font-bold transition-all flex flex-col items-center gap-1"
+              disabled
+              tabIndex={-1}
+              className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/25 text-purple-300 font-bold flex flex-col items-center gap-1 cursor-default opacity-80 select-none pointer-events-none"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-              Super Admin
+              <span>Super Admin</span>
             </button>
 
             <button
               type="button"
-              onClick={() => handleQuickAdminLogin("admin")}
-              disabled={loading}
-              className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold transition-all flex flex-col items-center gap-1"
+              disabled
+              tabIndex={-1}
+              className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 font-bold flex flex-col items-center gap-1 cursor-default opacity-80 select-none pointer-events-none"
             >
               <UserCheck className="w-3.5 h-3.5 text-amber-400" />
-              Admin
+              <span>Admin</span>
             </button>
 
             <button
               type="button"
-              onClick={() => handleQuickAdminLogin("staff")}
-              disabled={loading}
-              className="p-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold transition-all flex flex-col items-center gap-1"
+              disabled
+              tabIndex={-1}
+              className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 font-bold flex flex-col items-center gap-1 cursor-default opacity-80 select-none pointer-events-none"
             >
               <Users className="w-3.5 h-3.5 text-cyan-400" />
-              Staff
+              <span>Staff</span>
             </button>
           </div>
         </div>
