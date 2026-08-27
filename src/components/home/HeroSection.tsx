@@ -113,7 +113,7 @@ export function HeroSection() {
             className="lg:col-span-5 relative"
           >
             <div className="relative rounded-3xl p-1 bg-gradient-to-b from-indigo-500/40 via-purple-500/20 to-transparent shadow-2xl shadow-indigo-500/20">
-              <div className="relative rounded-[22px] bg-[#0c0f18]/90 backdrop-blur-xl border border-white/10 overflow-hidden p-6">
+              <div className="relative rounded-2xl bg-[#0c0f18]/90 backdrop-blur-xl border border-white/10 overflow-hidden p-6">
                 
                 {/* Floating Pill Tag */}
                 <div className="flex items-center justify-between mb-4">

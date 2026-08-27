@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { 
   ShoppingBag, 
   Search, 
@@ -20,16 +22,27 @@ import {
   Plus,
   Calendar,
   AlertTriangle,
-  X
+  X,
+  ShieldAlert,
+  ShieldCheck,
+  Ban,
+  Unlock,
+  UserCheck,
+  ExternalLink,
+  Lock,
+  Shield,
+  RefreshCw
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { Order, Product } from "@/types";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
+import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
 
 export default function AdminOrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +59,25 @@ export default function AdminOrdersPage() {
 
   // Inspect / Details Modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  // IP Block & Restriction Modal State
+  const [ipBlockModalData, setIpBlockModalData] = useState<{
+    ip: string;
+    isBlocked: boolean;
+    blockId?: number;
+    existingReason?: string;
+    existingExpiresAt?: string | null;
+  } | null>(null);
+  const [blockDuration, setBlockDuration] = useState<"permanent" | "1_hour" | "24_hours" | "7_days" | "30_days" | "custom">("permanent");
+  const [customBlockExpiresAt, setCustomBlockExpiresAt] = useState("");
+  const [blockReason, setBlockReason] = useState("Abusive order behavior / Risk mitigation");
+  const [blockNotes, setBlockNotes] = useState("");
+  const [isSubmittingIpBlock, setIsSubmittingIpBlock] = useState(false);
+  const [isCheckingIpStatus, setIsCheckingIpStatus] = useState(false);
+
+  // Bulk Selection & Deletion State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Order Creation Modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -265,6 +297,86 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const openIpBlockModal = async (ip: string) => {
+    setIsCheckingIpStatus(true);
+    setBlockDuration("permanent");
+    setCustomBlockExpiresAt("");
+    setBlockReason("Abusive order behavior / Risk mitigation");
+    setBlockNotes("");
+    
+    try {
+      const res = await adminApi.getBlockedIps({ search: ip });
+      const activeRule = (res.data || []).find((r: any) => r.ip_address === ip && r.is_active);
+      setIpBlockModalData({
+        ip,
+        isBlocked: !!activeRule,
+        blockId: activeRule?.id,
+        existingReason: activeRule?.reason,
+        existingExpiresAt: activeRule?.expires_at,
+      });
+    } catch {
+      setIpBlockModalData({
+        ip,
+        isBlocked: false,
+      });
+    } finally {
+      setIsCheckingIpStatus(false);
+    }
+  };
+
+  const handleExecuteBlockIp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ipBlockModalData || !blockReason.trim()) return;
+
+    try {
+      setIsSubmittingIpBlock(true);
+      const res = await adminApi.blockIp({
+        ip_address: ipBlockModalData.ip,
+        reason: blockReason.trim(),
+        notes: blockNotes.trim() || undefined,
+        duration: blockDuration,
+        custom_expires_at: blockDuration === "custom" ? customBlockExpiresAt : undefined,
+      });
+
+      toast.success(res.message);
+      if (res.co_tenant_warning) {
+        toast.warning(res.co_tenant_warning);
+      }
+      setIpBlockModalData((prev) => prev ? {
+        ...prev,
+        isBlocked: true,
+        blockId: res.blocked_ip.id,
+        existingReason: res.blocked_ip.reason,
+        existingExpiresAt: res.blocked_ip.expires_at,
+      } : null);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to block IP address.");
+    } finally {
+      setIsSubmittingIpBlock(false);
+    }
+  };
+
+  const handleExecuteUnblockIp = async () => {
+    if (!ipBlockModalData?.blockId) return;
+
+    try {
+      setIsSubmittingIpBlock(true);
+      const res = await adminApi.unblockIp(ipBlockModalData.blockId, "Unblocked from Order Details inspector");
+      toast.success(res.message);
+      setIpBlockModalData((prev) => prev ? {
+        ...prev,
+        isBlocked: false,
+        blockId: undefined,
+        existingReason: undefined,
+        existingExpiresAt: undefined,
+      } : null);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to unblock IP address.");
+    } finally {
+      setIsSubmittingIpBlock(false);
+    }
+  };
+
   const handleQuickStatusChange = async (orderId: number, status: string) => {
     try {
       const currentOrder = orders.find((o) => o.id === orderId);
@@ -304,6 +416,7 @@ export default function AdminOrdersPage() {
     try {
       await adminApi.deleteOrder(deletingOrder.id);
       setOrders(orders.filter((o) => o.id !== deletingOrder.id));
+      setSelectedIds((prev) => prev.filter((id) => id !== deletingOrder.id));
       if (selectedOrder?.id === deletingOrder.id) setSelectedOrder(null);
       toast.success(`Order #${deletingOrder.order_number} deleted.`);
       setDeletingOrder(null);
@@ -311,6 +424,36 @@ export default function AdminOrdersPage() {
       toast.error(err.response?.data?.message || "Failed to delete order.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (orders.length > 0 && selectedIds.length === orders.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(orders.map((o) => o.id));
+    }
+  };
+
+  const handleToggleSelectRow = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      const res = await adminApi.bulkDeleteOrders(selectedIds);
+      setOrders((prev) => prev.filter((o) => !selectedIds.includes(o.id)));
+      if (selectedOrder && selectedIds.includes(selectedOrder.id)) setSelectedOrder(null);
+      setSelectedIds([]);
+      toast.success(res.message || `Deleted ${selectedIds.length} order(s).`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete selected orders.");
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -465,6 +608,15 @@ export default function AdminOrdersPage() {
         <table className="w-full text-left text-xs text-slate-300 min-w-[860px]">
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
+              <th className="p-3.5 w-10 text-center">
+                <input
+                  type="checkbox"
+                  checked={orders.length > 0 && selectedIds.length === orders.length}
+                  onChange={handleToggleSelectAll}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                  title="Select all orders"
+                />
+              </th>
               <th className="p-3.5">Order Ref</th>
               <th className="p-3.5">Customer</th>
               <th className="p-3.5">Total Amount</th>
@@ -478,20 +630,37 @@ export default function AdminOrdersPage() {
           <tbody className="divide-y divide-white/5">
             {loading ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-slate-500">
+                <td colSpan={9} className="p-8 text-center text-slate-500">
                   Loading customer shipments...
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-slate-500 italic">
+                <td colSpan={9} className="p-8 text-center text-slate-500 italic">
                   No orders found matching the filter criteria.
                 </td>
               </tr>
             ) : (
-              orders.map((ord) => (
-                <tr key={ord.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="p-3.5 font-mono font-bold text-cyan-400 whitespace-nowrap">{ord.order_number}</td>
+              orders.map((ord) => {
+                const isSelected = selectedIds.includes(ord.id);
+                return (
+                  <tr
+                    key={ord.id}
+                    className={`transition-colors ${
+                      isSelected
+                        ? "bg-amber-500/10 border-l-2 border-amber-500"
+                        : "hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectRow(ord.id)}
+                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                      />
+                    </td>
+                    <td className="p-3.5 font-mono font-bold text-cyan-400 whitespace-nowrap">{ord.order_number}</td>
                   <td className="p-3.5">
                     <span className="font-bold text-white block">{ord.customer_name}</span>
                     <span className="text-[10px] text-slate-500">{ord.customer_email}</span>
@@ -563,7 +732,8 @@ export default function AdminOrdersPage() {
                     </div>
                   </td>
                 </tr>
-              ))
+              );
+            })
             )}
           </tbody>
         </table>
@@ -1014,13 +1184,65 @@ export default function AdminOrdersPage() {
               </div>
             </div>
 
+            {/* Cancellation Alert Banner */}
+            {selectedOrder.order_status === "cancelled" && (
+              <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs space-y-1">
+                <span className="font-bold flex items-center gap-1.5 text-red-400">
+                  <AlertCircle className="w-4 h-4" />
+                  Order Cancelled
+                </span>
+                <p className="text-[11px] text-slate-300">
+                  {selectedOrder.notes || "This order was marked as cancelled."}
+                </p>
+              </div>
+            )}
+
             {/* Customer & Shipping Summary */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Customer Details</span>
-                <p className="text-white font-bold">{selectedOrder.customer_name}</p>
-                <p className="text-slate-400">{selectedOrder.customer_email}</p>
-                <p className="text-slate-400">{selectedOrder.customer_phone || "No phone recorded"}</p>
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Customer Details</span>
+                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
+                    selectedOrder.user_id ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                  }`}>
+                    {selectedOrder.user_id ? "REGISTERED / ASSOCIATED" : "GUEST PURCHASER"}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-white font-bold text-sm">{selectedOrder.customer_name}</p>
+                  <p className="text-slate-400">{selectedOrder.customer_email}</p>
+                  <p className="text-slate-400">{selectedOrder.customer_phone || "No phone recorded"}</p>
+                </div>
+
+                {/* View Customer Profile Link / Button */}
+                <Link
+                  href={`/admin/customers?search=${encodeURIComponent(selectedOrder.customer_email)}&view=${selectedOrder.user_id || ""}`}
+                  className="flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 text-purple-300 hover:text-purple-200 text-xs font-bold transition-all shadow-sm group"
+                >
+                  <UserCheck className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                  <span>View Customer Profile →</span>
+                </Link>
+
+                {/* Verified Client IP Telemetry & In-Place Block/Manage Action */}
+                {selectedOrder.ip_address && (
+                  <div className="pt-2 flex items-center justify-between border-t border-white/5 mt-1">
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold block">Client IP</span>
+                      <p className="text-[11px] font-mono text-cyan-400 font-bold">
+                        {selectedOrder.ip_address}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openIpBlockModal(selectedOrder.ip_address!)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 hover:text-red-200 text-xs font-bold transition-all cursor-pointer shadow-sm"
+                      title="Manage IP Restrictions for this address"
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                      <span>Block / Manage IP</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
@@ -1162,6 +1384,217 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* IP Block & Restriction Modal */}
+      {ipBlockModalData && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0b0d14] border border-white/15 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl border ${
+                  ipBlockModalData.isBlocked
+                    ? "bg-red-500/15 text-red-400 border-red-500/30"
+                    : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                }`}>
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">IP Restriction & Abuse Defense</h3>
+                  <p className="text-xs font-mono text-cyan-400">{ipBlockModalData.ip}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIpBlockModalData(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            {isCheckingIpStatus ? (
+              <div className="p-8 flex items-center justify-center gap-3 text-slate-400 text-xs">
+                <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                <span>Checking IP restriction status...</span>
+              </div>
+            ) : ipBlockModalData.isBlocked ? (
+              /* ALREADY BLOCKED VIEW */
+              <div className="p-6 space-y-5">
+                <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/25 space-y-2">
+                  <div className="flex items-center gap-2 text-red-400 font-bold text-xs">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>This IP address is currently BLOCKED</span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    <strong className="text-slate-400">Recorded Reason:</strong> {ipBlockModalData.existingReason || "Security policy violation"}
+                  </p>
+                  <p className="text-xs text-slate-300">
+                    <strong className="text-slate-400">Expiration:</strong> {
+                      ipBlockModalData.existingExpiresAt
+                        ? formatDate(ipBlockModalData.existingExpiresAt)
+                        : "Permanent Block (Forever)"
+                    }
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <a
+                    href={`/admin/blocked-ips?search=${encodeURIComponent(ipBlockModalData.ip)}`}
+                    className="text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
+                  >
+                    <span>View in IP Restrictions section</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setIpBlockModalData(null)}
+                    className="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 text-xs font-semibold hover:bg-white/[0.08] transition-all cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSubmittingIpBlock}
+                    onClick={handleExecuteUnblockIp}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    {isSubmittingIpBlock ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Unlock className="w-3.5 h-3.5" />}
+                    <span>Unblock IP Address</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* BLOCK FORM VIEW */
+              <form onSubmit={handleExecuteBlockIp} className="p-6 space-y-4 text-xs">
+                {/* Duration Presets */}
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 font-bold block">Restriction Duration</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Permanent (Forever)", value: "permanent" },
+                      { label: "1 Hour", value: "1_hour" },
+                      { label: "24 Hours (1 Day)", value: "24_hours" },
+                      { label: "7 Days (1 Week)", value: "7_days" },
+                      { label: "30 Days (1 Month)", value: "30_days" },
+                      { label: "Custom Date", value: "custom" },
+                    ].map((d) => (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() => setBlockDuration(d.value as any)}
+                        className={`p-2.5 rounded-xl border text-center font-semibold transition-all cursor-pointer ${
+                          blockDuration === d.value
+                            ? "bg-red-500/20 border-red-500 text-red-300 shadow-sm"
+                            : "bg-white/[0.02] border-white/10 text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                        }`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom Date Picker */}
+                {blockDuration === "custom" && (
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-semibold block">Expires At *</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={customBlockExpiresAt}
+                      onChange={(e) => setCustomBlockExpiresAt(e.target.value)}
+                      className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-red-500/50"
+                    />
+                  </div>
+                )}
+
+                {/* Reason Selection & Input */}
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 font-bold block">Reason for Block *</label>
+                  <div className="flex flex-wrap gap-1.5 mb-1.5">
+                    {[
+                      "Abusive order cancellations",
+                      "Fraudulent credit card attempts",
+                      "Automated bot order spam",
+                      "Chargeback / dispute risk",
+                      "Suspicious multi-account abuse",
+                    ].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setBlockReason(preset)}
+                        className="px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 text-[11px] text-slate-300 cursor-pointer"
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={blockReason}
+                    onChange={(e) => setBlockReason(e.target.value)}
+                    placeholder="Enter reason..."
+                    className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-red-500/50"
+                  />
+                </div>
+
+                {/* Internal Notes */}
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-bold block">Internal Security Notes (Optional)</label>
+                  <textarea
+                    rows={2}
+                    value={blockNotes}
+                    onChange={(e) => setBlockNotes(e.target.value)}
+                    placeholder="Additional context, incident tickets, or customer details..."
+                    className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-red-500/50"
+                  />
+                </div>
+
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-[11px] flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+                  <span>
+                    Blocking this IP will immediately reject all future orders and checkouts from this network across the entire store.
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setIpBlockModalData(null)}
+                    className="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 text-xs font-semibold hover:bg-white/[0.08] transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingIpBlock}
+                    className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-lg shadow-red-600/20 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    {isSubmittingIpBlock ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+                    <span>Confirm & Block IP</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={orders.length}
+        itemName="order"
+        isDeleting={isBulkDeleting}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={handleToggleSelectAll}
+        onConfirmDelete={handleBulkDelete}
+      />
     </div>
   );
 }

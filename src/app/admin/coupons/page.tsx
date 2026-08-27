@@ -22,6 +22,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
+import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { formatPrice, formatDate, formatTime } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -53,6 +54,10 @@ export default function AdminCouponsPage() {
   // Delete State
   const [deletingCoupon, setDeletingCoupon] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Bulk Selection & Deletion State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const toDateTimeLocalValue = (dateStr?: string | null) => {
     if (!dateStr) return "";
@@ -224,12 +229,42 @@ export default function AdminCouponsPage() {
     try {
       await adminApi.deleteCoupon(deletingCoupon.id);
       setCoupons(coupons.filter((c) => c.id !== deletingCoupon.id));
+      setSelectedIds((prev) => prev.filter((id) => id !== deletingCoupon.id));
       toast.success(`Coupon '${deletingCoupon.code}' removed.`);
       setDeletingCoupon(null);
     } catch (err: any) {
       toast.error("Failed to delete coupon.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (filteredCoupons.length > 0 && selectedIds.length === filteredCoupons.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredCoupons.map((c) => c.id));
+    }
+  };
+
+  const handleToggleSelectRow = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      const res = await adminApi.bulkDeleteCoupons(selectedIds);
+      setCoupons((prev) => prev.filter((c) => !selectedIds.includes(c.id)));
+      setSelectedIds([]);
+      toast.success(res.message || `Deleted ${selectedIds.length} coupon(s).`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete selected coupons.");
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -414,6 +449,15 @@ export default function AdminCouponsPage() {
         <table className="w-full text-left text-xs text-slate-300 min-w-[750px]">
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
+              <th className="p-3.5 w-10 text-center">
+                <input
+                  type="checkbox"
+                  checked={filteredCoupons.length > 0 && selectedIds.length === filteredCoupons.length}
+                  onChange={handleToggleSelectAll}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                  title="Select all coupons"
+                />
+              </th>
               <th className="p-3.5">Coupon Code</th>
               <th className="p-3.5">Discount Value</th>
               <th className="p-3.5">Min Spend</th>
@@ -426,20 +470,37 @@ export default function AdminCouponsPage() {
           <tbody className="divide-y divide-white/5">
             {loading ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-slate-500">
+                <td colSpan={8} className="p-8 text-center text-slate-500">
                   Loading promotional campaigns...
                 </td>
               </tr>
             ) : filteredCoupons.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-slate-500 italic">
+                <td colSpan={8} className="p-8 text-center text-slate-500 italic">
                   No discount coupons matching filter criteria.
                 </td>
               </tr>
             ) : (
-              filteredCoupons.map((c) => (
-                <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="p-3.5 font-mono font-black text-amber-400 text-sm tracking-wider whitespace-nowrap">
+              filteredCoupons.map((c) => {
+                const isSelected = selectedIds.includes(c.id);
+                return (
+                  <tr
+                    key={c.id}
+                    className={`transition-colors ${
+                      isSelected
+                        ? "bg-amber-500/10 border-l-2 border-amber-500"
+                        : "hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectRow(c.id)}
+                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                      />
+                    </td>
+                    <td className="p-3.5 font-mono font-black text-amber-400 text-sm tracking-wider whitespace-nowrap">
                     {c.code}
                   </td>
                   <td className="p-3.5 font-bold text-white whitespace-nowrap">
@@ -477,7 +538,8 @@ export default function AdminCouponsPage() {
                     </div>
                   </td>
                 </tr>
-              ))
+              );
+            })
             )}
           </tbody>
         </table>
@@ -792,6 +854,16 @@ export default function AdminCouponsPage() {
           </div>
         </div>
       )}
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={filteredCoupons.length}
+        itemName="coupon"
+        isDeleting={isBulkDeleting}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={handleToggleSelectAll}
+        onConfirmDelete={handleBulkDelete}
+      />
     </div>
   );
 }

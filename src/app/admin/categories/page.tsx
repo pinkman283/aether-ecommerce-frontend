@@ -20,6 +20,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { Category } from "@/types";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
 
 export default function AdminCategoriesPage() {
@@ -47,6 +48,10 @@ export default function AdminCategoriesPage() {
   // Delete State
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Bulk Selection & Deletion State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const loadCategories = async () => {
     setLoading(true);
@@ -143,12 +148,44 @@ export default function AdminCategoriesPage() {
     try {
       await adminApi.deleteCategory(deletingCategory.id);
       setCategories(categories.filter((c) => c.id !== deletingCategory.id));
-      toast.success(`Category '${deletingCategory.name}' removed.`);
+      setSelectedIds((prev) => prev.filter((id) => id !== deletingCategory.id));
+      toast.success(`Category '${deletingCategory.name}' deleted.`);
       setDeletingCategory(null);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to delete category.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (filteredCategories.length > 0 && selectedIds.length === filteredCategories.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredCategories.map((c) => c.id));
+    }
+  };
+
+  const handleToggleSelectRow = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      const res = await adminApi.bulkDeleteCategories(selectedIds);
+      // Reload categories to reflect deleted & any skipped
+      const updated = await adminApi.getCategories();
+      setCategories(updated || []);
+      setSelectedIds([]);
+      toast.success(res.message || `Processed category deletion.`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete selected categories.");
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -223,6 +260,15 @@ export default function AdminCategoriesPage() {
         <table className="w-full text-left text-xs text-slate-300 min-w-[700px]">
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
+              <th className="p-3.5 w-10 text-center">
+                <input
+                  type="checkbox"
+                  checked={filteredCategories.length > 0 && selectedIds.length === filteredCategories.length}
+                  onChange={handleToggleSelectAll}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                  title="Select all categories"
+                />
+              </th>
               <th className="p-3.5">Category</th>
               <th className="p-3.5">Slug</th>
               <th className="p-3.5">Badge</th>
@@ -234,20 +280,37 @@ export default function AdminCategoriesPage() {
           <tbody className="divide-y divide-white/5">
             {loading ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-500">
+                <td colSpan={7} className="p-8 text-center text-slate-500">
                   Loading categories...
                 </td>
               </tr>
             ) : filteredCategories.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-500 italic">
+                <td colSpan={7} className="p-8 text-center text-slate-500 italic">
                   {search ? "No categories matched your search criteria." : "No categories created yet."}
                 </td>
               </tr>
             ) : (
-              filteredCategories.map((c) => (
-                <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="p-3.5 flex items-center gap-3 font-bold text-white">
+              filteredCategories.map((c) => {
+                const isSelected = selectedIds.includes(c.id);
+                return (
+                  <tr
+                    key={c.id}
+                    className={`transition-colors ${
+                      isSelected
+                        ? "bg-amber-500/10 border-l-2 border-amber-500"
+                        : "hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectRow(c.id)}
+                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                      />
+                    </td>
+                    <td className="p-3.5 flex items-center gap-3 font-bold text-white">
                     {c.image && (
                       <img
                         src={c.image}
@@ -304,7 +367,8 @@ export default function AdminCategoriesPage() {
                     </div>
                   </td>
                 </tr>
-              ))
+              );
+            })
             )}
           </tbody>
         </table>
@@ -504,6 +568,16 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
       )}
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={filteredCategories.length}
+        itemName="category"
+        isDeleting={isBulkDeleting}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={handleToggleSelectAll}
+        onConfirmDelete={handleBulkDelete}
+      />
     </div>
   );
 }

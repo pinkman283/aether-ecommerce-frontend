@@ -2,8 +2,8 @@ import axios from "axios";
 import { Address, AdminAnalytics, Category, CouponValidation, Order, Product, User } from "@/types";
 
 const API_BASE_URL = typeof window !== "undefined"
-  ? (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001/api")
-  : (process.env.INTERNAL_API_URL || "http://127.0.0.1:8001/api");
+  ? (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api")
+  : (process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api");
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -174,7 +174,15 @@ export const api = {
     return res.data;
   },
 
-  async updateProfile(data: { name?: string; phone?: string; avatar?: string }): Promise<{ message: string; user: User }> {
+  async updateProfile(data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    avatar?: string | null;
+    current_password?: string;
+    password?: string;
+    password_confirmation?: string;
+  }): Promise<{ message: string; user: User }> {
     const res = await apiClient.put("/auth/profile", data);
     return res.data;
   },
@@ -221,6 +229,22 @@ export const api = {
 
   async deleteProduct(id: number): Promise<{ message: string }> {
     const res = await apiClient.delete(`/admin/products/${id}`);
+    return res.data;
+  },
+
+  // Checkout Lead Capture
+  async captureLead(data: {
+    lead_id?: number | null;
+    name: string;
+    phone: string;
+    email?: string | null;
+    address?: string | null;
+    city?: string | null;
+    postal_code?: string | null;
+    cart_items?: any[];
+    total_amount?: number;
+  }): Promise<{ message: string; lead_id: number; status: string }> {
+    const res = await apiClient.post("/leads/capture", data);
     return res.data;
   },
 };

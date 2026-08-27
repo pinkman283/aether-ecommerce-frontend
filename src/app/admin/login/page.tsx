@@ -45,6 +45,10 @@ export default function AdminLoginPage() {
         setError(err.response?.data?.message || "Access Denied: This account lacks administrative privileges.");
       } else if (status === 429) {
         setError("Too many login attempts. Rate limit engaged. Please wait 60 seconds.");
+      } else if (status === 500) {
+        setError(err.response?.data?.message || "Database connection error: Please ensure MySQL is running and the database is migrated/seeded.");
+      } else if (!err.response) {
+        setError("Unable to connect to backend server (http://localhost:8000). Please ensure 'php artisan serve' is running.");
       } else {
         setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Invalid administrator credentials.");
       }
@@ -69,14 +73,20 @@ export default function AdminLoginPage() {
       toast.success(`Welcome back, ${res.user.name}`);
       router.push("/admin");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Demo login failed.");
+      if (err.response?.status === 500) {
+        setError(err.response?.data?.message || "Database connection error: Please ensure MySQL is running and seeded.");
+      } else if (!err.response) {
+        setError("Unable to connect to backend server (http://localhost:8000).");
+      } else {
+        setError(err.response?.data?.message || "Demo login failed.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#07080c] flex flex-col justify-center items-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#07080c] flex flex-col justify-center items-center p-4 py-8 sm:py-12 relative overflow-y-auto">
       {/* Background Gradients */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-10 left-10 w-96 h-96 bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />

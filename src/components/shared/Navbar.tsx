@@ -183,14 +183,20 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                 <div>
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-xl border border-white/10 hover:border-indigo-500/40 bg-white/5 hover:bg-white/10 transition-all text-xs font-bold text-slate-200"
+                    className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl border border-white/10 hover:border-indigo-500/40 bg-white/5 hover:bg-white/10 transition-all text-xs font-bold text-slate-200"
                   >
-                    <img
-                      src={user.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80"}
-                      alt={user.name}
-                      className="w-7 h-7 rounded-lg object-cover ring-1 ring-indigo-400/40"
-                    />
-                    <span className="hidden sm:inline font-bold">
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user.name}
+                        className="w-7 h-7 rounded-lg object-cover ring-1 ring-indigo-400/40"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600/40 to-purple-600/40 text-indigo-200 ring-1 ring-indigo-400/40 flex items-center justify-center font-black text-xs">
+                        {user.name ? user.name.trim().slice(0, 1).toUpperCase() : "U"}
+                      </div>
+                    )}
+                    <span className="hidden sm:inline font-bold pr-1">
                       {user.name?.trim().split(" ")[0] || user.name}
                     </span>
                   </button>
@@ -226,6 +232,15 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                             Admin Console
                           </Link>
                         )}
+
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/10 rounded-xl transition-colors"
+                        >
+                          <UserIcon className="w-4 h-4 text-purple-400" />
+                          Profile & Settings
+                        </Link>
 
                         <Link
                           href="/dashboard"

@@ -18,9 +18,19 @@ import {
   LogOut, 
   ExternalLink, 
   ShieldCheck, 
+  ShieldAlert,
   ChevronRight,
   Menu,
-  X
+  X,
+  Magnet,
+  Calculator,
+  Truck,
+  FileText,
+  PackageCheck,
+  Coins,
+  TrendingUp,
+  Receipt,
+  BadgeDollarSign
 } from "lucide-react";
 import { useAdminAuthStore } from "@/store/useAdminAuthStore";
 import { adminApi } from "@/lib/adminApi";
@@ -83,37 +93,57 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  const hasItemAccess = (permission?: string) => {
+    if (!permission) return true;
+    if (adminUser?.role === "super_admin") return true;
+    return Boolean(adminUser?.permissions?.includes(permission));
+  };
+
   const navSections = [
     {
-      title: "Overview",
+      title: "Retail & Overview",
       items: [
         { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+        { label: "POS Terminal", href: "/admin/pos", icon: Calculator, permission: "pos.access" },
       ],
     },
     {
-      title: "Catalog",
+      title: "Procurement & Stock",
       items: [
-        { label: "Products", href: "/admin/products", icon: Layers },
-        { label: "Categories", href: "/admin/categories", icon: FolderTree },
-        { label: "Inventory", href: "/admin/inventory", icon: Boxes },
+        { label: "Vendors / Suppliers", href: "/admin/vendors", icon: Truck, permission: "vendors.view" },
+        { label: "Purchase Orders", href: "/admin/purchase-orders", icon: FileText, permission: "purchase_orders.view" },
+        { label: "Goods Receiving", href: "/admin/goods-receipts", icon: PackageCheck, permission: "goods_receipts.manage" },
+        { label: "FIFO Valuation & Ledger", href: "/admin/inventory-valuation", icon: Boxes, permission: "inventory.valuation" },
+        { label: "Products", href: "/admin/products", icon: Layers, permission: "products.view" },
+        { label: "Categories", href: "/admin/categories", icon: FolderTree, permission: "categories.manage" },
       ],
     },
     {
-      title: "Sales & Fulfillment",
+      title: "Sales & Customers",
       items: [
-        { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
-        { label: "Customers", href: "/admin/customers", icon: Users },
-        { label: "Coupons", href: "/admin/coupons", icon: Tag },
-        { label: "Reviews", href: "/admin/reviews", icon: Star },
+        { label: "Sales & Invoices", href: "/admin/sales", icon: BadgeDollarSign, permission: "orders.view" },
+        { label: "Orders", href: "/admin/orders", icon: ShoppingBag, permission: "orders.view" },
+        { label: "Leads", href: "/admin/leads", icon: Magnet, permission: "leads.view" },
+        { label: "Customers", href: "/admin/customers", icon: Users, permission: "customers.view" },
+        { label: "Coupons", href: "/admin/coupons", icon: Tag, permission: "coupons.manage" },
+        { label: "Reviews", href: "/admin/reviews", icon: Star, permission: "reviews.manage" },
       ],
     },
     {
-      title: "Administration",
+      title: "Finance & Profitability",
       items: [
-        { label: "Staff & RBAC", href: "/admin/staff", icon: UserCog },
+        { label: "Financial Engine & P&L", href: "/admin/finance", icon: TrendingUp, permission: "finance.reports_view" },
+        { label: "Operating Expenses", href: "/admin/expenses", icon: Receipt, permission: "expenses.view" },
+      ],
+    },
+    {
+      title: "Administration & Security",
+      items: [
+        { label: "Staff & RBAC", href: "/admin/staff", icon: UserCog, permission: "staff.view" },
+        { label: "Blocked IPs", href: "/admin/blocked-ips", icon: ShieldAlert, permission: "security.ip_block" },
+        { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText, permission: "audit_logs.view" },
         { label: "My Profile", href: "/admin/profile", icon: ShieldCheck },
-        { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText },
-        { label: "Settings", href: "/admin/settings", icon: Settings },
+        { label: "Settings", href: "/admin/settings", icon: Settings, permission: "settings.manage" },
       ],
     },
   ];
@@ -145,33 +175,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Navigation Links */}
           <nav className="space-y-6 flex-1">
-            {navSections.map((section) => (
-              <div key={section.title} className="space-y-1.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-3 block">
-                  {section.title}
-                </span>
-                <div className="space-y-0.5">
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = pathname === item.href;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                          isActive
-                            ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold shadow-sm"
-                            : "text-slate-400 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 ${isActive ? "text-amber-400" : "text-slate-500"}`} />
-                        <span>{item.label}</span>
-                      </Link>
-                    );
-                  })}
+            {navSections.map((section) => {
+              const visibleItems = section.items.filter((item) => hasItemAccess(item.permission));
+              if (visibleItems.length === 0) return null;
+
+              return (
+                <div key={section.title} className="space-y-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-3 block">
+                    {section.title}
+                  </span>
+                  <div className="space-y-0.5">
+                    {visibleItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                            isActive
+                              ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold shadow-sm"
+                              : "text-slate-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 ${isActive ? "text-amber-400" : "text-slate-500"}`} />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </nav>
         </div>
 
@@ -198,7 +233,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <button
               onClick={handleLogout}
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0 cursor-pointer"
               title="Sign Out of Admin Console"
             >
               <LogOut className="w-4 h-4" />
@@ -216,7 +251,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
-              className="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300 hover:text-white"
+              className="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300 hover:text-white cursor-pointer"
             >
               {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -261,30 +296,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="w-72 bg-[#0b0d14] h-full p-6 space-y-6 overflow-y-auto border-r border-white/10">
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <span className="font-bold text-sm text-white">Navigation</span>
-                <button onClick={() => setMobileNavOpen(false)} className="text-slate-400 hover:text-white">
+                <button onClick={() => setMobileNavOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {navSections.map((section) => (
-                <div key={section.title} className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">
-                    {section.title}
-                  </span>
-                  <div className="space-y-1">
-                    {section.items.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setMobileNavOpen(false)}
-                        className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-white/5"
-                      >
-                        <span>{item.label}</span>
-                      </Link>
-                    ))}
+              {navSections.map((section) => {
+                const visibleItems = section.items.filter((item) => hasItemAccess(item.permission));
+                if (visibleItems.length === 0) return null;
+
+                return (
+                  <div key={section.title} className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">
+                      {section.title}
+                    </span>
+                    <div className="space-y-1">
+                      {visibleItems.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setMobileNavOpen(false)}
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-white/5"
+                        >
+                          <span>{item.label}</span>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="flex-1" onClick={() => setMobileNavOpen(false)} />
           </div>

@@ -29,6 +29,7 @@ import { Product, Category } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
+import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
 
 export default function AdminInventoryPage() {
@@ -47,6 +48,10 @@ export default function AdminInventoryPage() {
   const [categoryId, setCategoryId] = useState("");
   const [stockLevelFilter, setStockLevelFilter] = useState("all");
   const [sortBy, setSortBy] = useState("urgent_restock");
+
+  // Bulk Selection & Deletion State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // View Modal State
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
@@ -97,7 +102,39 @@ export default function AdminInventoryPage() {
       setInventory(res.inventory.data || []);
       setSummary(res.summary || {});
     });
+    setSortBy("urgent_restock");
     toast.success("Inventory filters reset to default.");
+  };
+
+  const handleToggleSelectAll = () => {
+    if (displayedInventory.length > 0 && selectedIds.length === displayedInventory.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(displayedInventory.map((p) => p.id));
+    }
+  };
+
+  const handleToggleSelectRow = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      const res = await adminApi.bulkDeleteProducts(selectedIds);
+      setInventory((prev) => prev.filter((p) => !selectedIds.includes(p.id)));
+      if (viewingProduct && selectedIds.includes(viewingProduct.id)) setViewingProduct(null);
+      if (adjustingProduct && selectedIds.includes(adjustingProduct.id)) setAdjustingProduct(null);
+      setSelectedIds([]);
+      toast.success(res.message || `Deleted ${selectedIds.length} inventory SKU(s).`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete selected inventory items.");
+    } finally {
+      setIsBulkDeleting(false);
+    }
   };
 
   const handleOpenAdjust = (p: Product) => {
@@ -280,6 +317,15 @@ export default function AdminInventoryPage() {
         <table className="w-full text-left text-xs text-slate-300 min-w-[860px]">
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
+              <th className="p-3.5 w-10 text-center">
+                <input
+                  type="checkbox"
+                  checked={displayedInventory.length > 0 && selectedIds.length === displayedInventory.length}
+                  onChange={handleToggleSelectAll}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                  title="Select all inventory items"
+                />
+              </th>
               <th className="p-3.5">Product</th>
               <th className="p-3.5">SKU</th>
               <th className="p-3.5">Category</th>
@@ -292,21 +338,37 @@ export default function AdminInventoryPage() {
           <tbody className="divide-y divide-white/5">
             {loading ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-slate-500">
+                <td colSpan={8} className="p-8 text-center text-slate-500">
                   Auditing live warehouse inventory...
                 </td>
               </tr>
             ) : displayedInventory.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-slate-500 italic">
+                <td colSpan={8} className="p-8 text-center text-slate-500 italic">
                   No inventory records match the filter criteria.
                 </td>
               </tr>
             ) : (
               displayedInventory.map((p) => {
                 const img = p.primary_image?.image_url || p.images?.[0]?.image_url;
+                const isSelected = selectedIds.includes(p.id);
                 return (
-                  <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
+                  <tr
+                    key={p.id}
+                    className={`transition-colors ${
+                      isSelected
+                        ? "bg-amber-500/10 border-l-2 border-amber-500"
+                        : "hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectRow(p.id)}
+                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                      />
+                    </td>
                     <td className="p-3.5 flex items-center gap-3 font-bold text-white">
                       {img && (
                         <img
@@ -710,6 +772,16 @@ export default function AdminInventoryPage() {
           </div>
         </div>
       )}
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={displayedInventory.length}
+        itemName="inventory SKU"
+        isDeleting={isBulkDeleting}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={handleToggleSelectAll}
+        onConfirmDelete={handleBulkDelete}
+      />
     </div>
   );
 }

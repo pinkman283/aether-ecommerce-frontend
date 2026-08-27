@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
   Users, 
   Search, 
@@ -17,6 +18,7 @@ import {
   Phone, 
   Calendar, 
   Lock, 
+  Unlock,
   MapPin, 
   AlertTriangle,
   History,
@@ -24,32 +26,59 @@ import {
   PackageCheck,
   PackageX,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Activity,
+  Network,
+  Ban,
+  CheckCircle2,
+  FileText,
+  Save,
+  RefreshCw,
+  Info
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
+import { User, Order, CustomerIpHistoryItem, CustomerActivityTimelineItem } from "@/types";
 import { formatPrice, formatDate, formatTime } from "@/lib/utils";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
 import { SuspensionModal, SuspensionPayload } from "@/components/admin/SuspensionModal";
 import { ImageUploadAvatar } from "@/components/ui/ImageUploadAvatar";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
 
-export default function AdminCustomersPage() {
-  const [customers, setCustomers] = useState<any[]>([]);
+function AdminCustomersContent() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || searchParams.get("email") || "";
+  const initialViewId = searchParams.get("view");
+
+  const [customers, setCustomers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [riskFilter, setRiskFilter] = useState("all");
 
-  // Customer Drawer / Inspector
-  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  // Customer Intelligence Drawer State
+  const [selectedCustomer, setSelectedCustomer] = useState<User | null>(null);
+  const [loadingCustomerDetails, setLoadingCustomerDetails] = useState(false);
+  const [activeDrawerTab, setActiveDrawerTab] = useState<"overview" | "ips" | "timeline" | "orders">("overview");
 
-  // Customer History & Lifecycle Ledger Modal State
-  const [historyCustomer, setHistoryCustomer] = useState<any | null>(null);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+  // Notes state in drawer
+  const [customerNotes, setCustomerNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  // Quick Block IP Modal
+  const [quickBlockIp, setQuickBlockIp] = useState<string | null>(null);
+  const [quickBlockReason, setQuickBlockReason] = useState("");
+  const [submittingQuickBlock, setSubmittingQuickBlock] = useState(false);
+
+  // Bulk Selection & Deletion State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Suspension Modal State
-  const [suspendingCustomer, setSuspendingCustomer] = useState<any | null>(null);
+  const [suspendingCustomer, setSuspendingCustomer] = useState<User | null>(null);
   const [isSubmittingSuspension, setIsSubmittingSuspension] = useState(false);
 
   // Create Customer Modal State
@@ -69,7 +98,7 @@ export default function AdminCustomersPage() {
   const [creating, setCreating] = useState(false);
 
   // Edit Customer Modal State
-  const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<User | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
   const [editEmail, setEditEmail] = useState("");
@@ -79,8 +108,8 @@ export default function AdminCustomersPage() {
   const [editPassword, setEditPassword] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Delete Customer Modal State
-  const [deletingCustomer, setDeletingCustomer] = useState<any | null>(null);
+  // Delete Customer State
+  const [deletingCustomer, setDeletingCustomer] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const loadCustomers = async () => {
@@ -89,6 +118,8 @@ export default function AdminCustomersPage() {
       const res = await adminApi.getCustomers({
         search: search.trim() || undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
+        customer_type: typeFilter !== "all" ? typeFilter : undefined,
+        risk_level: riskFilter !== "all" ? riskFilter : undefined,
         per_page: 50,
       });
       setCustomers(res.data || []);
@@ -101,161 +132,141 @@ export default function AdminCustomersPage() {
 
   useEffect(() => {
     loadCustomers();
-  }, [statusFilter]);
+  }, [statusFilter, typeFilter, riskFilter]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadCustomers();
-  };
-
-  const handleResetFilters = () => {
-    setSearch("");
-    setStatusFilter("all");
-    adminApi.getCustomers({ per_page: 50 }).then((res) => {
-      setCustomers(res.data || []);
-    });
-    toast.success("Customer filters reset to default.");
-  };
-
-  const handleOpenCreate = () => {
-    setFirstName("");
-    setLastName("");
-    setEmail("");
-    setPassword("");
-    setPhone("");
-    setAvatar(null);
-    setStatus("active");
-    setAddressLine("");
-    setCity("San Francisco");
-    setState("CA");
-    setPostalCode("94107");
-    setCountry("United States");
-    setIsCreateModalOpen(true);
-  };
-
-  const handleCreateCustomer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreating(true);
-
-    try {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      const res = await adminApi.createCustomer({
-        name: fullName,
-        email,
-        password,
-        phone: phone || null,
-        avatar: avatar || undefined,
-        status,
-        address_line1: addressLine || null,
-        city: city || null,
-        state: state || null,
-        postal_code: postalCode || null,
-        country: country || null,
-      });
-
-      setCustomers([res.customer, ...customers]);
-      toast.success(res.message);
-      setIsCreateModalOpen(false);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to create customer.");
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const handleOpenCustomerHistory = async (id: number) => {
-    setLoadingHistory(true);
-    try {
-      const data = await adminApi.getCustomer(id);
-      setHistoryCustomer(data);
-    } catch (err) {
-      toast.error("Failed to load customer order & lifecycle history.");
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const handleOpenEdit = (c: any) => {
-    setEditingCustomer(c);
-    const parts = (c.name || "").trim().split(" ");
-    setEditFirstName(parts[0] || "");
-    setEditLastName(parts.slice(1).join(" ") || "");
-    setEditEmail(c.email);
-    setEditPhone(c.phone || "");
-    setEditAvatar(c.avatar || null);
-    setEditStatus(c.status || "active");
-    setEditPassword("");
-  };
-
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCustomer) return;
-    if (!isEditDirty) {
-      toast.info("No changes were made.");
-      return;
-    }
-    setSavingEdit(true);
-
-    const fullName = `${editFirstName.trim()} ${editLastName.trim()}`.trim();
-    const payload: any = {
-      name: fullName,
-      email: editEmail,
-      phone: editPhone || null,
-      avatar: editAvatar,
-      status: editStatus,
-    };
-
-    if (editPassword) {
-      payload.password = editPassword;
-    }
-
-    try {
-      const res = await adminApi.updateCustomer(editingCustomer.id, payload);
-      setCustomers(customers.map((c) => (c.id === editingCustomer.id ? { ...c, ...res.customer } : c)));
-      if (selectedCustomer?.id === editingCustomer.id) {
-        setSelectedCustomer({ ...selectedCustomer, ...res.customer });
+  // Auto-open profile drawer if redirected from Orders page
+  useEffect(() => {
+    if (initialViewId && !selectedCustomer) {
+      adminApi.getCustomer(Number(initialViewId))
+        .then((cust) => {
+          if (cust) openCustomerIntelligence(cust);
+        })
+        .catch(() => {});
+    } else if (initialSearch && customers.length > 0 && !selectedCustomer) {
+      const match = customers.find(c => 
+        c.email.toLowerCase() === initialSearch.toLowerCase() ||
+        c.name.toLowerCase().includes(initialSearch.toLowerCase())
+      );
+      if (match) {
+        openCustomerIntelligence(match);
       }
-      toast.success(`Customer '${res.customer.name}' updated.`);
-      setEditingCustomer(null);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update customer.");
+    }
+  }, [customers, initialViewId, initialSearch]);
+
+  const openCustomerIntelligence = async (customer: User) => {
+    setSelectedCustomer(customer);
+    setCustomerNotes(customer.internal_notes || "");
+    setActiveDrawerTab("overview");
+    setLoadingCustomerDetails(true);
+
+    try {
+      const fullCustomer = await adminApi.getCustomer(customer.id);
+      setSelectedCustomer(fullCustomer);
+      setCustomerNotes(fullCustomer.internal_notes || "");
+    } catch (err) {
+      toast.error("Failed to load comprehensive customer risk intelligence.");
     } finally {
-      setSavingEdit(false);
+      setLoadingCustomerDetails(false);
     }
   };
 
-  const isEditDirty = Boolean(
-    editingCustomer && (
-      (editFirstName.trim() !== ((editingCustomer.name || "").trim().split(" ")[0] || "")) ||
-      (editLastName.trim() !== ((editingCustomer.name || "").trim().split(" ").slice(1).join(" ") || "")) ||
-      (editEmail.trim() !== (editingCustomer.email || "")) ||
-      ((editPhone.trim() || "") !== (editingCustomer.phone || "")) ||
-      ((editAvatar || null) !== (editingCustomer.avatar || null)) ||
-      (editStatus !== (editingCustomer.status || "active")) ||
-      (editPassword.length > 0)
-    )
-  );
-
-  const handleInspectCustomer = async (id: number) => {
+  const handleSaveNotes = async () => {
+    if (!selectedCustomer) return;
     try {
-      const customer = await adminApi.getCustomer(id);
-      setSelectedCustomer(customer);
-    } catch (err) {
-      toast.error("Failed to fetch customer profile.");
+      setSavingNotes(true);
+      await adminApi.updateCustomerNotes(selectedCustomer.id, customerNotes);
+      toast.success("Internal security notes updated.");
+      setSelectedCustomer((prev) => prev ? { ...prev, internal_notes: customerNotes } : null);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to update notes.");
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const handleBlockCustomer = async (customer: User) => {
+    const reason = prompt(`Enter reason for blocking customer account ${customer.name}:`, "Repeated abusive cancellations / Fraud risk");
+    if (!reason) return;
+
+    try {
+      const res = await adminApi.blockCustomer(customer.id, reason);
+      toast.success(res.message);
+      loadCustomers();
+      if (selectedCustomer?.id === customer.id) {
+        setSelectedCustomer(res.customer);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to block customer.");
+    }
+  };
+
+  const handleUnblockCustomer = async (customer: User) => {
+    if (!confirm(`Are you sure you want to unblock customer ${customer.name}?`)) return;
+
+    try {
+      const res = await adminApi.unblockCustomer(customer.id);
+      toast.success(res.message);
+      loadCustomers();
+      if (selectedCustomer?.id === customer.id) {
+        setSelectedCustomer(res.customer);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to unblock customer.");
+    }
+  };
+
+  const handleFlagReview = async (customer: User) => {
+    try {
+      const res = await adminApi.setCustomerReview(customer.id);
+      toast.success(res.message);
+      loadCustomers();
+      if (selectedCustomer?.id === customer.id) {
+        setSelectedCustomer(res.customer);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to flag customer.");
+    }
+  };
+
+  const handleExecuteQuickBlockIp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickBlockIp || !quickBlockReason.trim()) return;
+
+    try {
+      setSubmittingQuickBlock(true);
+      const res = await adminApi.blockIp({
+        ip_address: quickBlockIp,
+        reason: quickBlockReason.trim(),
+        duration: "7_days",
+      });
+      toast.success(res.message);
+      setQuickBlockIp(null);
+      setQuickBlockReason("");
+      if (selectedCustomer) {
+        openCustomerIntelligence(selectedCustomer);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to block IP.");
+    } finally {
+      setSubmittingQuickBlock(false);
     }
   };
 
   const handleConfirmSuspension = async (payload: SuspensionPayload) => {
     if (!suspendingCustomer) return;
-    setIsSubmittingSuspension(true);
     try {
-      const res = await adminApi.suspendCustomer(suspendingCustomer.id, payload);
-      setCustomers(customers.map((c) => (c.id === suspendingCustomer.id ? { ...c, ...res.customer } : c)));
-      if (selectedCustomer?.id === suspendingCustomer.id) {
-        setSelectedCustomer({ ...selectedCustomer, ...res.customer });
-      }
-      toast.success(res.message || `Customer '${suspendingCustomer.name}' suspended.`);
+      setIsSubmittingSuspension(true);
+      const res = await adminApi.suspendCustomer(suspendingCustomer.id, {
+        duration_type: payload.duration_type,
+        suspended_until: payload.suspended_until,
+        reason: payload.reason,
+      });
+      toast.success(res.message);
       setSuspendingCustomer(null);
+      loadCustomers();
+      if (selectedCustomer?.id === suspendingCustomer.id) {
+        setSelectedCustomer(res.customer);
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to suspend customer.");
     } finally {
@@ -263,867 +274,713 @@ export default function AdminCustomersPage() {
     }
   };
 
-  const handleReactivateCustomer = async (customer: any) => {
+  const handleReactivateCustomer = async (customer: User) => {
     try {
       const res = await adminApi.reactivateCustomer(customer.id);
-      setCustomers(customers.map((c) => (c.id === customer.id ? { ...c, ...res.customer } : c)));
+      toast.success(res.message);
+      loadCustomers();
       if (selectedCustomer?.id === customer.id) {
-        setSelectedCustomer({ ...selectedCustomer, ...res.customer });
+        setSelectedCustomer(res.customer);
       }
-      toast.success(res.message || `Customer '${customer.name}' reactivated.`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to reactivate customer.");
     }
   };
 
-  const handleDeleteCustomer = async () => {
-    if (!deletingCustomer) return;
-    setDeleting(true);
-
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
     try {
-      await adminApi.deleteCustomer(deletingCustomer.id);
-      setCustomers(customers.filter((c) => c.id !== deletingCustomer.id));
-      if (selectedCustomer?.id === deletingCustomer.id) {
-        setSelectedCustomer(null);
-      }
-      toast.success(`Customer '${deletingCustomer.name}' deleted.`);
-      setDeletingCustomer(null);
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      await adminApi.createCustomer({
+        name: fullName,
+        email: email.trim(),
+        password,
+        phone: phone.trim() || undefined,
+        avatar: avatar || undefined,
+        status,
+        address_line1: addressLine.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
+        postal_code: postalCode.trim() || undefined,
+        country: country.trim() || undefined,
+      });
+
+      toast.success("Customer created successfully.");
+      setIsCreateModalOpen(false);
+      loadCustomers();
     } catch (err: any) {
-      toast.error("Failed to delete customer.");
+      toast.error(err.response?.data?.message || "Failed to create customer.");
     } finally {
-      setDeleting(false);
+      setCreating(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
-            Customer Directory & Accounts
-          </span>
-          <h1 className="text-2xl font-black text-white">Registered Customers ({customers.length})</h1>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight">Customer Intelligence & Risk Control</h1>
+              <p className="text-xs text-slate-400">Holistic buyer profiling, automated cancellation risk scoring, and multi-IP telemetry.</p>
+            </div>
+          </div>
         </div>
 
         <button
-          onClick={handleOpenCreate}
-          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/20"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-purple-600/20 transition-all cursor-pointer"
         >
-          <Plus className="w-4 h-4" /> Add New Customer
+          <Plus className="w-4 h-4" />
+          <span>New Customer</span>
         </button>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="p-4 rounded-2xl bg-[#0e121e] border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <form onSubmit={handleSearch} className="relative w-full sm:w-80">
+      {/* Search and Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-[#0e131f] p-4 rounded-2xl border border-white/5">
+        <div className="relative lg:col-span-1">
           <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
+            placeholder="Search name, email, phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, or phone..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9.5 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+            onKeyDown={(e) => e.key === "Enter" && loadCustomers()}
+            className="w-full bg-[#07080c] border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500/50"
           />
-        </form>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <AdminDropdown
-            value={statusFilter}
-            onChange={(val) => setStatusFilter(val)}
-            className="w-full sm:w-auto"
-            options={[
-              { value: "all", label: "All Account Statuses" },
-              { value: "active", label: "Active Only" },
-              { value: "suspended", label: "Suspended Only" },
-            ]}
-          />
-
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 transition-all shrink-0"
-            title="Reset all customer filters"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset</span>
-          </button>
         </div>
+
+        <AdminDropdown
+          value={statusFilter}
+          onChange={(val: string) => setStatusFilter(val)}
+          options={[
+            { label: "All Account Statuses", value: "all" },
+            { label: "Active", value: "active" },
+            { label: "Suspended", value: "suspended" },
+            { label: "Blocked", value: "blocked" },
+            { label: "Under Review", value: "review" },
+          ]}
+        />
+
+        <AdminDropdown
+          value={typeFilter}
+          onChange={(val: string) => setTypeFilter(val)}
+          options={[
+            { label: "All Customer Types", value: "all" },
+            { label: "Registered Accounts", value: "registered" },
+            { label: "Guest Purchasers", value: "guest" },
+          ]}
+        />
+
+        <AdminDropdown
+          value={riskFilter}
+          onChange={(val: string) => setRiskFilter(val)}
+          options={[
+            { label: "All Risk Levels", value: "all" },
+            { label: "Low Risk", value: "low" },
+            { label: "Medium Risk", value: "medium" },
+            { label: "High Risk", value: "high" },
+            { label: "Critical Abuse", value: "critical" },
+          ]}
+        />
       </div>
 
-      {/* Customers Table with Scrollable Drag Card */}
-      <ScrollableTableCard>
-        <table className="w-full text-left text-xs text-slate-300 min-w-[760px]">
-          <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-            <tr>
-              <th className="p-3.5">Customer</th>
-              <th className="p-3.5">Phone</th>
-              <th className="p-3.5">Lifetime Orders</th>
-              <th className="p-3.5">Total Spent</th>
-              <th className="p-3.5">Status</th>
-              <th className="p-3.5">Joined</th>
-              <th className="p-3.5 text-center min-w-[170px]">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="p-8 text-center text-slate-500">
-                  Loading customer records...
-                </td>
+      {/* Main Customers Table */}
+      <div className="p-4 rounded-2xl bg-[#0b0d14] border border-white/5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-white">Customer Records ({customers.length})</h2>
+        </div>
+        <ScrollableTableCard className="border-white/5">
+          <table className="w-full min-w-[950px] text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-white/5 bg-white/[0.01] text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+                <th className="py-3 px-4">Customer</th>
+                <th className="py-3 px-4">Type</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">Risk Profile</th>
+                <th className="py-3 px-4">Orders</th>
+                <th className="py-3 px-4">Total Spent</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
-            ) : customers.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="p-8 text-center text-slate-500 italic">
-                  No customer accounts found.
-                </td>
-              </tr>
-            ) : (
-              customers.map((c) => (
-                <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="p-3.5 flex items-center gap-3 font-bold text-white">
-                    <img
-                      src={c.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-                      alt={c.name}
-                      className="w-8 h-8 rounded-full object-cover bg-slate-900 shrink-0 border border-white/10"
-                    />
-                    <div>
-                      <span className="text-white font-bold block">{c.name}</span>
-                      <span className="text-[10px] text-slate-400 font-normal">{c.email}</span>
-                    </div>
-                  </td>
-                  <td className="p-3.5 text-slate-400 font-mono text-[11px] whitespace-nowrap">{c.phone || "—"}</td>
-                  <td className="p-3.5 font-bold text-white whitespace-nowrap">{c.orders_count ?? 0} orders</td>
-                  <td className="p-3.5 font-extrabold text-cyan-400 whitespace-nowrap">{formatPrice(c.total_spent || 0)}</td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    {c.status === "active" ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                        Active
-                      </span>
-                    ) : c.suspended_until ? (
-                      <div className="flex flex-col">
-                        <span
-                          className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 cursor-help"
-                          title={c.suspension_reason ? `Reason: ${c.suspension_reason}` : undefined}
-                        >
-                          Suspended (Timed)
-                        </span>
-                        <span className="text-[9px] text-slate-500 font-mono mt-0.5">
-                          Until {formatDate(c.suspended_until)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span
-                        className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-300 border border-rose-500/30 cursor-help"
-                        title={c.suspension_reason ? `Reason: ${c.suspension_reason}` : undefined}
-                      >
-                        Suspended (Indefinite)
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-3.5 text-slate-400 whitespace-nowrap">{formatDate(c.created_at)}</td>
-                  
-                  {/* ICON-ONLY ACTION SYSTEM (UP TO 4 PER ROW) */}
-                  <td className="p-3.5 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-start gap-1.5 flex-wrap w-[146px] mx-auto">
-                      <button
-                        onClick={() => handleInspectCustomer(c.id)}
-                        className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:scale-105 transition-all shadow-sm"
-                        title="View Customer Profile"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleOpenCustomerHistory(c.id)}
-                        className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:scale-105 transition-all shadow-sm"
-                        title="View Customer Order & Lifecycle History"
-                      >
-                        <History className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleOpenEdit(c)}
-                        className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:scale-105 transition-all shadow-sm"
-                        title="Edit Customer"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
-                      
-                      {c.status === "active" ? (
-                        <button
-                          onClick={() => setSuspendingCustomer(c)}
-                          className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:scale-105 transition-all shadow-sm"
-                          title="Suspend Account (Indefinite / Timed)"
-                        >
-                          <ShieldAlert className="w-3.5 h-3.5" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleReactivateCustomer(c)}
-                          className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:scale-105 transition-all shadow-sm"
-                          title="Reactivate Account to Active"
-                        >
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => setDeletingCustomer(c)}
-                        className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:scale-105 transition-all shadow-sm"
-                        title="Delete Customer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-slate-300">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <div className="inline-flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-purple-400" />
+                      <span>Loading customer intelligence...</span>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </ScrollableTableCard>
+              ) : customers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <Users className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                    <p className="font-semibold text-slate-400">No Customers Found</p>
+                    <p className="text-[11px]">Try adjusting your search criteria or filters.</p>
+                  </td>
+                </tr>
+              ) : (
+                customers.map((c) => {
+                  const isGuest = c.customer_type === "guest";
+                  const riskLevel = c.risk_level || "low";
+                  const riskScore = c.risk_score ?? 0;
 
-      {/* Create Customer Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setIsCreateModalOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+                  return (
+                    <tr key={c.id} className="hover:bg-white/[0.02] transition-colors group">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={c.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
+                            alt={c.name}
+                            className="w-8 h-8 rounded-full border border-white/10 object-cover shrink-0"
+                          />
+                          <div>
+                            <button
+                              onClick={() => openCustomerIntelligence(c)}
+                              className="font-bold text-white hover:text-purple-400 transition-colors text-left block"
+                            >
+                              {c.name}
+                            </button>
+                            <p className="text-slate-400 text-[11px]">{c.email}</p>
+                          </div>
+                        </div>
+                      </td>
 
-          <div className="relative w-full max-w-lg rounded-3xl bg-[#0c0e15] border border-amber-500/30 shadow-2xl p-6 sm:p-8 z-10 space-y-4 text-xs max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
-                  Customer Management
-                </span>
-                <h3 className="text-lg font-black text-white">Create New Customer Account</h3>
-              </div>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                      <td className="py-3.5 px-4">
+                        {isGuest ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            GUEST
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            REGISTERED
+                          </span>
+                        )}
+                      </td>
 
-            <form onSubmit={handleCreateCustomer} className="space-y-3">
-              <ImageUploadAvatar
-                value={avatar}
-                onChange={(val) => setAvatar(val)}
-                name={`${firstName} ${lastName}`.trim() || "Customer"}
-                size="md"
-                label="Profile Picture (Optional)"
-              />
+                      <td className="py-3.5 px-4">
+                        {c.status === "blocked" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                            <Ban className="w-3 h-3" /> BLOCKED
+                          </span>
+                        ) : c.status === "suspended" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            <Clock className="w-3 h-3" /> SUSPENDED
+                          </span>
+                        ) : c.status === "review" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            <AlertTriangle className="w-3 h-3" /> REVIEW
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 className="w-3 h-3" /> ACTIVE
+                          </span>
+                        )}
+                      </td>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                    First Name <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="e.g. David"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                    Second / Last Name
-                  </label>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="e.g. Hasselhoff"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            riskLevel === "critical" ? "bg-red-500/20 text-red-400 border border-red-500/40" :
+                            riskLevel === "high" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" :
+                            riskLevel === "medium" ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                            "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          }`}>
+                            {riskLevel}
+                          </span>
+                          <span className="text-slate-500 font-mono text-[11px]">({riskScore} pts)</span>
+                        </div>
+                      </td>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="david@example.com"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Initial Password</label>
-                  <PasswordInput
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    inputClassName="bg-white/5 border border-white/10 rounded-xl py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
+                      <td className="py-3.5 px-4 font-mono font-semibold text-white">
+                        {c.orders_count ?? 0}
+                      </td>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Phone (Optional)</label>
-                  <input
-                    type="tel"
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Account Status</label>
-                  <AdminDropdown
-                    value={status}
-                    onChange={(val) => setStatus(val)}
-                    className="w-full"
-                    buttonClassName="w-full py-2"
-                    options={[
-                      { value: "active", label: "Active" },
-                      { value: "suspended", label: "Suspended" },
-                    ]}
-                  />
-                </div>
-              </div>
+                      <td className="py-3.5 px-4 font-mono font-semibold text-emerald-400">
+                        {formatPrice(c.total_spent || 0)}
+                      </td>
 
-              {/* Optional Primary Address */}
-              <div className="pt-2 border-t border-white/10 space-y-2">
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">Default Shipping Address (Optional)</span>
-                <div>
-                  <input
-                    type="text"
-                    value={addressLine}
-                    onChange={(e) => setAddressLine(e.target.value)}
-                    placeholder="Street Address, Apt / Suite"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <input
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="City"
-                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                  <input
-                    type="text"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    placeholder="State / Region"
-                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                  <input
-                    type="text"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    placeholder="Postal Code"
-                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                  <input
-                    type="text"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    placeholder="Country"
-                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => openCustomerIntelligence(c)}
+                            className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-purple-500/10 text-slate-400 hover:text-purple-400 border border-white/5 transition-all"
+                            title="Open Customer Intelligence Hub"
+                          >
+                            <Activity className="w-4 h-4" />
+                          </button>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black uppercase tracking-wide transition-all shadow-md"
-                >
-                  {creating ? "Creating..." : "Create Account"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                          {c.status === "active" ? (
+                            <button
+                              onClick={() => setSuspendingCustomer(c)}
+                              className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 border border-white/5 transition-all"
+                              title="Suspend Customer"
+                            >
+                              <Lock className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleReactivateCustomer(c)}
+                              className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-400 border border-white/5 transition-all"
+                              title="Reactivate Customer"
+                            >
+                              <Unlock className="w-4 h-4" />
+                            </button>
+                          )}
 
-      {/* Edit Customer Modal */}
-      {editingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setEditingCustomer(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+                          {c.status !== "blocked" ? (
+                            <button
+                              onClick={() => handleBlockCustomer(c)}
+                              className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-red-500/10 text-slate-400 hover:text-red-400 border border-white/5 transition-all"
+                              title="Block Customer Account"
+                            >
+                              <Ban className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleUnblockCustomer(c)}
+                              className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-400 border border-white/5 transition-all"
+                              title="Unblock Customer Account"
+                            >
+                              <ShieldCheck className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </ScrollableTableCard>
+      </div>
 
-          <div className="relative w-full max-w-md rounded-3xl bg-[#0c0e15] border border-amber-500/30 shadow-2xl p-6 sm:p-8 z-10 space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="text-base font-black text-white">Edit Customer: {editingCustomer.name}</h3>
-              <button onClick={() => setEditingCustomer(null)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="space-y-3">
-              <ImageUploadAvatar
-                value={editAvatar}
-                onChange={(val) => setEditAvatar(val)}
-                name={`${editFirstName} ${editLastName}`.trim() || "Customer"}
-                size="md"
-                label="Customer Profile Picture"
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                    First Name <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editFirstName}
-                    onChange={(e) => setEditFirstName(e.target.value)}
-                    placeholder="e.g. David"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                    Second / Last Name
-                  </label>
-                  <input
-                    type="text"
-                    value={editLastName}
-                    onChange={(e) => setEditLastName(e.target.value)}
-                    placeholder="e.g. Hasselhoff"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Account Status</label>
-                  <AdminDropdown
-                    value={editStatus}
-                    onChange={(val) => setEditStatus(val)}
-                    className="w-full"
-                    buttonClassName="w-full py-2"
-                    options={[
-                      { value: "active", label: "Active" },
-                      { value: "suspended", label: "Suspended" },
-                    ]}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Reset Password (Optional)</label>
-                  <PasswordInput
-                    value={editPassword}
-                    onChange={(e) => setEditPassword(e.target.value)}
-                    placeholder="Leave blank to keep current"
-                    inputClassName="bg-white/5 border border-white/10 rounded-xl py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setEditingCustomer(null)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingEdit || !isEditDirty}
-                  className={`px-5 py-2 rounded-xl font-black uppercase tracking-wide transition-all shadow-md ${
-                    !isEditDirty
-                      ? "bg-white/10 text-slate-500 cursor-not-allowed border border-white/5"
-                      : "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                  }`}
-                  title={!isEditDirty ? "No changes made to customer profile" : "Save changes"}
-                >
-                  {savingEdit ? "Saving..." : "Save Customer"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deletingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setDeletingCustomer(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-md rounded-3xl bg-[#0e121e] border border-rose-500/30 p-6 z-10 space-y-4 text-xs">
-            <div className="flex items-center gap-3 text-rose-400">
-              <AlertTriangle className="w-6 h-6" />
-              <h3 className="text-base font-black text-white">Delete Customer Account</h3>
-            </div>
-            <p className="text-slate-300 leading-relaxed">
-              Are you sure you want to delete customer <span className="font-bold text-white">{deletingCustomer.name}</span> ({deletingCustomer.email})? All active tokens and saved addresses will be deleted.
-            </p>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeletingCustomer(null)}
-                className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={handleDeleteCustomer}
-                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all shadow-lg shadow-rose-600/30"
-              >
-                {deleting ? "Deleting..." : "Confirm Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Customer Profile Inspector Modal */}
+      {/* Customer Intelligence Drawer / Modal */}
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setSelectedCustomer(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-xl rounded-3xl bg-[#0e121e] border border-white/15 shadow-2xl p-6 sm:p-8 z-10 max-h-[90vh] overflow-y-auto space-y-6 text-xs">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0b0d14] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02] shrink-0">
               <div className="flex items-center gap-3">
                 <img
                   src={selectedCustomer.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
                   alt={selectedCustomer.name}
-                  className="w-12 h-12 rounded-2xl object-cover ring-2 ring-amber-400/40 shrink-0"
+                  className="w-10 h-10 rounded-full border border-white/10 object-cover shrink-0"
                 />
                 <div>
-                  <h3 className="text-base font-black text-white">{selectedCustomer.name}</h3>
-                  <span className="text-[11px] text-slate-400">{selectedCustomer.email}</span>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-white text-base">{selectedCustomer.name}</h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      selectedCustomer.customer_type === "guest" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                    }`}>
+                      {selectedCustomer.customer_type === "guest" ? "GUEST" : "REGISTERED"}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      selectedCustomer.status === "blocked" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                      selectedCustomer.status === "suspended" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                      selectedCustomer.status === "review" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" :
+                      "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    }`}>
+                      {selectedCustomer.status?.toUpperCase() || "ACTIVE"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">{selectedCustomer.email} • {selectedCustomer.phone || "No phone recorded"}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedCustomer(null)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* Financial Overview */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
-                <span className="text-[10px] text-slate-400 font-bold block mb-1">Lifetime Orders</span>
-                <span className="text-xl font-black text-white">{selectedCustomer.orders_count ?? 0}</span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
-                <span className="text-[10px] text-slate-400 font-bold block mb-1">Total Settled Volume</span>
-                <span className="text-xl font-black text-cyan-400">{formatPrice(selectedCustomer.total_spent || 0)}</span>
-              </div>
-            </div>
-
-            {/* Saved Addresses */}
-            <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-                Saved Delivery Addresses ({selectedCustomer.addresses?.length || 0})
-              </span>
-              <div className="space-y-2">
-                {selectedCustomer.addresses?.map((a: any) => (
-                  <div key={a.id} className="p-3 rounded-xl bg-white/5 border border-white/5 text-slate-300">
-                    <span className="font-bold text-white block">{a.full_name} ({a.type})</span>
-                    <span>{a.address_line1}, {a.city}, {a.state} {a.postal_code}, {a.country}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Order History */}
-            <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-                Recent Orders
-              </span>
-              <div className="divide-y divide-white/5 border-y border-white/5 max-h-40 overflow-y-auto">
-                {selectedCustomer.orders?.map((ord: any) => (
-                  <div key={ord.id} className="py-2 flex justify-between items-center text-xs">
-                    <div>
-                      <span className="font-mono font-bold text-cyan-400 block">{ord.order_number}</span>
-                      <span className="text-[10px] text-slate-400">{formatDate(ord.created_at)}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold text-white block">{formatPrice(ord.total_amount)}</span>
-                      <span className="text-[10px] uppercase font-bold text-amber-400">{ord.order_status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-between items-center pt-2 border-t border-white/10">
-              {selectedCustomer.status === "active" ? (
+              <div className="flex items-center gap-2">
                 <button
-                  type="button"
-                  onClick={() => {
-                    const c = selectedCustomer;
-                    setSelectedCustomer(null);
-                    setSuspendingCustomer(c);
-                  }}
-                  className="px-4 py-2 rounded-xl text-xs font-bold transition-colors bg-rose-600/20 text-rose-300 hover:bg-rose-600/30 border border-rose-500/30"
+                  onClick={() => setSelectedCustomer(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all"
                 >
-                  Suspend Account
+                  <X className="w-5 h-5" />
                 </button>
+              </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex items-center gap-1 px-5 pt-3 border-b border-white/5 bg-white/[0.01] shrink-0 text-xs font-semibold">
+              {[
+                { id: "overview", label: "Risk & KPIs", icon: Activity },
+                { id: "ips", label: `IP History (${selectedCustomer.ip_history?.length || 0})`, icon: Network },
+                { id: "timeline", label: `Timeline (${selectedCustomer.activity_timeline?.length || 0})`, icon: History },
+                { id: "orders", label: `Orders (${selectedCustomer.orders?.length || selectedCustomer.orders_count || 0})`, icon: ShoppingBag },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveDrawerTab(t.id as any)}
+                  className={`flex items-center gap-2 py-2.5 px-4 border-b-2 transition-all ${
+                    activeDrawerTab === t.id
+                      ? "border-purple-500 text-purple-400 bg-purple-500/5 rounded-t-lg"
+                      : "border-transparent text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <t.icon className="w-3.5 h-3.5" />
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Body */}
+            <div className="p-5 overflow-y-auto space-y-5 text-xs flex-1">
+              {loadingCustomerDetails ? (
+                <div className="py-16 text-center text-slate-500">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-purple-400" />
+                  <span>Calculating live abuse signals and telemetry...</span>
+                </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => handleReactivateCustomer(selectedCustomer)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold transition-colors bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/30"
-                >
-                  Re-activate Account
-                </button>
+                <>
+                  {/* TAB 1: OVERVIEW & RISK ANALYSIS */}
+                  {activeDrawerTab === "overview" && (
+                    <div className="space-y-5">
+                      {/* Metric KPI Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Orders</span>
+                          <p className="text-lg font-mono font-bold text-white">{selectedCustomer.risk_metrics?.total_orders ?? selectedCustomer.orders_count ?? 0}</p>
+                          <span className="text-[10px] text-emerald-400">{selectedCustomer.risk_metrics?.completed_orders ?? 0} Completed</span>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Cancellations</span>
+                          <p className="text-lg font-mono font-bold text-red-400">{selectedCustomer.risk_metrics?.cancelled_orders ?? 0}</p>
+                          <span className="text-[10px] text-slate-400">{selectedCustomer.risk_metrics?.cancellation_rate ?? 0}% Rate</span>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Spent</span>
+                          <p className="text-lg font-mono font-bold text-emerald-400">{formatPrice(selectedCustomer.risk_metrics?.total_spent ?? selectedCustomer.total_spent ?? 0)}</p>
+                          <span className="text-[10px] text-slate-400">AOV: {formatPrice(selectedCustomer.risk_metrics?.aov ?? 0)}</span>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Recent Velocity</span>
+                          <p className="text-lg font-mono font-bold text-amber-400">{selectedCustomer.risk_metrics?.cancellations_24h ?? 0}</p>
+                          <span className="text-[10px] text-slate-400">Cancels in 24h</span>
+                        </div>
+                      </div>
+
+                      {/* Transparent Risk Assessment Card */}
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-red-500/5 via-white/[0.02] to-transparent border border-red-500/20 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <ShieldAlert className="w-5 h-5 text-red-400" />
+                            <h4 className="font-bold text-white text-sm">Transparent Risk Scoring Engine</h4>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
+                              selectedCustomer.risk_analysis?.level === "critical" ? "bg-red-500/20 text-red-400 border border-red-500/40" :
+                              selectedCustomer.risk_analysis?.level === "high" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" :
+                              selectedCustomer.risk_analysis?.level === "medium" ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                              "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            }`}>
+                              Risk Level: {selectedCustomer.risk_analysis?.level ?? selectedCustomer.risk_level ?? "LOW"}
+                            </span>
+                            <span className="font-mono text-xs text-white font-bold bg-white/10 px-2 py-0.5 rounded-full">
+                              {selectedCustomer.risk_analysis?.score ?? selectedCustomer.risk_score ?? 0} / 100
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5 pt-1">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Risk Factors Identified:</span>
+                          <ul className="space-y-1">
+                            {(selectedCustomer.risk_analysis?.reasons ?? selectedCustomer.risk_reasons ?? ["No adverse risk signals identified."]).map((r, i) => (
+                              <li key={i} className="flex items-start gap-2 text-slate-300 text-xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5 shrink-0" />
+                                <span>{r}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-slate-300">
+                          <strong className="text-purple-300">Staff Recommendation: </strong>
+                          {selectedCustomer.risk_analysis?.recommendation || "Account in good standing with standard transaction history."}
+                        </div>
+                      </div>
+
+                      {/* Internal Security Notes */}
+                      <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-slate-400" />
+                            Internal Security Notes
+                          </span>
+                          <button
+                            onClick={handleSaveNotes}
+                            disabled={savingNotes}
+                            className="flex items-center gap-1.5 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[11px] font-bold transition-all disabled:opacity-50"
+                          >
+                            <Save className="w-3 h-3" />
+                            <span>{savingNotes ? "Saving..." : "Save Notes"}</span>
+                          </button>
+                        </div>
+                        <textarea
+                          rows={3}
+                          placeholder="Record investigation notes, phone verification logs, or special handling directives..."
+                          value={customerNotes}
+                          onChange={(e) => setCustomerNotes(e.target.value)}
+                          className="w-full bg-[#07080c] border border-white/10 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-purple-500/50 resize-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: MULTI-IP HISTORY & TELEMETRY */}
+                  {activeDrawerTab === "ips" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-bold text-white text-xs">Originating IP Telemetry & Co-Tenancy</h4>
+                          <p className="text-[11px] text-slate-400">All distinct IP addresses associated with orders and sessions for this customer.</p>
+                        </div>
+                      </div>
+
+                      {(!selectedCustomer.ip_history || selectedCustomer.ip_history.length === 0) ? (
+                        <p className="text-slate-500 text-xs italic py-8 text-center">No IP telemetry records logged yet.</p>
+                      ) : (
+                        <div className="border border-white/5 rounded-xl overflow-hidden">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="border-b border-white/5 bg-white/[0.01] text-slate-400 font-semibold text-[11px]">
+                                <th className="py-2.5 px-3">IP Address</th>
+                                <th className="py-2.5 px-3">First Seen</th>
+                                <th className="py-2.5 px-3">Last Seen</th>
+                                <th className="py-2.5 px-3">Orders</th>
+                                <th className="py-2.5 px-3">Cancels</th>
+                                <th className="py-2.5 px-3">Co-Tenants</th>
+                                <th className="py-2.5 px-3 text-right">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5 text-slate-300">
+                              {selectedCustomer.ip_history.map((ip) => (
+                                <tr key={ip.ip_address} className="hover:bg-white/[0.02]">
+                                  <td className="py-2.5 px-3 font-mono font-bold text-white flex items-center gap-2">
+                                    <span>{ip.ip_address}</span>
+                                    {ip.is_blocked && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                                        BLOCKED
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px]">{formatDate(ip.first_seen)}</td>
+                                  <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px]">{formatDate(ip.last_seen)}</td>
+                                  <td className="py-2.5 px-3 font-mono text-white">{ip.total_orders}</td>
+                                  <td className="py-2.5 px-3 font-mono text-red-400">{ip.cancelled_orders}</td>
+                                  <td className="py-2.5 px-3 text-slate-400">{ip.other_customers_count} other user(s)</td>
+                                  <td className="py-2.5 px-3 text-right">
+                                    {!ip.is_blocked && (
+                                      <button
+                                        onClick={() => {
+                                          setQuickBlockIp(ip.ip_address);
+                                          setQuickBlockReason("Repeated cancellations / Abuse association");
+                                        }}
+                                        className="px-2 py-0.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[10px] font-bold transition-all"
+                                      >
+                                        Block IP
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 3: ACTIVITY TIMELINE */}
+                  {activeDrawerTab === "timeline" && (
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-white text-xs">Chronological Activity & Abuse Trail</h4>
+
+                      {(!selectedCustomer.activity_timeline || selectedCustomer.activity_timeline.length === 0) ? (
+                        <p className="text-slate-500 text-xs italic py-8 text-center">No lifecycle activity events recorded.</p>
+                      ) : (
+                        <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-white/10">
+                          {selectedCustomer.activity_timeline.map((item) => (
+                            <div key={item.id} className="relative group">
+                              <div className={`absolute -left-6 top-1 w-2.5 h-2.5 rounded-full border-2 border-[#0b0d14] ${
+                                item.severity === "danger" ? "bg-red-500 shadow-sm shadow-red-500/50" :
+                                item.severity === "warning" ? "bg-amber-500" :
+                                item.severity === "success" ? "bg-emerald-500" : "bg-cyan-500"
+                              }`} />
+                              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-white text-xs">{item.title}</span>
+                                  <span className="text-[10px] text-slate-500 font-mono">{formatDate(item.timestamp)} {formatTime(item.timestamp)}</span>
+                                </div>
+                                <p className="text-slate-400 text-[11px]">{item.description}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 4: ORDERS */}
+                  {activeDrawerTab === "orders" && (
+                    <div className="space-y-3">
+                      <h4 className="font-bold text-white text-xs">Order History ({selectedCustomer.orders?.length || 0})</h4>
+
+                      {(!selectedCustomer.orders || selectedCustomer.orders.length === 0) ? (
+                        <p className="text-slate-500 text-xs italic py-8 text-center">No orders found for this customer.</p>
+                      ) : (
+                        <div className="border border-white/5 rounded-xl overflow-hidden">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="border-b border-white/5 bg-white/[0.01] text-slate-400 font-semibold text-[11px]">
+                                <th className="py-2.5 px-3">Order Number</th>
+                                <th className="py-2.5 px-3">Status</th>
+                                <th className="py-2.5 px-3">Total</th>
+                                <th className="py-2.5 px-3">IP Address</th>
+                                <th className="py-2.5 px-3 text-right">Date</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5 text-slate-300">
+                              {selectedCustomer.orders.map((ord) => (
+                                <tr key={ord.id} className="hover:bg-white/[0.02]">
+                                  <td className="py-2.5 px-3 font-mono font-bold text-white">{ord.order_number}</td>
+                                  <td className="py-2.5 px-3">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                      ord.order_status === "cancelled" ? "bg-red-500/10 text-red-400" :
+                                      ord.order_status === "delivered" ? "bg-emerald-500/10 text-emerald-400" :
+                                      "bg-cyan-500/10 text-cyan-400"
+                                    }`}>
+                                      {ord.order_status.toUpperCase()}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 font-mono text-emerald-400 font-bold">{formatPrice(ord.total_amount)}</td>
+                                  <td className="py-2.5 px-3 font-mono text-slate-400">{ord.ip_address || "N/A"}</td>
+                                  <td className="py-2.5 px-3 text-right text-slate-500 font-mono text-[11px]">{formatDate(ord.created_at)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
+            </div>
+
+            {/* Drawer Footer Actions */}
+            <div className="p-4 border-t border-white/10 bg-white/[0.02] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                {selectedCustomer.status === "active" ? (
+                  <button
+                    onClick={() => setSuspendingCustomer(selectedCustomer)}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Suspend Customer</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleReactivateCustomer(selectedCustomer)}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>Reactivate Customer</span>
+                  </button>
+                )}
+
+                {selectedCustomer.status !== "blocked" ? (
+                  <button
+                    onClick={() => handleBlockCustomer(selectedCustomer)}
+                    className="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <Ban className="w-3.5 h-3.5" />
+                    <span>Block Identity</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleUnblockCustomer(selectedCustomer)}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Unblock Identity</span>
+                  </button>
+                )}
+
+                {selectedCustomer.status !== "review" && (
+                  <button
+                    onClick={() => handleFlagReview(selectedCustomer)}
+                    className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Flag for Review</span>
+                  </button>
+                )}
+              </div>
 
               <button
-                type="button"
-                onClick={() => {
-                  const c = selectedCustomer;
-                  setSelectedCustomer(null);
-                  handleOpenEdit(c);
-                }}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase"
+                onClick={() => setSelectedCustomer(null)}
+                className="px-4 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 text-xs font-semibold transition-all"
               >
-                Edit Details
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Customer Comprehensive History & Lifecycle Ledger Modal */}
-      {historyCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setHistoryCustomer(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+      {/* Quick Block IP Modal */}
+      {quickBlockIp && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0b0d14] border border-white/10 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-red-400" />
+                Block IP: <span className="font-mono text-cyan-400">{quickBlockIp}</span>
+              </h3>
+              <button onClick={() => setQuickBlockIp(null)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-          <div className="relative w-full max-w-3xl rounded-3xl bg-[#0c0e15] border border-indigo-500/30 shadow-2xl p-6 sm:p-8 z-10 max-h-[90vh] overflow-y-auto space-y-6 text-xs">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <img
-                  src={historyCustomer.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-                  alt={historyCustomer.name}
-                  className="w-12 h-12 rounded-2xl object-cover bg-slate-900 border border-white/10 shrink-0"
+            <form onSubmit={handleExecuteQuickBlockIp} className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="text-slate-300 font-semibold block">Reason for Block</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Excessive abusive cancellations"
+                  value={quickBlockReason}
+                  onChange={(e) => setQuickBlockReason(e.target.value)}
+                  className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-red-500/50"
                 />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black text-white">{historyCustomer.name}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      historyCustomer.status === "active"
-                        ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                        : "bg-rose-500/15 text-rose-300 border border-rose-500/30"
-                    }`}>
-                      {historyCustomer.status}
-                    </span>
-                  </div>
-                  <p className="text-slate-400 text-xs mt-0.5">{historyCustomer.email} • {historyCustomer.phone || "No phone"}</p>
-                </div>
               </div>
 
-              <button onClick={() => setHistoryCustomer(null)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Lifecycle KPI Metrics Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Spend</span>
-                <span className="text-lg font-black text-cyan-400 block">{formatPrice(historyCustomer.total_spent || 0)}</span>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setQuickBlockIp(null)}
+                  className="px-3 py-1.5 rounded-xl bg-white/[0.04] text-slate-300 text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingQuickBlock}
+                  className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  {submittingQuickBlock ? "Blocking..." : "Confirm 7-Day Block"}
+                </button>
               </div>
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Orders</span>
-                <span className="text-lg font-black text-white block">{historyCustomer.orders?.length || 0}</span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Delivered Orders</span>
-                <span className="text-lg font-black text-emerald-400 block">
-                  {historyCustomer.orders?.filter((o: any) => o.order_status === "delivered").length || 0}
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cancelled / Refunded</span>
-                <span className="text-lg font-black text-rose-400 block">
-                  {historyCustomer.orders?.filter((o: any) => o.order_status === "cancelled" || o.order_status === "refunded").length || 0}
-                </span>
-              </div>
-            </div>
-
-            {/* Chronological Orders & Activity Ledger */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <History className="w-4 h-4" /> Comprehensive Purchase & Order Ledger ({historyCustomer.orders?.length || 0})
-                </span>
-              </div>
-
-              {(!historyCustomer.orders || historyCustomer.orders.length === 0) ? (
-                <div className="p-10 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-2">
-                  <ShoppingBag className="w-8 h-8 text-slate-600 mx-auto" />
-                  <p className="text-slate-400 font-medium">No order transactions recorded for this customer yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {historyCustomer.orders.map((ord: any) => (
-                    <div
-                      key={ord.id}
-                      className={`p-4 rounded-2xl border space-y-3 transition-all ${
-                        ord.order_status === "cancelled"
-                          ? "bg-rose-500/[0.03] border-rose-500/20"
-                          : ord.order_status === "refunded"
-                          ? "bg-purple-500/[0.03] border-purple-500/20"
-                          : ord.order_status === "delivered"
-                          ? "bg-emerald-500/[0.03] border-emerald-500/20"
-                          : "bg-white/[0.02] border-white/10"
-                      }`}
-                    >
-                      {/* Order Item Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-white/5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="font-mono font-black text-white text-sm">{ord.order_number}</span>
-                          <span className="text-[10px] text-slate-400">
-                            Placed on {formatDate(ord.created_at)} at {formatTime(ord.created_at)}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                            ord.order_status === "delivered"
-                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                              : ord.order_status === "shipped"
-                              ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/30"
-                              : ord.order_status === "processing"
-                              ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
-                              : ord.order_status === "cancelled"
-                              ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                              : ord.order_status === "refunded"
-                              ? "bg-purple-500/15 text-purple-300 border-purple-500/30"
-                              : "bg-yellow-500/15 text-yellow-300 border-yellow-500/30"
-                          }`}>
-                            {ord.order_status}
-                          </span>
-
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                            ord.payment_status === "paid"
-                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                              : ord.payment_status === "refunded"
-                              ? "bg-purple-500/15 text-purple-300 border-purple-500/30"
-                              : ord.payment_status === "failed"
-                              ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                              : "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                          }`}>
-                            {ord.payment_status}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Cancellation Alert Banner */}
-                      {ord.order_status === "cancelled" && (
-                        <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
-                          <span><b>Order Cancelled:</b> This transaction was cancelled and items were restored to warehouse inventory.</span>
-                        </div>
-                      )}
-
-                      {/* Refund Alert Banner */}
-                      {ord.order_status === "refunded" && (
-                        <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs flex items-center gap-2">
-                          <RotateCcw className="w-4 h-4 shrink-0 text-purple-400" />
-                          <span><b>Refund Processed:</b> Funds were returned to the customer.</span>
-                        </div>
-                      )}
-
-                      {/* Order Items Breakdown */}
-                      <div className="space-y-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Purchased Hardware Items ({ord.items?.length || 0})
-                        </span>
-                        <div className="divide-y divide-white/5 rounded-xl bg-white/[0.01] border border-white/5 p-2 space-y-1">
-                          {ord.items?.map((item: any) => (
-                            <div key={item.id} className="py-1.5 flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                {item.product_image && (
-                                  <img
-                                    src={item.product_image}
-                                    alt={item.product_name}
-                                    className="w-9 h-9 rounded-lg object-cover bg-slate-900 border border-white/10 shrink-0"
-                                  />
-                                )}
-                                <div className="truncate">
-                                  <span className="font-bold text-white block truncate">{item.product_name}</span>
-                                  {item.variant_name && (
-                                    <span className="text-[10px] text-slate-400 block">{item.variant_name}</span>
-                                  )}
-                                  <span className="text-[10px] text-slate-500 font-mono">
-                                    Qty: {item.quantity} × {formatPrice(item.unit_price)}
-                                  </span>
-                                </div>
-                              </div>
-                              <span className="font-extrabold text-white shrink-0 font-mono">
-                                {formatPrice(item.total_price)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Order Footer & Amount */}
-                      <div className="flex justify-between items-center text-xs pt-1">
-                        <span className="text-slate-400">
-                          {ord.carrier ? `${ord.carrier} • Tracking: ${ord.tracking_code || "Pending"}` : "Standard Delivery"}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-400">Order Total:</span>
-                          <span className="text-sm font-black text-cyan-400 font-mono">{formatPrice(ord.total_amount)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Lifecycle Registration Milestone */}
-            <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between text-xs text-slate-400">
-              <span className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                Customer Account Created on <b>{formatDate(historyCustomer.created_at)}</b>
-              </span>
-              <button
-                type="button"
-                onClick={() => setHistoryCustomer(null)}
-                className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold transition-colors"
-              >
-                Close History
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
@@ -1131,15 +988,132 @@ export default function AdminCustomersPage() {
       {/* Suspension Modal */}
       {suspendingCustomer && (
         <SuspensionModal
-          isOpen={!!suspendingCustomer}
-          onClose={() => setSuspendingCustomer(null)}
-          onConfirm={handleConfirmSuspension}
+          isOpen={true}
           targetName={suspendingCustomer.name}
           targetEmail={suspendingCustomer.email}
           targetType="customer"
+          onClose={() => setSuspendingCustomer(null)}
+          onConfirm={handleConfirmSuspension}
           isSubmitting={isSubmittingSuspension}
         />
       )}
+
+      {/* Create Customer Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0b0d14] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">Register New Customer</h3>
+                  <p className="text-[11px] text-slate-400">Create a customer profile and credentials.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCustomer} className="p-5 space-y-4">
+              <div className="flex justify-center pb-2">
+                <ImageUploadAvatar
+                  value={avatar}
+                  onChange={(val) => setAvatar(val)}
+                  name={firstName || "Customer"}
+                  size="lg"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-400 block mb-1">First Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="John"
+                    className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3 py-2 text-white text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-400 block mb-1">Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Doe"
+                    className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3 py-2 text-white text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-400 block mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="john@example.com"
+                  className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3 py-2 text-white text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-400 block mb-1">Password *</label>
+                <PasswordInput
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Min 6 characters"
+                  className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3 py-2 text-white text-xs"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-600/20 disabled:opacity-50 transition-all flex items-center gap-2"
+                >
+                  {creating && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Create Customer</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function AdminCustomersPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-3 text-slate-400 text-sm">
+          <RefreshCw className="w-5 h-5 animate-spin text-purple-400" />
+          <span>Loading Customer Intelligence...</span>
+        </div>
+      </div>
+    }>
+      <AdminCustomersContent />
+    </Suspense>
   );
 }

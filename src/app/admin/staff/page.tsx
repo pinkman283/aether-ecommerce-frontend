@@ -39,6 +39,7 @@ import { AdminDropdown } from "@/components/admin/AdminDropdown";
 import { SuspensionModal, SuspensionPayload } from "@/components/admin/SuspensionModal";
 import { ImageUploadAvatar } from "@/components/ui/ImageUploadAvatar";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
 
 export default function AdminStaffPage() {
@@ -62,6 +63,10 @@ export default function AdminStaffPage() {
   // Create / Edit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<User | null>(null);
+
+  // Bulk Selection & Deletion State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Form State
   const [firstName, setFirstName] = useState("");
@@ -298,6 +303,7 @@ export default function AdminStaffPage() {
     try {
       await adminApi.deleteStaff(deletingStaff.id);
       setStaffList(staffList.filter((s) => s.id !== deletingStaff.id));
+      setSelectedIds((prev) => prev.filter((id) => id !== deletingStaff.id));
       if (viewingStaff?.id === deletingStaff.id) setViewingStaff(null);
       toast.success(`Staff account '${deletingStaff.name}' removed.`);
       setDeletingStaff(null);
@@ -305,6 +311,42 @@ export default function AdminStaffPage() {
       toast.error(err.response?.data?.message || "Failed to delete staff account.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    // Only select staff that can be deleted (exclude super_admin and self)
+    const deletableIds = filteredStaff
+      .filter((s) => s.role !== "super_admin" && s.id !== adminUser?.id)
+      .map((s) => s.id);
+
+    if (deletableIds.length > 0 && selectedIds.length === deletableIds.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(deletableIds);
+    }
+  };
+
+  const handleToggleSelectRow = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      const res = await adminApi.bulkDeleteStaff(selectedIds);
+      const updated = await adminApi.getStaff();
+      setStaffList(updated || []);
+      if (viewingStaff && selectedIds.includes(viewingStaff.id)) setViewingStaff(null);
+      setSelectedIds([]);
+      toast.success(res.message || `Processed staff deletion.`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete selected staff.");
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -408,6 +450,18 @@ export default function AdminStaffPage() {
         <table className="w-full text-left text-xs text-slate-300 min-w-[760px]">
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
+              <th className="p-3.5 w-10 text-center">
+                <input
+                  type="checkbox"
+                  checked={
+                    filteredStaff.filter((s) => s.role !== "super_admin" && s.id !== adminUser?.id).length > 0 &&
+                    selectedIds.length === filteredStaff.filter((s) => s.role !== "super_admin" && s.id !== adminUser?.id).length
+                  }
+                  onChange={handleToggleSelectAll}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                  title="Select all deletable staff"
+                />
+              </th>
               <th className="p-3.5">Personnel</th>
               <th className="p-3.5">Role</th>
               <th className="p-3.5">Permissions</th>
@@ -419,20 +473,42 @@ export default function AdminStaffPage() {
           <tbody className="divide-y divide-white/5">
             {loading ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-500">
+                <td colSpan={7} className="p-8 text-center text-slate-500">
                   Loading personnel records...
                 </td>
               </tr>
             ) : filteredStaff.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-500 italic">
+                <td colSpan={7} className="p-8 text-center text-slate-500 italic">
                   No personnel matching search or filter criteria.
                 </td>
               </tr>
             ) : (
-              filteredStaff.map((s: any) => (
-                <tr key={s.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="p-3.5 flex items-center gap-3 font-bold text-white">
+              filteredStaff.map((s: any) => {
+                const isSelected = selectedIds.includes(s.id);
+                const isProtected = s.role === "super_admin" || s.id === adminUser?.id;
+                return (
+                  <tr
+                    key={s.id}
+                    className={`transition-colors ${
+                      isSelected
+                        ? "bg-amber-500/10 border-l-2 border-amber-500"
+                        : "hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        disabled={isProtected}
+                        onChange={() => handleToggleSelectRow(s.id)}
+                        className={`w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 accent-amber-500 ${
+                          isProtected ? "opacity-30 cursor-not-allowed" : "cursor-pointer"
+                        }`}
+                        title={isProtected ? "Protected account cannot be selected for deletion" : "Select row"}
+                      />
+                    </td>
+                    <td className="p-3.5 flex items-center gap-3 font-bold text-white">
                     <img
                       src={s.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"}
                       alt={s.name}
@@ -595,7 +671,8 @@ export default function AdminStaffPage() {
                     )}
                   </td>
                 </tr>
-              ))
+              );
+            })
             )}
           </tbody>
         </table>
@@ -1033,6 +1110,16 @@ export default function AdminStaffPage() {
           </div>
         </div>
       )}
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={filteredStaff.filter((s) => s.role !== "super_admin" && s.id !== adminUser?.id).length}
+        itemName="personnel"
+        isDeleting={isBulkDeleting}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={handleToggleSelectAll}
+        onConfirmDelete={handleBulkDelete}
+      />
     </div>
   );
 }

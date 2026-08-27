@@ -65,6 +65,7 @@ export default function CheckoutPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [leadId, setLeadId] = useState<number | null>(null);
 
   const subtotal = getSubtotal();
   const discount = getDiscount();
@@ -79,6 +80,42 @@ export default function CheckoutPage() {
       if (user.phone) setCustomerPhone(user.phone);
     }
   }, [user]);
+
+  // Background Checkout Abandonment Lead Capture
+  useEffect(() => {
+    if (!customerName?.trim() || !customerPhone?.trim() || items.length === 0) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.captureLead({
+          lead_id: leadId,
+          name: customerName.trim(),
+          phone: customerPhone.trim(),
+          email: customerEmail.trim() || null,
+          address: [addressLine1, addressLine2].filter(Boolean).join(", ") || null,
+          city: city.trim() || null,
+          postal_code: postalCode.trim() || null,
+          cart_items: items.map((i) => ({
+            product_id: i.product.id,
+            title: i.product.name,
+            price: i.product.price,
+            quantity: i.quantity,
+            image: i.product.primary_image?.image_url || i.product.images?.[0]?.image_url,
+            variant_id: i.variant?.id ?? null,
+            variant_name: i.variant?.name ?? null,
+          })),
+          total_amount: total,
+        });
+        if (res?.lead_id) {
+          setLeadId(res.lead_id);
+        }
+      } catch (err) {
+        // Silently handle background lead capture
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [customerName, customerPhone, customerEmail, addressLine1, addressLine2, city, postalCode, items, total, leadId]);
 
   if (items.length === 0) {
     return (

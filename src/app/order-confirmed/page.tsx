@@ -55,8 +55,8 @@ function OrderConfirmedContent() {
         animate={{ opacity: 1, scale: 1 }}
         className="text-center space-y-4"
       >
-        <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-emerald-600 to-cyan-500 p-0.5 shadow-2xl shadow-emerald-500/25 mx-auto">
-          <div className="w-full h-full bg-[#0d1017] rounded-[22px] flex items-center justify-center">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-cyan-500 p-0.5 shadow-2xl shadow-emerald-500/25 mx-auto">
+          <div className="w-full h-full bg-[#0d1017] rounded-2xl flex items-center justify-center">
             <CheckCircle2 className="w-8 h-8 text-emerald-400" />
           </div>
         </div>
