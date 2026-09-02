@@ -1,0 +1,322 @@
+"use client";
+
+import { useEffect, useState, useRef, useCallback } from "react";
+import Link from "next/link";
+import { 
+  ArrowRight, 
+  Headphones, 
+  Keyboard, 
+  Briefcase, 
+  Sparkles, 
+  Watch,
+  Layers,
+  Flame,
+  Trophy
+} from "lucide-react";
+import { ProductCard } from "@/components/product/ProductCard";
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselNext, 
+  CarouselPrevious,
+  type CarouselApi
+} from "@/components/ui/carousel";
+import { Category, Product } from "@/types";
+import { api } from "@/lib/api";
+
+const ICON_MAP: Record<string, any> = {
+  "audio-acoustics": Headphones,
+  "keyboards-desks": Keyboard,
+  "everyday-carry": Briefcase,
+  "smart-living-lighting": Sparkles,
+  "pro-wearables": Watch,
+};
+
+interface CategorySectionData {
+  category: Category;
+  products: Product[];
+}
+
+interface CategoryShowcaseProps {
+  categories?: Category[];
+}
+
+type FilterTab = "featured" | "new" | "bestsellers";
+
+function SingleCategoryRow({ section }: { section: CategorySectionData }) {
+  const [activeTab, setActiveTab] = useState<FilterTab>("featured");
+  const [apiInstance, setApiInstance] = useState<CarouselApi>();
+  const isHoveredRef = useRef(false);
+  const autoplayTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startAutoplay = useCallback(() => {
+    if (autoplayTimerRef.current) clearInterval(autoplayTimerRef.current);
+    autoplayTimerRef.current = setInterval(() => {
+      if (!isHoveredRef.current && apiInstance) {
+        if (apiInstance.canScrollNext()) {
+          apiInstance.scrollNext();
+        } else {
+          apiInstance.scrollTo(0);
+        }
+      }
+    }, 5500);
+  }, [apiInstance]);
+
+  const resetAutoplay = useCallback(() => {
+    startAutoplay();
+  }, [startAutoplay]);
+
+  useEffect(() => {
+    if (!apiInstance) return;
+    startAutoplay();
+    return () => {
+      if (autoplayTimerRef.current) clearInterval(autoplayTimerRef.current);
+    };
+  }, [apiInstance, startAutoplay]);
+
+  const handleMouseEnter = () => {
+    isHoveredRef.current = true;
+  };
+
+  const handleMouseLeave = () => {
+    isHoveredRef.current = false;
+    resetAutoplay();
+  };
+
+  // Filter products based on selected tab and limit to max 14 products
+  let displayProducts = section.products;
+  if (activeTab === "new") {
+    const filtered = section.products.filter((p) => p.is_new_arrival);
+    if (filtered.length > 0) displayProducts = filtered;
+  } else if (activeTab === "bestsellers") {
+    const filtered = section.products.filter((p) => p.is_best_seller);
+    if (filtered.length > 0) displayProducts = filtered;
+  } else {
+    const filtered = section.products.filter((p) => p.is_featured);
+    if (filtered.length > 0) displayProducts = filtered;
+  }
+
+  const limitedProducts = displayProducts.slice(0, 14);
+
+  const Icon = ICON_MAP[section.category.slug] || Layers;
+
+  if (!section.products || section.products.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-6">
+      {/* Category Section Header & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <div
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider mb-1.5 border"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--theme-primary, #06b6d4) 12%, transparent)",
+              borderColor: "color-mix(in srgb, var(--theme-primary, #06b6d4) 30%, transparent)",
+              color: "var(--theme-primary, #06b6d4)",
+            }}
+          >
+            <Icon className="w-3 h-3" style={{ color: "var(--theme-primary, #06b6d4)" }} />
+            <span>{section.category.badge || section.category.name}</span>
+          </div>
+
+          <h2
+            className="text-xl sm:text-2xl font-black tracking-tight"
+            style={{ color: "var(--theme-text-heading, #0f172a)" }}
+          >
+            {section.category.name}
+          </h2>
+
+          {section.category.description && (
+            <p
+              className="text-xs max-w-xl mt-1 leading-relaxed line-clamp-1 sm:line-clamp-2"
+              style={{ color: "var(--theme-text-body, #64748b)" }}
+            >
+              {section.category.description}
+            </p>
+          )}
+        </div>
+
+        {/* Right Controls: Filter Pills */}
+        <div className="flex theme-tab-container rounded-md p-1 border self-start sm:self-auto gap-1">
+          <button
+            onClick={() => {
+              setActiveTab("featured");
+              resetAutoplay();
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              activeTab === "featured"
+                ? "theme-tab-pill-active"
+                : "theme-tab-pill-inactive"
+            }`}
+          >
+            <Sparkles className="w-3 h-3" /> Featured
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab("new");
+              resetAutoplay();
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              activeTab === "new"
+                ? "theme-tab-pill-active"
+                : "theme-tab-pill-inactive"
+            }`}
+          >
+            <Flame className="w-3 h-3" /> New Arrivals
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab("bestsellers");
+              resetAutoplay();
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              activeTab === "bestsellers"
+                ? "theme-tab-pill-active"
+                : "theme-tab-pill-inactive"
+            }`}
+          >
+            <Trophy className="w-3 h-3" /> Best Sellers
+          </button>
+        </div>
+      </div>
+
+      {/* Product Carousel with Pause on Hover */}
+      <Carousel
+        setApi={setApiInstance}
+        opts={{
+          align: "start",
+          loop: false,
+        }}
+        className="w-full relative group/carousel"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="relative">
+          <CarouselContent className="-ml-3 sm:-ml-3.5">
+            {limitedProducts.map((product) => (
+              <CarouselItem
+                key={product.id}
+                className="pl-3 sm:pl-3.5 basis-[200px] sm:basis-[220px] md:basis-[230px] lg:basis-[240px]"
+              >
+                <ProductCard product={product} />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+
+          {/* Left Navigation Button */}
+          <CarouselPrevious
+            onClick={resetAutoplay}
+            className="-left-3 sm:-left-5 w-10 h-10"
+          />
+
+          {/* Right Navigation Button */}
+          <CarouselNext
+            onClick={resetAutoplay}
+            className="-right-3 sm:-right-5 w-10 h-10"
+          />
+        </div>
+      </Carousel>
+
+      {/* Compact View All Button Below Carousel */}
+      <div className="text-center pt-1">
+        <Link
+          href={`/products?category=${section.category.slug}`}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md theme-btn-secondary text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:scale-[1.02]"
+        >
+          <span>View All</span>
+          <ArrowRight className="w-3.5 h-3.5" style={{ color: "var(--theme-primary, #06b6d4)" }} />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+export function CategoryShowcase({ categories = [] }: CategoryShowcaseProps) {
+  const [sections, setSections] = useState<CategorySectionData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCategorySections() {
+      try {
+        setLoading(true);
+        let catList = categories;
+        if (!catList || catList.length === 0) {
+          catList = await api.getCategories();
+        }
+
+        const validCatList = (catList || []).filter(
+          (c) => !c.slug.includes("test")
+        );
+
+        // Fetch up to 14 products for each category
+        const sectionPromises = validCatList.map(async (cat) => {
+          try {
+            const res = await api.getProducts({ 
+              category: cat.slug,
+              per_page: 14 
+            });
+            return {
+              category: cat,
+              products: res.data || [],
+            };
+          } catch {
+            return {
+              category: cat,
+              products: [],
+            };
+          }
+        });
+
+        const results = await Promise.all(sectionPromises);
+        if (isMounted) {
+          setSections(results.filter((s) => s.products.length > 0));
+        }
+      } catch (err) {
+        console.error("Failed to load category sections:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    loadCategorySections();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [categories]);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 py-4">
+        {[1, 2].map((i) => (
+          <div key={i} className="space-y-4">
+            <div className="space-y-2">
+              <div className="w-28 h-4 rounded-md bg-white/10 animate-pulse" />
+              <div className="w-64 h-6 rounded-md bg-white/10 animate-pulse" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+              {[...Array(5)].map((_, j) => (
+                <div key={j} className="h-64 rounded-lg bg-white/[0.02] border border-white/5 animate-pulse" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+      {sections.map((section) => (
+        <SingleCategoryRow key={section.category.id} section={section} />
+      ))}
+    </div>
+  );
+}

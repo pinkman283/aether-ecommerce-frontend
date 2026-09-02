@@ -7,12 +7,12 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isAuthModalOpen: boolean;
-  authModalTab: "login" | "register";
+  authModalTab: "login" | "register" | "forgot_password";
 
   setAuth: (user: User, token: string) => void;
   updateUser: (user: Partial<User>) => void;
   logout: () => void;
-  openAuthModal: (tab?: "login" | "register") => void;
+  openAuthModal: (tab?: "login" | "register" | "forgot_password") => void;
   closeAuthModal: () => void;
 }
 
@@ -46,7 +46,7 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, token: null, isAuthenticated: false });
       },
 
-      openAuthModal: (tab: "login" | "register" = "login") =>
+      openAuthModal: (tab: "login" | "register" | "forgot_password" = "login") =>
         set({ isAuthModalOpen: true, authModalTab: tab }),
 
       closeAuthModal: () => set({ isAuthModalOpen: false }),

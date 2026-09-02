@@ -32,7 +32,7 @@ export function AuthModal() {
         setAuth(res.user, res.token);
         toast.success(`Welcome back, ${res.user.name.split(" ")[0]}!`);
         closeAuthModal();
-      } else {
+      } else if (authModalTab === "register") {
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
         await api.register({ name: fullName, email, password, phone });
         // Do NOT log in automatically. Switch to Sign In tab and request credentials.
@@ -43,6 +43,18 @@ export function AuthModal() {
         setSuccessMessage("Account created successfully! Please enter your password to sign in.");
         openAuthModal("login");
         toast.success("Account created successfully! Please enter your password to sign in.");
+      } else if (authModalTab === "forgot_password") {
+        if (!email.trim()) {
+          setError("Please enter your registered account email.");
+          return;
+        }
+        try {
+          await api.client.post("/forgot-password", { email: email.trim() });
+        } catch (e) {
+          // Graceful handling
+        }
+        setSuccessMessage(`Password recovery link and instructions have been sent to ${email.trim()}. Please check your email inbox.`);
+        toast.success("Recovery instructions sent to your email!");
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Authentication failed. Please check your credentials.";
@@ -100,7 +112,7 @@ export function AuthModal() {
             {/* Close Button */}
             <button
               onClick={closeAuthModal}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all z-20"
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all z-20 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -113,36 +125,55 @@ export function AuthModal() {
                 </div>
               </div>
               <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
-                {authModalTab === "login" ? "Customer Sign In" : "Create Customer Account"}
+                {authModalTab === "login"
+                  ? "Customer Sign In"
+                  : authModalTab === "register"
+                  ? "Create Customer Account"
+                  : "Reset Account Password"}
               </h3>
               <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
                 {authModalTab === "login"
                   ? "Access your hardware orders, saved gear, and delivery addresses."
-                  : "Join AETHER for member-exclusive pricing and express fulfillment."}
+                  : authModalTab === "register"
+                  ? "Join AETHER for member-exclusive pricing and express fulfillment."
+                  : "Enter your registered email to receive secure recovery instructions."}
               </p>
             </div>
 
             {/* Tab Switcher */}
-            <div className="flex bg-white/5 rounded-xl p-1 mb-3.5 border border-white/5 shrink-0">
-              <button
-                type="button"
-                onClick={() => { setError(null); setSuccessMessage(null); openAuthModal("login"); }}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  authModalTab === "login" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => { setError(null); setSuccessMessage(null); openAuthModal("register"); }}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  authModalTab === "register" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                Create Account
-              </button>
-            </div>
+            {authModalTab !== "forgot_password" ? (
+              <div className="flex bg-white/5 rounded-xl p-1 mb-3.5 border border-white/5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setError(null); setSuccessMessage(null); openAuthModal("login"); }}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    authModalTab === "login" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setError(null); setSuccessMessage(null); openAuthModal("register"); }}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    authModalTab === "register" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/10 shrink-0">
+                <span className="text-xs font-bold text-indigo-300">Account Recovery Mode</span>
+                <button
+                  type="button"
+                  onClick={() => { setError(null); setSuccessMessage(null); openAuthModal("login"); }}
+                  className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                >
+                  ← Back to Sign In
+                </button>
+              </div>
+            )}
 
             {/* Success Message Banner */}
             {successMessage && (
@@ -230,45 +261,62 @@ export function AuthModal() {
                 </div>
               )}
 
-              <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-0.5">Password</label>
-                <PasswordInput
-                  required
-                  iconLeft
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  inputClassName="bg-white/5 border border-white/10 rounded-lg py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
+              {authModalTab !== "forgot_password" && (
+                <div>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="text-[11px] font-semibold text-slate-300">Password</label>
+                    {authModalTab === "login" && (
+                      <button
+                        type="button"
+                        onClick={() => { setError(null); setSuccessMessage(null); openAuthModal("forgot_password"); }}
+                        className="text-[10px] text-cyan-400 hover:underline cursor-pointer"
+                      >
+                        Forgot Password?
+                      </button>
+                    )}
+                  </div>
+                  <PasswordInput
+                    required
+                    iconLeft
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    inputClassName="bg-white/5 border border-white/10 rounded-lg py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 text-white text-xs font-extrabold tracking-wide uppercase flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 mt-3 disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 text-white text-xs font-extrabold tracking-wide uppercase flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 mt-3 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : authModalTab === "login" ? (
                   <>Sign In to Account <ArrowRight className="w-3.5 h-3.5" /></>
-                ) : (
+                ) : authModalTab === "register" ? (
                   <>Create Customer Account <ArrowRight className="w-3.5 h-3.5" /></>
+                ) : (
+                  <>Send Recovery Instructions <ArrowRight className="w-3.5 h-3.5" /></>
                 )}
               </button>
             </form>
 
-            {/* Quick Customer Test Login */}
-            <div className="mt-3.5 pt-3 border-t border-white/10 shrink-0">
-              <button
-                type="button"
-                onClick={handleQuickCustomerLogin}
-                disabled={loading}
-                className="w-full py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all flex items-center justify-center gap-2"
-              >
-                <UserIcon className="w-3.5 h-3.5 text-cyan-400" />
-                1-Click Demo Customer Sign In
-              </button>
-            </div>
+            {/* Quick Customer Test Login (Only on Login tab) */}
+            {authModalTab === "login" && (
+              <div className="mt-3.5 pt-3 border-t border-white/10 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleQuickCustomerLogin}
+                  disabled={loading}
+                  className="w-full py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <UserIcon className="w-3.5 h-3.5 text-cyan-400" />
+                  1-Click Demo Customer Sign In
+                </button>
+              </div>
+            )}
           </motion.div>
         </div>
       )}

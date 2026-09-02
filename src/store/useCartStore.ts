@@ -117,18 +117,14 @@ export const useCartStore = create<CartState>()(
       },
 
       getTax: () => {
-        const subtotal = get().getSubtotal();
-        const discount = get().getDiscount();
-        const taxable = Math.max(0, subtotal - discount);
-        return Math.round(taxable * 0.08 * 100) / 100;
+        return 0;
       },
 
       getTotal: () => {
         const subtotal = get().getSubtotal();
         const discount = get().getDiscount();
         const shipping = get().getShipping();
-        const tax = get().getTax();
-        return Math.max(0, subtotal - discount) + shipping + tax;
+        return Math.max(0, subtotal - discount) + shipping;
       },
 
       getItemCount: () => {

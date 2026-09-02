@@ -2,77 +2,105 @@
 
 import { ProductVariant } from "@/types";
 import { formatPrice } from "@/lib/utils";
-import { Check } from "lucide-react";
+import { Check, Sparkles, AlertCircle } from "lucide-react";
 
 interface VariantPickerProps {
   variants?: ProductVariant[];
   selectedVariant?: ProductVariant | null;
   onSelectVariant: (variant: ProductVariant) => void;
+  hasError?: boolean;
 }
 
 export function VariantPicker({
   variants = [],
   selectedVariant,
   onSelectVariant,
+  hasError = false,
 }: VariantPickerProps) {
   if (variants.length === 0) return null;
 
   return (
-    <div className="space-y-4 py-4 border-y border-white/10">
+    <div
+      className={`space-y-3 py-3.5 px-4 rounded-2xl border transition-all ${
+        hasError
+          ? "border-rose-500/80 bg-rose-500/5 shadow-lg shadow-rose-500/15 animate-pulse"
+          : "theme-card border-white/10"
+      }`}
+    >
+      {/* Header with Title and Selected Color info */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-          Select Edition / Finish
-        </span>
-        {selectedVariant && (
-          <span className="text-xs text-cyan-400 font-extrabold">
-            {selectedVariant.name}
-            {selectedVariant.price_modifier > 0 && ` (+${formatPrice(selectedVariant.price_modifier)})`}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+            Color Finish
           </span>
+          {variants.length > 1 && !selectedVariant && (
+            <span className="text-[10px] text-amber-400 font-semibold flex items-center gap-1">
+              (Choose an edition)
+            </span>
+          )}
+        </div>
+
+        {selectedVariant && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-cyan-400 font-extrabold flex items-center gap-1.5">
+              {selectedVariant.color_hex && (
+                <span
+                  className="w-2.5 h-2.5 rounded-full border border-white/40 shadow-sm"
+                  style={{ backgroundColor: selectedVariant.color_hex }}
+                />
+              )}
+              {selectedVariant.name}
+              {selectedVariant.price_modifier > 0 && ` (+${formatPrice(selectedVariant.price_modifier)})`}
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">
+              ({selectedVariant.stock_quantity > 0 ? `${selectedVariant.stock_quantity} left` : "Sold out"})
+            </span>
+          </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      {/* Swatches & Chips Row */}
+      <div className="flex flex-wrap gap-2.5 items-center">
         {variants.map((v) => {
           const isSelected = selectedVariant?.id === v.id;
+          const isOutOfStock = v.stock_quantity <= 0;
+
           return (
             <button
               key={v.id}
               type="button"
+              disabled={isOutOfStock}
               onClick={() => onSelectVariant(v)}
-              className={`flex items-center justify-between p-3 rounded-2xl border text-left transition-all ${
+              className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                 isSelected
-                  ? "bg-indigo-600/20 border-cyan-400 shadow-md shadow-cyan-400/15"
-                  : "bg-white/[0.03] border-white/10 hover:border-white/20 hover:bg-white/[0.06]"
+                  ? "bg-indigo-600/20 border-cyan-400 text-cyan-300 shadow-md shadow-cyan-400/15 ring-2 ring-cyan-400/30"
+                  : isOutOfStock
+                  ? "opacity-40 border-dashed border-white/10 bg-white/[0.02] text-slate-500 cursor-not-allowed"
+                  : "bg-white/5 border-white/10 text-slate-300 hover:text-white hover:border-white/25 hover:bg-white/10"
               }`}
             >
-              <div className="flex items-center gap-3">
-                {/* Color Dot if hex provided */}
-                {v.color_hex && (
-                  <div
-                    className="w-4 h-4 rounded-full border border-white/40 shadow-inner shrink-0"
-                    style={{ backgroundColor: v.color_hex }}
-                  />
-                )}
-                <div>
-                  <span className="text-xs font-bold text-white block">{v.name}</span>
-                  <span className="text-[11px] text-slate-400">
-                    {v.stock_quantity > 0 ? `${v.stock_quantity} units available` : "Out of stock"}
-                  </span>
-                </div>
-              </div>
+              {/* Color Swatch Dot */}
+              {v.color_hex ? (
+                <span
+                  className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-inner shrink-0"
+                  style={{ backgroundColor: v.color_hex }}
+                />
+              ) : (
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0" />
+              )}
 
-              <div className="flex items-center gap-2">
-                {v.price_modifier > 0 && (
-                  <span className="text-[11px] font-bold text-slate-300">
-                    +{formatPrice(v.price_modifier)}
-                  </span>
-                )}
-                {isSelected && (
-                  <div className="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                )}
-              </div>
+              {/* Variant Name */}
+              <span>{v.name}</span>
+
+              {/* Stock Indicator */}
+              <span className={`text-[10px] font-normal ${isSelected ? "text-cyan-400/80" : "text-slate-400"}`}>
+                {isOutOfStock ? "Out" : `${v.stock_quantity}`}
+              </span>
+
+              {/* Selected Check icon */}
+              {isSelected && (
+                <Check className="w-3.5 h-3.5 text-cyan-400 stroke-[3] ml-0.5 shrink-0" />
+              )}
             </button>
           );
         })}

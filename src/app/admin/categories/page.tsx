@@ -443,9 +443,19 @@ export default function AdminCategoriesPage() {
           <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
 
           <div className="relative w-full max-w-lg rounded-3xl bg-[#0e121e] border border-white/15 shadow-2xl p-6 sm:p-8 z-10 space-y-4">
-            <h3 className="text-lg font-black text-white">
-              {editingCategory ? `Edit Category: ${editingCategory.name}` : "Create New Category"}
-            </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-lg font-black text-white">
+                {editingCategory ? `Edit Category: ${editingCategory.name}` : "Create New Category"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             <form onSubmit={handleSaveCategory} className="space-y-4 text-xs">
               <div>
@@ -535,9 +545,19 @@ export default function AdminCategoriesPage() {
           <div onClick={() => setDeletingCategory(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
 
           <div className="relative w-full max-w-md rounded-3xl bg-[#0e121e] border border-rose-500/30 p-6 z-10 space-y-4">
-            <div className="flex items-center gap-3 text-rose-400">
-              <AlertTriangle className="w-6 h-6" />
-              <h3 className="text-base font-black text-white">Delete Category</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <div className="flex items-center gap-3 text-rose-400">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <h3 className="text-base font-black text-white">Delete Category</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingCategory(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
               Are you sure you want to remove <span className="font-bold text-white">{deletingCategory.name}</span>?

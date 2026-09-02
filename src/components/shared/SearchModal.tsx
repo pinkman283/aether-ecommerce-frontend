@@ -99,24 +99,24 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
           >
             {/* Input Bar */}
             <div className="flex items-center px-4 py-3.5 border-b border-white/10 gap-3">
-              <Search className="w-5 h-5 text-indigo-400 shrink-0" />
+              <Search className="w-5 h-5 text-cyan-400 shrink-0" />
               <input
                 ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search studio headphones, mechanical boards, tech packs..."
-                className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 focus:outline-none"
+                className="w-full bg-transparent text-sm text-white placeholder:text-slate-300 font-medium focus:outline-none"
               />
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"
+                  className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
-              <kbd className="px-2 py-0.5 text-[10px] font-bold text-slate-400 bg-slate-800 rounded border border-slate-700">
+              <kbd className="px-2 py-0.5 text-[10px] font-bold text-slate-200 bg-white/10 rounded border border-white/20">
                 ESC
               </kbd>
             </div>

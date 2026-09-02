@@ -4,6 +4,7 @@ import {
   AuditLog,
   AuditLogsResponse,
   BlockedIp,
+  Brand,
   Category, 
   CustomerActivityTimelineItem,
   CustomerIpHistoryItem,
@@ -199,6 +200,39 @@ export const adminApi = {
 
   async bulkDeleteCategories(ids: number[]): Promise<{ message: string; deleted_count: number; skipped_count?: number }> {
     const res = await adminClient.post("/admin/categories/bulk-delete", { ids });
+    return res.data;
+  },
+
+  // ==========================================
+  // BRANDS
+  // ==========================================
+  async getBrands(): Promise<Brand[]> {
+    const res = await adminClient.get("/admin/brands");
+    return res.data;
+  },
+
+  async getBrand(id: number): Promise<Brand> {
+    const res = await adminClient.get(`/admin/brands/${id}`);
+    return res.data;
+  },
+
+  async createBrand(data: any): Promise<{ message: string; brand: Brand }> {
+    const res = await adminClient.post("/admin/brands", data);
+    return res.data;
+  },
+
+  async updateBrand(id: number, data: any): Promise<{ message: string; brand: Brand }> {
+    const res = await adminClient.put(`/admin/brands/${id}`, data);
+    return res.data;
+  },
+
+  async deleteBrand(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/brands/${id}`);
+    return res.data;
+  },
+
+  async bulkDeleteBrands(ids: number[]): Promise<{ message: string; deleted_count: number; skipped_count?: number }> {
+    const res = await adminClient.post("/admin/brands/bulk-delete", { ids });
     return res.data;
   },
 
@@ -934,6 +968,21 @@ export const adminApi = {
     const res = await adminClient.put("/admin/settings", { settings });
     return res.data;
   },
+
+  async getThemeSettings(): Promise<{ settings: Record<string, any>; defaults: Record<string, any> }> {
+    const res = await adminClient.get("/admin/theme");
+    return res.data;
+  },
+
+  async updateThemeSettings(themeData: Record<string, any>): Promise<{ message: string; settings: Record<string, any> }> {
+    const res = await adminClient.put("/admin/theme", themeData);
+    return res.data;
+  },
+
+  async resetThemeSettings(): Promise<{ message: string; settings: Record<string, any> }> {
+    const res = await adminClient.post("/admin/theme/reset");
+    return res.data;
+  },
 };
 
 export interface PermissionItem {
@@ -1038,6 +1087,13 @@ export const ADMIN_PERMISSION_MODULES: PermissionModule[] = [
     permissions: [
       { id: "coupons.manage", name: "Manage Coupons", description: "Create and configure discount vouchers" },
       { id: "reviews.manage", name: "Moderate Reviews", description: "Approve or reject customer product reviews" },
+    ],
+  },
+  {
+    name: "Theme & UI Customization",
+    description: "Storefront branding, visual colors, hero section copy, announcement bar, and design tokens",
+    permissions: [
+      { id: "theme.manage", name: "Manage Theme & UI", description: "Customize storefront colors, hero copy, announcement bar, and layout tokens" },
     ],
   },
   {

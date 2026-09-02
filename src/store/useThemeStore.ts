@@ -1,0 +1,297 @@
+import { create } from "zustand";
+import axios from "axios";
+
+export interface ThemeSettings {
+  theme_primary_color: string;
+  theme_secondary_color: string;
+  theme_accent_gradient: string;
+  theme_bg_color: string;
+  theme_card_bg_color: string;
+  theme_card_border_color?: string;
+  theme_text_heading_color?: string;
+  theme_text_body_color?: string;
+  theme_btn_primary_bg?: string;
+  theme_btn_primary_text?: string;
+  theme_btn_secondary_bg?: string;
+  theme_btn_secondary_text?: string;
+  theme_tab_active_bg?: string;
+  theme_tab_active_text?: string;
+  theme_hover_bg?: string;
+  theme_hover_text?: string;
+  theme_nav_btn_bg?: string;
+  theme_nav_btn_color?: string;
+  theme_radius: "rounded-none" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | string;
+  announcement_enabled: boolean;
+  announcement_text: string;
+  announcement_badge: string;
+  store_brand_name: string;
+  store_brand_tagline: string;
+  store_brand_logo?: string;
+  hero_headline_line1: string;
+  hero_headline_line2_gradient: string;
+  hero_headline_line3: string;
+  hero_subheading: string;
+  hero_badge_text: string;
+  split_reveal_enabled: boolean;
+  split_reveal_image: string;
+  split_reveal_logo: string;
+  split_reveal_title: string;
+  split_reveal_subtitle: string;
+  split_reveal_duration: number;
+  split_reveal_mode: "every_time" | "once_per_session" | string;
+  split_reveal_dim: number;
+  split_reveal_direction: "vertical" | "horizontal" | string;
+  // WhatsApp Customer Support Settings
+  whatsapp_support_enabled?: boolean;
+  whatsapp_phone_number?: string;
+  whatsapp_default_message?: string;
+  // Flash Deals Campaign Settings
+  flash_deals_enabled?: boolean;
+  flash_deals_title?: string;
+  flash_deals_badge?: string;
+  // Trust & Customer Reassurance Settings
+  trust_ribbon_enabled?: boolean;
+  trust_ribbon_title_1?: string;
+  trust_ribbon_desc_1?: string;
+  trust_ribbon_title_2?: string;
+  trust_ribbon_desc_2?: string;
+  trust_ribbon_title_3?: string;
+  trust_ribbon_desc_3?: string;
+  trust_ribbon_title_4?: string;
+  trust_ribbon_desc_4?: string;
+  // Shipping Display Settings
+  shipping_inside_dhaka_rate?: number;
+  shipping_outside_dhaka_rate?: number;
+  shipping_free_threshold?: number;
+}
+
+export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
+  theme_primary_color: "#06b6d4",
+  theme_secondary_color: "#6366f1",
+  theme_accent_gradient: "cyan-indigo",
+  theme_bg_color: "#090a0f",
+  theme_card_bg_color: "#0c101d",
+  theme_card_border_color: "rgba(255, 255, 255, 0.1)",
+  theme_text_heading_color: "#ffffff",
+  theme_text_body_color: "#94a3b8",
+  theme_btn_primary_bg: "#06b6d4",
+  theme_btn_primary_text: "#ffffff",
+  theme_btn_secondary_bg: "rgba(255, 255, 255, 0.05)",
+  theme_btn_secondary_text: "#ffffff",
+  theme_tab_active_bg: "#06b6d4",
+  theme_tab_active_text: "#ffffff",
+  theme_hover_bg: "rgba(6, 182, 212, 0.15)",
+  theme_hover_text: "#06b6d4",
+  theme_nav_btn_bg: "#0c101d",
+  theme_nav_btn_color: "#ffffff",
+  theme_radius: "rounded-lg",
+  announcement_enabled: true,
+  announcement_text: "Free Express Shipping on orders over $100 • Code: WELCOME20 (-20%)",
+  announcement_badge: "Studio Dispatch: Global Shipping Active",
+  store_brand_name: "AETHER",
+  store_brand_tagline: "Studio & Lab",
+  store_brand_logo: "",
+  hero_headline_line1: "Uncompromising",
+  hero_headline_line2_gradient: "Industrial Audio",
+  hero_headline_line3: "& Tech Ecosystem.",
+  hero_subheading: "Engineered with aerospace-grade titanium, custom beryllium drivers, and tactile mechanical acoustics for creators who refuse mediocrity.",
+  hero_badge_text: "2026 Studio Flagship Release",
+  split_reveal_enabled: true,
+  split_reveal_image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=2000&q=85",
+  split_reveal_logo: "",
+  split_reveal_title: "AETHER",
+  split_reveal_subtitle: "PRECISION ACOUSTICS & HARDWARE",
+  split_reveal_duration: 2.2,
+  split_reveal_mode: "every_time",
+  split_reveal_dim: 0.45,
+  split_reveal_direction: "vertical",
+  whatsapp_support_enabled: true,
+  whatsapp_phone_number: "+18002384371",
+  whatsapp_default_message: "Hello! I would like to inquire about your studio products.",
+  flash_deals_enabled: true,
+  flash_deals_title: "Limited Time Deals",
+  flash_deals_badge: "Flash Deal Drop",
+  trust_ribbon_enabled: true,
+  trust_ribbon_title_1: "Fast Express Delivery",
+  trust_ribbon_desc_1: "Dispatched within 24-48 hours",
+  trust_ribbon_title_2: "Cash on Delivery (COD)",
+  trust_ribbon_desc_2: "Pay safely upon product arrival",
+  trust_ribbon_title_3: "100% Genuine & Authentic",
+  trust_ribbon_desc_3: "Official manufacturer warranty coverage",
+  trust_ribbon_title_4: "7-Day Easy Replacement",
+  trust_ribbon_desc_4: "Hassle-free returns & replacement policy",
+  shipping_inside_dhaka_rate: 60,
+  shipping_outside_dhaka_rate: 120,
+  shipping_free_threshold: 100,
+};
+
+export const RADIUS_MAP: Record<string, { root: string; lg: string; md: string; sm: string }> = {
+  "rounded-none": { root: "0px", lg: "0px", md: "0px", sm: "0px" },
+  "rounded-md": { root: "0.375rem", lg: "0.375rem", md: "0.25rem", sm: "0.125rem" },
+  "rounded-lg": { root: "0.5rem", lg: "0.5rem", md: "0.375rem", sm: "0.25rem" },
+  "rounded-xl": { root: "0.75rem", lg: "0.75rem", md: "0.5rem", sm: "0.375rem" },
+  "rounded-2xl": { root: "1rem", lg: "1rem", md: "0.75rem", sm: "0.5rem" },
+};
+
+export function getHexLuminance(hex: string): number {
+  if (!hex || typeof hex !== "string") return 0;
+  const cleanHex = hex.replace("#", "");
+  if (cleanHex.length < 6) return 0;
+  const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+  const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+  const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function getAutoSynchronizedTokens(bgColor: string, primaryColor: string): Partial<ThemeSettings> {
+  const isLight = getHexLuminance(bgColor) > 0.45;
+  if (isLight) {
+    return {
+      theme_bg_color: bgColor,
+      theme_card_bg_color: "#ffffff",
+      theme_card_border_color: "#e2e8f0",
+      theme_text_heading_color: "#0f172a",
+      theme_text_body_color: "#475569",
+      theme_btn_primary_bg: primaryColor,
+      theme_btn_primary_text: getHexLuminance(primaryColor) > 0.5 ? "#0f172a" : "#ffffff",
+      theme_btn_secondary_bg: "#f1f5f9",
+      theme_btn_secondary_text: "#0f172a",
+      theme_tab_active_bg: primaryColor,
+      theme_tab_active_text: getHexLuminance(primaryColor) > 0.5 ? "#0f172a" : "#ffffff",
+      theme_hover_bg: "rgba(0, 0, 0, 0.05)",
+      theme_hover_text: primaryColor,
+      theme_nav_btn_bg: "#ffffff",
+      theme_nav_btn_color: "#0f172a",
+    };
+  } else {
+    return {
+      theme_bg_color: bgColor,
+      theme_card_bg_color: "#0c101d",
+      theme_card_border_color: "rgba(255, 255, 255, 0.1)",
+      theme_text_heading_color: "#ffffff",
+      theme_text_body_color: "#94a3b8",
+      theme_btn_primary_bg: primaryColor,
+      theme_btn_primary_text: "#ffffff",
+      theme_btn_secondary_bg: "rgba(255, 255, 255, 0.05)",
+      theme_btn_secondary_text: "#ffffff",
+      theme_tab_active_bg: primaryColor,
+      theme_tab_active_text: "#ffffff",
+      theme_hover_bg: "rgba(255, 255, 255, 0.08)",
+      theme_hover_text: primaryColor,
+      theme_nav_btn_bg: "#0c101d",
+      theme_nav_btn_color: "#ffffff",
+    };
+  }
+}
+
+export function applyThemeToDOM(theme: ThemeSettings) {
+  if (typeof document === "undefined") return;
+
+  const isAdmin = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+  if (isAdmin) {
+    document.body.classList.add("admin-body");
+    document.body.classList.remove("theme-light-mode");
+    return;
+  }
+
+  document.body.classList.remove("admin-body");
+  const root = document.documentElement;
+
+  // Calculate Light vs Dark mode based on background luminance
+  const isLightMode = getHexLuminance(theme.theme_bg_color) > 0.45;
+  document.body.classList.toggle("theme-light-mode", isLightMode);
+  root.classList.toggle("theme-light-mode", isLightMode);
+
+  // Core Canvas & Brand Accent Tokens
+  root.style.setProperty("--theme-primary", theme.theme_primary_color);
+  root.style.setProperty("--theme-secondary", theme.theme_secondary_color);
+  root.style.setProperty("--theme-bg", theme.theme_bg_color);
+  root.style.setProperty("--theme-card-bg", theme.theme_card_bg_color);
+
+  // Typography Tokens
+  const headingColor = theme.theme_text_heading_color || (isLightMode ? "#0f172a" : "#ffffff");
+  const bodyColor = theme.theme_text_body_color || (isLightMode ? "#475569" : "#94a3b8");
+  root.style.setProperty("--theme-text-heading", headingColor);
+  root.style.setProperty("--theme-text-body", bodyColor);
+  root.style.setProperty("--theme-text-main", headingColor);
+  root.style.setProperty("--theme-text-sub", bodyColor);
+
+  // Card Border Token
+  const cardBorder = theme.theme_card_border_color || (isLightMode ? "color-mix(in srgb, var(--theme-primary) 22%, rgba(0, 0, 0, 0.08))" : "color-mix(in srgb, var(--theme-primary) 22%, rgba(255, 255, 255, 0.08))");
+  root.style.setProperty("--theme-card-border", cardBorder);
+  root.style.setProperty("--theme-border-sub", cardBorder);
+
+  // Buttons & CTAs Tokens
+  root.style.setProperty("--theme-btn-primary-bg", theme.theme_btn_primary_bg || theme.theme_primary_color);
+  root.style.setProperty("--theme-btn-primary-text", theme.theme_btn_primary_text || "#ffffff");
+  root.style.setProperty("--theme-btn-secondary-bg", theme.theme_btn_secondary_bg || (isLightMode ? "#f1f5f9" : "rgba(255, 255, 255, 0.05)"));
+  root.style.setProperty("--theme-btn-secondary-text", theme.theme_btn_secondary_text || (isLightMode ? "#0f172a" : "#ffffff"));
+  root.style.setProperty("--theme-btn-bg", theme.theme_btn_primary_bg || theme.theme_primary_color);
+
+  // Tabs & Navigation Tokens
+  const tabActiveBg = theme.theme_tab_active_bg || theme.theme_primary_color;
+  const tabActiveText = theme.theme_tab_active_text || (getHexLuminance(tabActiveBg) > 0.5 ? "#0f172a" : "#ffffff");
+  root.style.setProperty("--theme-tab-active-bg", tabActiveBg);
+  root.style.setProperty("--theme-tab-active-text", tabActiveText);
+
+  // Carousel & Navigation Arrow Tokens
+  const navBg = theme.theme_nav_btn_bg || (isLightMode ? "#ffffff" : theme.theme_card_bg_color || "#0c101d");
+  const navColor = theme.theme_nav_btn_color || (isLightMode ? "#0f172a" : "#ffffff");
+  root.style.setProperty("--theme-nav-btn-bg", navBg);
+  root.style.setProperty("--theme-nav-btn-text", navColor);
+
+  // Hover & Interactive Tokens
+  root.style.setProperty("--theme-hover-bg", theme.theme_hover_bg || (isLightMode ? "rgba(0, 0, 0, 0.06)" : "rgba(255, 255, 255, 0.08)"));
+  root.style.setProperty("--theme-hover-text", theme.theme_hover_text || theme.theme_primary_color);
+  root.style.setProperty("--theme-hover-accent", theme.theme_hover_text || theme.theme_primary_color);
+
+  // Dynamic Radius tokens
+  const radiusConfig = RADIUS_MAP[theme.theme_radius] || RADIUS_MAP["rounded-lg"];
+  root.style.setProperty("--radius", radiusConfig.root);
+  root.style.setProperty("--radius-lg", radiusConfig.lg);
+  root.style.setProperty("--radius-md", radiusConfig.md);
+  root.style.setProperty("--radius-sm", radiusConfig.sm);
+  root.style.setProperty("--radius-xl", radiusConfig.root);
+  root.style.setProperty("--radius-2xl", radiusConfig.root);
+  root.style.setProperty("--radius-3xl", radiusConfig.root);
+  root.style.setProperty("--radius-4xl", radiusConfig.root);
+}
+
+interface ThemeState {
+  theme: ThemeSettings;
+  isLoaded: boolean;
+  setTheme: (theme: Partial<ThemeSettings>) => void;
+  fetchTheme: () => Promise<void>;
+}
+
+const API_BASE_URL = typeof window !== "undefined"
+  ? (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api")
+  : (process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api");
+
+export const useThemeStore = create<ThemeState>((set, get) => ({
+  theme: DEFAULT_THEME_SETTINGS,
+  isLoaded: false,
+
+  setTheme: (partialTheme) => {
+    const updated = { ...get().theme, ...partialTheme };
+    set({ theme: updated });
+    applyThemeToDOM(updated);
+  },
+
+  fetchTheme: async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/theme-settings`, {
+        timeout: 8000,
+      });
+      if (res.data) {
+        const loadedTheme = { ...DEFAULT_THEME_SETTINGS, ...res.data };
+        set({ theme: loadedTheme, isLoaded: true });
+        applyThemeToDOM(loadedTheme);
+      }
+    } catch (err) {
+      console.warn("Using default theme (backend unreachable):", err);
+      applyThemeToDOM(get().theme);
+      set({ isLoaded: true });
+    }
+  },
+}));

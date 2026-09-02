@@ -31,7 +31,8 @@ import {
   ExternalLink,
   Lock,
   Shield,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { Order, Product } from "@/types";
@@ -157,13 +158,17 @@ export default function AdminOrdersPage() {
     setStatusTab("all");
     setSearch("");
     setPaymentStatusFilter("all");
+    setDateFrom("");
+    setDateTo("");
+    setMinTotal("");
+    setMaxTotal("");
+    setShowAdvancedFilters(false);
     adminApi.getOrders({ per_page: 50 }).then((res) => {
       setOrders(res.data || []);
     });
-    toast.success("Order filters reset to default.");
+    toast.success("Filters reset.");
   };
 
-  // Add Item in Order Create
   const handleAddItem = () => {
     if (!selectedProdId) return;
     const prod = products.find((p) => p.id === Number(selectedProdId));
@@ -192,7 +197,7 @@ export default function AdminOrdersPage() {
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (orderItems.length === 0) {
-      toast.error("Please add at least one hardware product to the order.");
+      toast.error("Please add at least one product to the order.");
       return;
     }
     setCreating(true);
@@ -225,9 +230,8 @@ export default function AdminOrdersPage() {
     try {
       const res = await adminApi.createOrder(payload);
       setOrders([res.order, ...orders]);
-      toast.success(`Order #${res.order.order_number} created successfully.`);
+      toast.success(`Order #${res.order.order_number} created.`);
       setIsCreateModalOpen(false);
-      // Reset form
       setOrderItems([]);
       setNewCustName("");
       setNewCustEmail("");
@@ -350,7 +354,7 @@ export default function AdminOrdersPage() {
         existingExpiresAt: res.blocked_ip.expires_at,
       } : null);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to block IP address.");
+      toast.error(err.response?.data?.message || "Failed to block IP.");
     } finally {
       setIsSubmittingIpBlock(false);
     }
@@ -361,7 +365,7 @@ export default function AdminOrdersPage() {
 
     try {
       setIsSubmittingIpBlock(true);
-      const res = await adminApi.unblockIp(ipBlockModalData.blockId, "Unblocked from Order Details inspector");
+      const res = await adminApi.unblockIp(ipBlockModalData.blockId);
       toast.success(res.message);
       setIpBlockModalData((prev) => prev ? {
         ...prev,
@@ -371,41 +375,9 @@ export default function AdminOrdersPage() {
         existingExpiresAt: undefined,
       } : null);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to unblock IP address.");
+      toast.error(err.response?.data?.message || "Failed to unblock IP.");
     } finally {
       setIsSubmittingIpBlock(false);
-    }
-  };
-
-  const handleQuickStatusChange = async (orderId: number, status: string) => {
-    try {
-      const currentOrder = orders.find((o) => o.id === orderId);
-      const res = await adminApi.updateOrderStatus(orderId, { 
-        order_status: status,
-        payment_status: currentOrder?.payment_status || "paid"
-      });
-      setOrders(orders.map((o) => (o.id === orderId ? { ...o, order_status: status as any } : o)));
-      if (selectedOrder?.id === orderId) setSelectedOrder({ ...selectedOrder, order_status: status as any });
-      toast.success(`Order #${currentOrder?.order_number || orderId} fulfillment status updated to ${status}.`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update status.");
-    }
-  };
-
-  const handleQuickPaymentStatusChange = async (orderId: number, paymentStatus: string) => {
-    try {
-      const currentOrder = orders.find((o) => o.id === orderId);
-      const res = await adminApi.updateOrderStatus(orderId, {
-        order_status: currentOrder?.order_status || "processing",
-        payment_status: paymentStatus,
-      });
-      setOrders(orders.map((o) => (o.id === orderId ? { ...o, payment_status: paymentStatus as any } : o)));
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, payment_status: paymentStatus as any });
-      }
-      toast.success(`Order #${currentOrder?.order_number || orderId} payment status updated to ${paymentStatus}.`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update payment status.");
     }
   };
 
@@ -427,6 +399,42 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      await Promise.all(selectedIds.map((id) => adminApi.deleteOrder(id)));
+      setOrders(orders.filter((o) => !selectedIds.includes(o.id)));
+      setSelectedIds([]);
+      toast.success(`Deleted ${selectedIds.length} orders.`);
+    } catch (err) {
+      toast.error("Failed to delete selected orders.");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleExecuteRefund = async () => {
+    if (!selectedOrder) return;
+    setRefunding(true);
+
+    try {
+      const res = await adminApi.refundOrder(selectedOrder.id, {
+        reason: refundReason,
+        restock: restock,
+      });
+
+      setOrders(orders.map((o) => (o.id === selectedOrder.id ? res.order : o)));
+      setSelectedOrder(res.order);
+      setIsRefundModalOpen(false);
+      toast.success(`Order #${res.order.order_number} refunded.`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to process refund.");
+    } finally {
+      setRefunding(false);
+    }
+  };
+
   const handleToggleSelectAll = () => {
     if (orders.length > 0 && selectedIds.length === orders.length) {
       setSelectedIds([]);
@@ -441,143 +449,60 @@ export default function AdminOrdersPage() {
     );
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
-    setIsBulkDeleting(true);
-    try {
-      const res = await adminApi.bulkDeleteOrders(selectedIds);
-      setOrders((prev) => prev.filter((o) => !selectedIds.includes(o.id)));
-      if (selectedOrder && selectedIds.includes(selectedOrder.id)) setSelectedOrder(null);
-      setSelectedIds([]);
-      toast.success(res.message || `Deleted ${selectedIds.length} order(s).`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to delete selected orders.");
-    } finally {
-      setIsBulkDeleting(false);
-    }
-  };
-
-  const handleRefund = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedOrder) return;
-    setRefunding(true);
-
-    try {
-      const res = await adminApi.refundOrder(selectedOrder.id, {
-        reason: refundReason,
-        restock,
-      });
-
-      setOrders(orders.map((o) => (o.id === selectedOrder.id ? res.order : o)));
-      setSelectedOrder(res.order);
-      setIsRefundModalOpen(false);
-      toast.success(`Order #${res.order.order_number} marked as refunded.`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to process refund.");
-    } finally {
-      setRefunding(false);
-    }
-  };
-
-  const statusPills = [
-    { label: "All Orders", val: "all" },
-    { label: "Pending", val: "pending" },
-    { label: "Processing", val: "processing" },
-    { label: "Shipped", val: "shipped" },
-    { label: "Delivered", val: "delivered" },
-    { label: "Refunded", val: "refunded" },
-    { label: "Cancelled", val: "cancelled" },
-  ];
-
-  const getPaymentStatusStyles = (status: string) => {
-    switch (status) {
-      case "paid":
-        return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30 shadow-sm";
-      case "pending":
-        return "bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30 shadow-sm";
-      case "refunded":
-        return "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30 shadow-sm";
-      case "failed":
-        return "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30 shadow-sm";
-      default:
-        return "bg-white/5 text-slate-400 border-white/10";
-    }
-  };
-
-  const getFulfillmentStatusStyles = (status: string) => {
-    switch (status) {
-      case "delivered":
-        return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30 shadow-sm";
-      case "shipped":
-        return "bg-cyan-500/20 text-cyan-300 border-cyan-400/40 hover:bg-cyan-500/30 shadow-sm";
-      case "processing":
-        return "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-sm";
-      case "pending":
-        return "bg-yellow-500/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-500/30 shadow-sm";
-      case "cancelled":
-        return "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30 shadow-sm";
-      case "refunded":
-        return "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30 shadow-sm";
-      default:
-        return "bg-white/5 text-slate-400 border-white/10";
-    }
-  };
+  const filteredOrders = orders.filter((ord) => {
+    if (dateFrom && new Date(ord.created_at) < new Date(dateFrom)) return false;
+    if (dateTo && new Date(ord.created_at) > new Date(dateTo + "T23:59:59")) return false;
+    if (minTotal && ord.total_amount < parseFloat(minTotal)) return false;
+    if (maxTotal && ord.total_amount > parseFloat(maxTotal)) return false;
+    return true;
+  });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-7xl mx-auto">
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
-            Fulfillment & Logistics
-          </span>
-          <h1 className="text-2xl font-black text-white">Customer Orders ({orders.length})</h1>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Orders Management</h1>
+          <p className="text-xs text-slate-400 mt-0.5">Manage customer fulfillment, tracking, payments and security</p>
         </div>
 
         <button
-          onClick={() => {
-            setSelectedProdId(products[0]?.id?.toString() || "");
-            setIsCreateModalOpen(true);
-          }}
-          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/20"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" /> Create Order
         </button>
       </div>
 
-      {/* Tabs & Search */}
-      <div className="space-y-3">
-        {/* Status Tabs */}
-        <div className="flex bg-white/5 rounded-2xl p-1 border border-white/10 overflow-x-auto">
-          {statusPills.map((tab) => (
-            <button
-              key={tab.val}
-              onClick={() => setStatusTab(tab.val)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                statusTab === tab.val
-                  ? "bg-amber-500 text-slate-950 font-black shadow-md"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Filter Controls Bar */}
-        <div className="p-4 rounded-2xl bg-[#0e121e] border border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
-          <form onSubmit={handleSearch} className="relative w-full md:w-96">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+      {/* Filter & Search Bar */}
+      <div className="p-3 rounded-xl bg-[#0b0e17] border border-white/10 space-y-2.5">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-2.5">
+          <form onSubmit={handleSearch} className="relative w-full lg:w-72">
+            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search order #, customer, email, or tracking code..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-9.5 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+              placeholder="Search by order #, customer, email..."
+              className="w-full bg-white/5 border border-white/10 rounded-lg pl-8.5 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
             />
           </form>
 
-          <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
+            <AdminDropdown
+              value={statusTab}
+              onChange={(val) => setStatusTab(val)}
+              options={[
+                { value: "all", label: "All Statuses" },
+                { value: "pending", label: "Pending" },
+                { value: "processing", label: "Processing" },
+                { value: "shipped", label: "Shipped" },
+                { value: "delivered", label: "Delivered" },
+                { value: "cancelled", label: "Cancelled" },
+              ]}
+            />
+
             <AdminDropdown
               value={paymentStatusFilter}
               onChange={(val) => setPaymentStatusFilter(val)}
@@ -592,516 +517,407 @@ export default function AdminOrdersPage() {
 
             <button
               type="button"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                showAdvancedFilters ? "bg-amber-500/10 text-amber-300 border-amber-500/30" : "bg-white/5 text-slate-400 hover:text-white border-white/10"
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filters</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleResetFilters}
-              className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 transition-all shrink-0"
-              title="Reset all order filters"
+              className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
             </button>
           </div>
         </div>
+
+        {/* Advanced Filters Expandable Bar */}
+        {showAdvancedFilters && (
+          <div className="pt-2.5 border-t border-white/5 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-0.5">Date From</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-0.5">Date To</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-0.5">Min Amount ($)</label>
+              <input
+                type="number"
+                value={minTotal}
+                onChange={(e) => setMinTotal(e.target.value)}
+                placeholder="0"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-0.5">Max Amount ($)</label>
+              <input
+                type="number"
+                value={maxTotal}
+                onChange={(e) => setMaxTotal(e.target.value)}
+                placeholder="10000"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Orders Table with Scrollable Dragging Card */}
-      <ScrollableTableCard>
-        <table className="w-full text-left text-xs text-slate-300 min-w-[860px]">
-          <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-            <tr>
-              <th className="p-3.5 w-10 text-center">
-                <input
-                  type="checkbox"
-                  checked={orders.length > 0 && selectedIds.length === orders.length}
-                  onChange={handleToggleSelectAll}
-                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
-                  title="Select all orders"
-                />
-              </th>
-              <th className="p-3.5">Order Ref</th>
-              <th className="p-3.5">Customer</th>
-              <th className="p-3.5">Total Amount</th>
-              <th className="p-3.5">Payment Status</th>
-              <th className="p-3.5">Fulfillment Status</th>
-              <th className="p-3.5">Carrier / Tracking</th>
-              <th className="p-3.5">Date</th>
-              <th className="p-3.5 text-center min-w-[160px]">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {loading ? (
-              <tr>
-                <td colSpan={9} className="p-8 text-center text-slate-500">
-                  Loading customer shipments...
-                </td>
-              </tr>
-            ) : orders.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="p-8 text-center text-slate-500 italic">
-                  No orders found matching the filter criteria.
-                </td>
-              </tr>
-            ) : (
-              orders.map((ord) => {
-                const isSelected = selectedIds.includes(ord.id);
-                return (
-                  <tr
-                    key={ord.id}
-                    className={`transition-colors ${
-                      isSelected
-                        ? "bg-amber-500/10 border-l-2 border-amber-500"
-                        : "hover:bg-white/[0.02]"
-                    }`}
-                  >
-                    <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleSelectRow(ord.id)}
-                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
-                      />
-                    </td>
-                    <td className="p-3.5 font-mono font-bold text-cyan-400 whitespace-nowrap">{ord.order_number}</td>
-                  <td className="p-3.5">
-                    <span className="font-bold text-white block">{ord.customer_name}</span>
-                    <span className="text-[10px] text-slate-500">{ord.customer_email}</span>
-                  </td>
-                  <td className="p-3.5 font-extrabold text-white whitespace-nowrap">{formatPrice(ord.total_amount)}</td>
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={filteredOrders.length}
+        onClearSelection={() => setSelectedIds([])}
+        onConfirmDelete={handleBulkDelete}
+        isDeleting={isBulkDeleting}
+        itemName="order"
+      />
 
-                  {/* EDITABLE PAYMENT STATUS DROPDOWN */}
-                  <td className="p-3.5 whitespace-nowrap">
-                    <AdminDropdown
-                      size="sm"
-                      value={ord.payment_status}
-                      onChange={(val) => handleQuickPaymentStatusChange(ord.id, val)}
-                      buttonClassName={`rounded-xl text-[10px] font-black uppercase tracking-wider ${getPaymentStatusStyles(ord.payment_status)}`}
-                      options={[
-                        { value: "paid", label: "Paid" },
-                        { value: "pending", label: "Pending" },
-                        { value: "refunded", label: "Refunded" },
-                        { value: "failed", label: "Failed" },
-                      ]}
-                    />
-                  </td>
-
-                  {/* EDITABLE FULFILLMENT STATUS DROPDOWN */}
-                  <td className="p-3.5 whitespace-nowrap">
-                    <AdminDropdown
-                      size="sm"
-                      value={ord.order_status}
-                      onChange={(val) => handleQuickStatusChange(ord.id, val)}
-                      buttonClassName={`rounded-xl text-[10px] font-black uppercase tracking-wider ${getFulfillmentStatusStyles(ord.order_status)}`}
-                      options={[
-                        { value: "pending", label: "Pending" },
-                        { value: "processing", label: "Processing" },
-                        { value: "shipped", label: "Shipped" },
-                        { value: "delivered", label: "Delivered" },
-                        { value: "cancelled", label: "Cancelled" },
-                        { value: "refunded", label: "Refunded" },
-                      ]}
-                    />
-                  </td>
-                  <td className="p-3.5 text-slate-400 font-mono text-[11px] whitespace-nowrap">
-                    {ord.tracking_code || <span className="text-slate-600">—</span>}
-                  </td>
-                  <td className="p-3.5 text-slate-400 whitespace-nowrap">{formatDate(ord.created_at)}</td>
-                  
-                  {/* ICON-ONLY ACTION SYSTEM (UP TO 4 PER ROW) */}
-                  <td className="p-3.5 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-start gap-1.5 flex-wrap w-[146px] mx-auto">
-                      <button
-                        onClick={() => setSelectedOrder(ord)}
-                        className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:scale-105 transition-all shadow-sm"
-                        title="Inspect Order Details"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleOpenEdit(ord)}
-                        className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:scale-105 transition-all shadow-sm"
-                        title="Edit Order"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setDeletingOrder(ord)}
-                        className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:scale-105 transition-all shadow-sm"
-                        title="Delete Order"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+      {/* Orders Table Card */}
+      <div className="rounded-xl bg-[#0b0e17] border border-white/10 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-300">
+            <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-semibold uppercase text-[9.5px] tracking-wider">
+              <tr>
+                <th className="p-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={filteredOrders.length > 0 && selectedIds.length === filteredOrders.length}
+                    onChange={handleToggleSelectAll}
+                    className="rounded border-white/20 text-amber-500 focus:ring-0 cursor-pointer"
+                  />
+                </th>
+                <th className="p-3">Order Number</th>
+                <th className="p-3">Customer</th>
+                <th className="p-3">Amount</th>
+                <th className="p-3">Payment</th>
+                <th className="p-3">Fulfillment</th>
+                <th className="p-3">IP / Security</th>
+                <th className="p-3">Date</th>
+                <th className="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-slate-500">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-amber-400" />
+                    <span>Loading orders...</span>
                   </td>
                 </tr>
-              );
-            })
-            )}
-          </tbody>
-        </table>
-      </ScrollableTableCard>
+              ) : filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-slate-500 italic">
+                    No orders found.
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders.map((order) => {
+                  const isSelected = selectedIds.includes(order.id);
+                  const ip = order.ip_address || "127.0.0.1";
 
-      {/* Order Creation Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setIsCreateModalOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+                  return (
+                    <tr
+                      key={order.id}
+                      className={`hover:bg-white/[0.02] transition-colors ${
+                        isSelected ? "bg-amber-500/5" : ""
+                      }`}
+                    >
+                      <td className="p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectRow(order.id)}
+                          className="rounded border-white/20 text-amber-500 focus:ring-0 cursor-pointer"
+                        />
+                      </td>
 
-          <div className="relative w-full max-w-2xl rounded-3xl bg-[#0c0e15] border border-amber-500/30 shadow-2xl p-6 sm:p-8 z-10 max-h-[90vh] overflow-y-auto space-y-5 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
-                  Order Management
-                </span>
-                <h3 className="text-lg font-black text-white">Create Order</h3>
-              </div>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                      {/* Order Number */}
+                      <td className="p-3 font-mono font-bold text-cyan-400">
+                        {order.order_number}
+                      </td>
 
-            <form onSubmit={handleCreateOrder} className="space-y-4">
-              {/* Customer Information */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-300 block">Customer Information</span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={newCustName}
-                      onChange={(e) => setNewCustName(e.target.value)}
-                      placeholder="e.g. Jonathan Blake"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      value={newCustEmail}
-                      onChange={(e) => setNewCustEmail(e.target.value)}
-                      placeholder="jonathan@test.com"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Phone (Optional)</label>
-                    <input
-                      type="tel"
-                      value={newCustPhone}
-                      onChange={(e) => setNewCustPhone(e.target.value)}
-                      placeholder="+1 (555) 000-0000"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-              </div>
+                      {/* Customer */}
+                      <td className="p-3">
+                        <div className="truncate min-w-[150px]">
+                          <span className="font-bold text-white block truncate">{order.customer_name}</span>
+                          <span className="text-[10.5px] text-slate-400 block truncate">{order.customer_email}</span>
+                        </div>
+                      </td>
 
-              {/* Shipping Destination */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-300 block">Shipping Destination</span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Street Address</label>
-                    <input
-                      type="text"
-                      required
-                      value={newAddressLine}
-                      onChange={(e) => setNewAddressLine(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">City</label>
-                    <input
-                      type="text"
-                      required
-                      value={newCity}
-                      onChange={(e) => setNewCity(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">State</label>
-                    <input
-                      type="text"
-                      value={newState}
-                      onChange={(e) => setNewState(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Postal Code</label>
-                    <input
-                      type="text"
-                      required
-                      value={newPostal}
-                      onChange={(e) => setNewPostal(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Country</label>
-                    <input
-                      type="text"
-                      required
-                      value={newCountry}
-                      onChange={(e) => setNewCountry(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-              </div>
+                      {/* Amount */}
+                      <td className="p-3 font-mono font-bold text-white">
+                        {formatPrice(order.total_amount)}
+                      </td>
 
-              {/* Order Line Items Picker */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-300 block">Select Hardware Items</span>
-                
-                <div className="flex items-center gap-2">
-                  <AdminDropdown
-                    value={selectedProdId}
-                    onChange={(val) => setSelectedProdId(val)}
-                    className="flex-1"
-                    buttonClassName="w-full py-2"
-                    options={products.map((p) => ({
-                      value: p.id.toString(),
-                      label: `${p.name} (${formatPrice(p.price)}) - Stock: ${p.stock_quantity}`,
-                    }))}
-                  />
+                      {/* Payment */}
+                      <td className="p-3">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            order.payment_status === "paid"
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : order.payment_status === "refunded"
+                              ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                              : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                          }`}
+                        >
+                          {order.payment_status}
+                        </span>
+                      </td>
 
-                  <input
-                    type="number"
-                    min="1"
-                    value={itemQty}
-                    onChange={(e) => setItemQty(e.target.value)}
-                    className="w-20 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-center font-bold shrink-0"
-                  />
+                      {/* Fulfillment */}
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-slate-300">
+                          {order.order_status}
+                        </span>
+                      </td>
 
-                  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    className="px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 font-bold shrink-0"
-                  >
-                    + Add
-                  </button>
-                </div>
+                      {/* IP Security */}
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          onClick={() => openIpBlockModal(ip)}
+                          className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] font-mono text-slate-400 hover:text-rose-400 hover:border-rose-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Inspect or restrict IP address"
+                        >
+                          <Shield className="w-3 h-3 text-slate-500" />
+                          <span>{ip}</span>
+                        </button>
+                      </td>
 
-                {/* Selected Items List */}
-                <div className="space-y-1.5 divide-y divide-white/5">
-                  {orderItems.map((item, idx) => {
-                    const prod = products.find((p) => p.id === item.productId);
-                    return (
-                      <div key={idx} className="pt-2 flex items-center justify-between">
-                        <span className="font-bold text-white">{prod?.name} (x{item.quantity})</span>
-                        <div className="flex items-center gap-3">
-                          <span className="font-extrabold text-cyan-400">{formatPrice(item.unitPrice * item.quantity)}</span>
+                      {/* Date */}
+                      <td className="p-3 text-slate-400 text-[11px]">
+                        {formatDate(order.created_at)}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
-                            type="button"
-                            onClick={() => handleRemoveItem(idx)}
-                            className="text-rose-400 hover:text-rose-300"
+                            onClick={() => setSelectedOrder(order)}
+                            className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                            title="Inspect order"
                           >
-                            <X className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(order)}
+                            className="p-1.5 rounded-md text-slate-400 hover:text-amber-400 hover:bg-white/10 transition-colors cursor-pointer"
+                            title="Edit order details"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeletingOrder(order)}
+                            className="p-1.5 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Delete order"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-                {/* Total Preview */}
-                <div className="pt-3 border-t border-white/10 flex justify-between font-black text-sm text-white">
-                  <span>Order Total:</span>
-                  <span className="text-cyan-400">{formatPrice(calculateSubtotal() + Number(newShippingAmount || 0))}</span>
-                </div>
+      {/* INSPECT ORDER MODAL */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-[#0e121e] border border-white/15 rounded-2xl shadow-2xl p-5 space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div>
+                <h3 className="text-sm font-black text-white">Order #{selectedOrder.order_number}</h3>
+                <span className="text-[10.5px] text-slate-400">{formatDate(selectedOrder.created_at)}</span>
               </div>
-
-              {/* Status & Carrier Defaults */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Payment Status</label>
-                  <AdminDropdown
-                    value={newPaymentStatus}
-                    onChange={(val) => setNewPaymentStatus(val)}
-                    className="w-full"
-                    buttonClassName="w-full py-2"
-                    options={[
-                      { value: "paid", label: "Paid" },
-                      { value: "pending", label: "Pending" },
-                    ]}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Fulfillment Status</label>
-                  <AdminDropdown
-                    value={newOrderStatus}
-                    onChange={(val) => setNewOrderStatus(val)}
-                    className="w-full"
-                    buttonClassName="w-full py-2"
-                    options={[
-                      { value: "processing", label: "Processing" },
-                      { value: "shipped", label: "Shipped" },
-                      { value: "pending", label: "Pending" },
-                    ]}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Carrier</label>
-                  <input
-                    type="text"
-                    value={newCarrier}
-                    onChange={(e) => setNewCarrier(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black uppercase tracking-wide transition-all shadow-md"
-                >
-                  {creating ? "Creating Order..." : "Create Order"}
+              <div className="flex items-center gap-2">
+                {selectedOrder.payment_status === "paid" && (
+                  <button
+                    onClick={() => setIsRefundModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-bold hover:bg-purple-500/25 transition-colors cursor-pointer"
+                  >
+                    Issue Refund
+                  </button>
+                )}
+                <button onClick={() => setSelectedOrder(null)} className="p-1 text-slate-400 hover:text-white">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </form>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Customer</span>
+                <span className="font-bold text-white block">{selectedOrder.customer_name}</span>
+                <span className="text-slate-400 block">{selectedOrder.customer_email}</span>
+                {selectedOrder.customer_phone && (
+                  <span className="text-slate-400 block font-mono">{selectedOrder.customer_phone}</span>
+                )}
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Shipping Address</span>
+                <span className="text-white block">
+                  {selectedOrder.shipping_address?.address_line1 || "No street address recorded"}
+                </span>
+                <span className="text-slate-400 block">
+                  {selectedOrder.shipping_address?.city}, {selectedOrder.shipping_address?.country}
+                </span>
+                {selectedOrder.carrier && (
+                  <span className="text-cyan-400 text-[11px] block font-mono pt-1">
+                    Carrier: {selectedOrder.carrier} {selectedOrder.tracking_code ? `(${selectedOrder.tracking_code})` : ""}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Items List */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold text-slate-300 block">Ordered Items</span>
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 divide-y divide-white/5 text-xs">
+                {(selectedOrder.items || []).map((item, idx) => (
+                  <div key={idx} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-white block">{item.product_name || `Product #${item.product_id}`}</span>
+                      <span className="text-[10px] text-slate-400">Qty: {item.quantity} × {formatPrice(item.unit_price)}</span>
+                    </div>
+                    <span className="font-bold font-mono text-white">{formatPrice(item.quantity * item.unit_price)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Total Summary */}
+            <div className="flex justify-between items-center p-3 rounded-xl bg-white/5 text-xs font-bold text-white">
+              <span>Total Amount</span>
+              <span className="text-base text-cyan-400 font-mono font-black">{formatPrice(selectedOrder.total_amount)}</span>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Edit Order Modal */}
+      {/* EDIT ORDER MODAL */}
       {editingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setEditingOrder(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-lg rounded-3xl bg-[#0c0e15] border border-amber-500/30 shadow-2xl p-6 sm:p-8 z-10 space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="text-base font-black text-white">Edit Order #{editingOrder.order_number}</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-[#0e121e] border border-white/15 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <h3 className="text-sm font-black text-white">Edit Order #{editingOrder.order_number}</h3>
               <button onClick={() => setEditingOrder(null)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-
-            <form onSubmit={handleSaveEdit} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Customer Name</label>
+            <form onSubmit={handleSaveEdit} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Customer Name</label>
                   <input
                     type="text"
-                    required
                     value={editCustName}
                     onChange={(e) => setEditCustName(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Email</label>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Phone</label>
                   <input
-                    type="email"
-                    required
-                    value={editCustEmail}
-                    onChange={(e) => setEditCustEmail(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    type="text"
+                    value={editCustPhone}
+                    onChange={(e) => setEditCustPhone(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Fulfillment Status</label>
-                  <AdminDropdown
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Fulfillment Status</label>
+                  <select
                     value={editOrderStatus}
-                    onChange={(val) => setEditOrderStatus(val)}
-                    className="w-full"
-                    buttonClassName="w-full py-2"
-                    options={[
-                      { value: "pending", label: "Pending" },
-                      { value: "processing", label: "Processing" },
-                      { value: "shipped", label: "Shipped" },
-                      { value: "delivered", label: "Delivered" },
-                      { value: "cancelled", label: "Cancelled" },
-                      { value: "refunded", label: "Refunded" },
-                    ]}
-                  />
+                    onChange={(e) => setEditOrderStatus(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                  >
+                    <option value="pending" className="bg-[#0e121e]">Pending</option>
+                    <option value="processing" className="bg-[#0e121e]">Processing</option>
+                    <option value="shipped" className="bg-[#0e121e]">Shipped</option>
+                    <option value="delivered" className="bg-[#0e121e]">Delivered</option>
+                    <option value="cancelled" className="bg-[#0e121e]">Cancelled</option>
+                  </select>
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Payment Status</label>
-                  <AdminDropdown
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Payment Status</label>
+                  <select
                     value={editPaymentStatus}
-                    onChange={(val) => setEditPaymentStatus(val)}
-                    className="w-full"
-                    buttonClassName="w-full py-2"
-                    options={[
-                      { value: "paid", label: "Paid" },
-                      { value: "pending", label: "Pending" },
-                      { value: "refunded", label: "Refunded" },
-                      { value: "failed", label: "Failed" },
-                    ]}
-                  />
+                    onChange={(e) => setEditPaymentStatus(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                  >
+                    <option value="pending" className="bg-[#0e121e]">Pending</option>
+                    <option value="paid" className="bg-[#0e121e]">Paid</option>
+                    <option value="refunded" className="bg-[#0e121e]">Refunded</option>
+                    <option value="failed" className="bg-[#0e121e]">Failed</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Carrier</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Carrier</label>
                   <input
                     type="text"
                     value={editCarrier}
                     onChange={(e) => setEditCarrier(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                    placeholder="e.g. DHL Express / Pathao"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Tracking Number</label>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Tracking Code</label>
                   <input
                     type="text"
                     value={editTracking}
                     onChange={(e) => setEditTracking(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 font-mono"
+                    placeholder="Tracking #"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1">Internal Operational Notes</label>
-                <textarea
-                  rows={2}
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-400 resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+              <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setEditingOrder(null)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
+                  className="px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={savingEdit || !isEditDirty}
-                  className={`px-5 py-2 rounded-xl font-black uppercase tracking-wide transition-all shadow-md ${
-                    !isEditDirty
-                      ? "bg-white/10 text-slate-500 cursor-not-allowed border border-white/5"
-                      : "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                  }`}
-                  title={!isEditDirty ? "No changes made to order details" : undefined}
+                  disabled={savingEdit}
+                  className="px-4 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-black"
                 >
-                  {savingEdit ? "Saving..." : "Save Modifications"}
+                  {savingEdit ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>
@@ -1109,474 +925,83 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deletingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setDeletingOrder(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-md rounded-3xl bg-[#0e121e] border border-rose-500/30 p-6 z-10 space-y-4 text-xs">
-            <div className="flex items-center gap-3 text-rose-400">
-              <AlertTriangle className="w-6 h-6" />
-              <h3 className="text-base font-black text-white">Delete Order Confirmation</h3>
-            </div>
-            <p className="text-slate-300 leading-relaxed">
-              Are you sure you want to permanently delete order <span className="font-mono font-bold text-white">{deletingOrder.order_number}</span>? Unfulfilled items will be automatically restocked into inventory.
-            </p>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeletingOrder(null)}
-                className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={handleDeleteOrder}
-                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all shadow-lg shadow-rose-600/30"
-              >
-                {deleting ? "Deleting..." : "Confirm Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Order Details Inspector Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setSelectedOrder(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-2xl rounded-3xl bg-[#0c0e15] border border-white/15 shadow-2xl p-6 sm:p-8 z-10 max-h-[90vh] overflow-y-auto space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
-                  Order Telemetry & Fulfillment
-                </span>
-                <h3 className="text-lg font-black text-white font-mono">{selectedOrder.order_number}</h3>
-              </div>
-              <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Realtime Status Badges Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Payment Status</span>
-                <span className={`inline-block px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wider border ${getPaymentStatusStyles(selectedOrder.payment_status)}`}>
-                  {selectedOrder.payment_status}
-                </span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Fulfillment Status</span>
-                <span className={`inline-block px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wider border ${getFulfillmentStatusStyles(selectedOrder.order_status)}`}>
-                  {selectedOrder.order_status}
-                </span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Logistics & Tracking</span>
-                <span className="text-xs font-mono font-bold text-cyan-300 block truncate">
-                  {selectedOrder.carrier || "Standard"} • {selectedOrder.tracking_code || "Pending Code"}
-                </span>
-              </div>
-            </div>
-
-            {/* Cancellation Alert Banner */}
-            {selectedOrder.order_status === "cancelled" && (
-              <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs space-y-1">
-                <span className="font-bold flex items-center gap-1.5 text-red-400">
-                  <AlertCircle className="w-4 h-4" />
-                  Order Cancelled
-                </span>
-                <p className="text-[11px] text-slate-300">
-                  {selectedOrder.notes || "This order was marked as cancelled."}
-                </p>
-              </div>
-            )}
-
-            {/* Customer & Shipping Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Customer Details</span>
-                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
-                    selectedOrder.user_id ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                  }`}>
-                    {selectedOrder.user_id ? "REGISTERED / ASSOCIATED" : "GUEST PURCHASER"}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-white font-bold text-sm">{selectedOrder.customer_name}</p>
-                  <p className="text-slate-400">{selectedOrder.customer_email}</p>
-                  <p className="text-slate-400">{selectedOrder.customer_phone || "No phone recorded"}</p>
-                </div>
-
-                {/* View Customer Profile Link / Button */}
-                <Link
-                  href={`/admin/customers?search=${encodeURIComponent(selectedOrder.customer_email)}&view=${selectedOrder.user_id || ""}`}
-                  className="flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 text-purple-300 hover:text-purple-200 text-xs font-bold transition-all shadow-sm group"
-                >
-                  <UserCheck className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
-                  <span>View Customer Profile →</span>
-                </Link>
-
-                {/* Verified Client IP Telemetry & In-Place Block/Manage Action */}
-                {selectedOrder.ip_address && (
-                  <div className="pt-2 flex items-center justify-between border-t border-white/5 mt-1">
-                    <div className="space-y-0.5">
-                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold block">Client IP</span>
-                      <p className="text-[11px] font-mono text-cyan-400 font-bold">
-                        {selectedOrder.ip_address}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => openIpBlockModal(selectedOrder.ip_address!)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 hover:text-red-200 text-xs font-bold transition-all cursor-pointer shadow-sm"
-                      title="Manage IP Restrictions for this address"
-                    >
-                      <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-                      <span>Block / Manage IP</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Shipping Destination</span>
-                <p className="text-white font-bold">{selectedOrder.shipping_address?.full_name}</p>
-                <p className="text-slate-400">{selectedOrder.shipping_address?.address_line1}</p>
-                <p className="text-slate-400">
-                  {selectedOrder.shipping_address?.city}, {selectedOrder.shipping_address?.state} {selectedOrder.shipping_address?.postal_code}
-                </p>
-                <p className="text-slate-400">{selectedOrder.shipping_address?.country}</p>
-              </div>
-            </div>
-
-            {/* Line Items List */}
-            <div className="space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-                Purchased Hardware Items ({selectedOrder.items?.length || 0})
-              </span>
-              <div className="divide-y divide-white/5 border-y border-white/5 max-h-48 overflow-y-auto">
-                {selectedOrder.items?.map((item) => (
-                  <div key={item.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {item.product_image && (
-                        <img src={item.product_image} alt={item.product_name} className="w-10 h-10 rounded-lg object-cover bg-slate-900 shrink-0" />
-                      )}
-                      <div className="truncate">
-                        <span className="font-bold text-white block truncate">{item.product_name}</span>
-                        {item.variant_name && <span className="text-[10px] text-slate-400 block">{item.variant_name}</span>}
-                        <span className="text-[10px] text-slate-500">Qty: {item.quantity} • {formatPrice(item.unit_price)} each</span>
-                      </div>
-                    </div>
-                    <span className="font-extrabold text-white shrink-0">{formatPrice(item.total_price)}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Financial Totals */}
-              <div className="space-y-1.5 text-xs text-slate-400 pt-2">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span className="text-white font-medium">{formatPrice(selectedOrder.subtotal)}</span>
-                </div>
-                {selectedOrder.discount_amount > 0 && (
-                  <div className="flex justify-between text-emerald-400">
-                    <span>Coupon Savings ({selectedOrder.coupon_code})</span>
-                    <span>-{formatPrice(selectedOrder.discount_amount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span>Shipping Fee</span>
-                  <span className="text-white">{selectedOrder.shipping_amount === 0 ? "FREE" : formatPrice(selectedOrder.shipping_amount)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tax Amount</span>
-                  <span className="text-white">{formatPrice(selectedOrder.tax_amount)}</span>
-                </div>
-                <div className="flex justify-between text-sm font-black text-white pt-2 border-t border-white/10">
-                  <span>Total Amount Paid</span>
-                  <span className="text-cyan-400">{formatPrice(selectedOrder.total_amount)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions in details view */}
-            <div className="flex justify-between items-center pt-3 border-t border-white/10">
-              {selectedOrder.payment_status !== "refunded" && (
-                <button
-                  type="button"
-                  onClick={() => setIsRefundModalOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 font-bold transition-all flex items-center gap-1 text-xs"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" /> Issue Refund
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  const ord = selectedOrder;
-                  setSelectedOrder(null);
-                  handleOpenEdit(ord);
-                }}
-                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wide transition-all shadow-md ml-auto"
-              >
-                Edit Order Details
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Refund Modal */}
-      {isRefundModalOpen && selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setIsRefundModalOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-md rounded-3xl bg-[#0e121e] border border-purple-500/30 p-6 z-10 space-y-4 text-xs">
-            <h3 className="text-base font-black text-white">Refund Order #{selectedOrder.order_number}</h3>
-
-            <form onSubmit={handleRefund} className="space-y-4">
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Reason for Refund</label>
-                <input
-                  type="text"
-                  required
-                  value={refundReason}
-                  onChange={(e) => setRefundReason(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-purple-400"
-                />
-              </div>
-
-              <label className="flex items-center gap-2 cursor-pointer text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={restock}
-                  onChange={(e) => setRestock(e.target.checked)}
-                  className="rounded bg-white/5"
-                />
-                <span>Automatically restock items back into inventory</span>
-              </label>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsRefundModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={refunding}
-                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all shadow-md"
-                >
-                  {refunding ? "Processing..." : "Process Refund"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* IP Block & Restriction Modal */}
+      {/* IP RESTRICTION & BLOCK MODAL */}
       {ipBlockModalData && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0b0d14] border border-white/15 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02]">
-              <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-xl border ${
-                  ipBlockModalData.isBlocked
-                    ? "bg-red-500/15 text-red-400 border-red-500/30"
-                    : "bg-amber-500/15 text-amber-400 border-amber-500/30"
-                }`}>
-                  <ShieldAlert className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-white text-sm">IP Restriction & Abuse Defense</h3>
-                  <p className="text-xs font-mono text-cyan-400">{ipBlockModalData.ip}</p>
-                </div>
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#0e121e] border border-white/15 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <div className="flex items-center gap-2 text-amber-400">
+                <ShieldAlert className="w-4 h-4" />
+                <h3 className="text-sm font-black text-white">IP Security: {ipBlockModalData.ip}</h3>
               </div>
-              <button
-                onClick={() => setIpBlockModalData(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
+              <button onClick={() => setIpBlockModalData(null)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            {isCheckingIpStatus ? (
-              <div className="p-8 flex items-center justify-center gap-3 text-slate-400 text-xs">
-                <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-                <span>Checking IP restriction status...</span>
-              </div>
-            ) : ipBlockModalData.isBlocked ? (
-              /* ALREADY BLOCKED VIEW */
-              <div className="p-6 space-y-5">
-                <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/25 space-y-2">
-                  <div className="flex items-center gap-2 text-red-400 font-bold text-xs">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span>This IP address is currently BLOCKED</span>
-                  </div>
-                  <p className="text-xs text-slate-300">
-                    <strong className="text-slate-400">Recorded Reason:</strong> {ipBlockModalData.existingReason || "Security policy violation"}
-                  </p>
-                  <p className="text-xs text-slate-300">
-                    <strong className="text-slate-400">Expiration:</strong> {
-                      ipBlockModalData.existingExpiresAt
-                        ? formatDate(ipBlockModalData.existingExpiresAt)
-                        : "Permanent Block (Forever)"
-                    }
-                  </p>
+            {ipBlockModalData.isBlocked ? (
+              <div className="space-y-3 text-xs">
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300">
+                  <span className="font-bold block">Currently Blocked</span>
+                  <span className="text-[11px] text-slate-400 block mt-1">Reason: {ipBlockModalData.existingReason}</span>
                 </div>
-
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <a
-                    href={`/admin/blocked-ips?search=${encodeURIComponent(ipBlockModalData.ip)}`}
-                    className="text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
-                  >
-                    <span>View in IP Restrictions section</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
                   <button
                     type="button"
                     onClick={() => setIpBlockModalData(null)}
-                    className="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 text-xs font-semibold hover:bg-white/[0.08] transition-all cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 font-bold"
                   >
                     Close
                   </button>
                   <button
                     type="button"
-                    disabled={isSubmittingIpBlock}
                     onClick={handleExecuteUnblockIp}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"
+                    disabled={isSubmittingIpBlock}
+                    className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                   >
-                    {isSubmittingIpBlock ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Unlock className="w-3.5 h-3.5" />}
-                    <span>Unblock IP Address</span>
+                    {isSubmittingIpBlock ? "Unblocking..." : "Unblock IP"}
                   </button>
                 </div>
               </div>
             ) : (
-              /* BLOCK FORM VIEW */
-              <form onSubmit={handleExecuteBlockIp} className="p-6 space-y-4 text-xs">
-                {/* Duration Presets */}
-                <div className="space-y-1.5">
-                  <label className="text-slate-300 font-bold block">Restriction Duration</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: "Permanent (Forever)", value: "permanent" },
-                      { label: "1 Hour", value: "1_hour" },
-                      { label: "24 Hours (1 Day)", value: "24_hours" },
-                      { label: "7 Days (1 Week)", value: "7_days" },
-                      { label: "30 Days (1 Month)", value: "30_days" },
-                      { label: "Custom Date", value: "custom" },
-                    ].map((d) => (
-                      <button
-                        key={d.value}
-                        type="button"
-                        onClick={() => setBlockDuration(d.value as any)}
-                        className={`p-2.5 rounded-xl border text-center font-semibold transition-all cursor-pointer ${
-                          blockDuration === d.value
-                            ? "bg-red-500/20 border-red-500 text-red-300 shadow-sm"
-                            : "bg-white/[0.02] border-white/10 text-slate-400 hover:bg-white/[0.05] hover:text-white"
-                        }`}
-                      >
-                        {d.label}
-                      </button>
-                    ))}
-                  </div>
+              <form onSubmit={handleExecuteBlockIp} className="space-y-3 text-xs">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Block Duration</label>
+                  <select
+                    value={blockDuration}
+                    onChange={(e) => setBlockDuration(e.target.value as any)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                  >
+                    <option value="permanent" className="bg-[#0e121e]">Permanent Block</option>
+                    <option value="24_hours" className="bg-[#0e121e]">24 Hours</option>
+                    <option value="7_days" className="bg-[#0e121e]">7 Days</option>
+                    <option value="30_days" className="bg-[#0e121e]">30 Days</option>
+                  </select>
                 </div>
-
-                {/* Custom Date Picker */}
-                {blockDuration === "custom" && (
-                  <div className="space-y-1">
-                    <label className="text-slate-300 font-semibold block">Expires At *</label>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={customBlockExpiresAt}
-                      onChange={(e) => setCustomBlockExpiresAt(e.target.value)}
-                      className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-red-500/50"
-                    />
-                  </div>
-                )}
-
-                {/* Reason Selection & Input */}
-                <div className="space-y-1.5">
-                  <label className="text-slate-300 font-bold block">Reason for Block *</label>
-                  <div className="flex flex-wrap gap-1.5 mb-1.5">
-                    {[
-                      "Abusive order cancellations",
-                      "Fraudulent credit card attempts",
-                      "Automated bot order spam",
-                      "Chargeback / dispute risk",
-                      "Suspicious multi-account abuse",
-                    ].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setBlockReason(preset)}
-                        className="px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 text-[11px] text-slate-300 cursor-pointer"
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Reason</label>
                   <input
                     type="text"
                     required
                     value={blockReason}
                     onChange={(e) => setBlockReason(e.target.value)}
-                    placeholder="Enter reason..."
-                    className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-red-500/50"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
-
-                {/* Internal Notes */}
-                <div className="space-y-1">
-                  <label className="text-slate-300 font-bold block">Internal Security Notes (Optional)</label>
-                  <textarea
-                    rows={2}
-                    value={blockNotes}
-                    onChange={(e) => setBlockNotes(e.target.value)}
-                    placeholder="Additional context, incident tickets, or customer details..."
-                    className="w-full bg-[#07080c] border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-red-500/50"
-                  />
-                </div>
-
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-[11px] flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
-                  <span>
-                    Blocking this IP will immediately reject all future orders and checkouts from this network across the entire store.
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
                   <button
                     type="button"
                     onClick={() => setIpBlockModalData(null)}
-                    className="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 text-xs font-semibold hover:bg-white/[0.08] transition-all cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 font-bold"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmittingIpBlock}
-                    className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-lg shadow-red-600/20 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold"
                   >
-                    {isSubmittingIpBlock ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
-                    <span>Confirm & Block IP</span>
+                    {isSubmittingIpBlock ? "Blocking..." : "Block IP Address"}
                   </button>
                 </div>
               </form>
@@ -1585,16 +1010,87 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* Floating Bulk Action Bar */}
-      <BulkActionBar
-        selectedCount={selectedIds.length}
-        totalCount={orders.length}
-        itemName="order"
-        isDeleting={isBulkDeleting}
-        onClearSelection={() => setSelectedIds([])}
-        onSelectAll={handleToggleSelectAll}
-        onConfirmDelete={handleBulkDelete}
-      />
+      {/* REFUND MODAL */}
+      {isRefundModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#0e121e] border border-purple-500/30 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <h3 className="text-sm font-black text-white">Process Refund</h3>
+              <button onClick={() => setIsRefundModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 block">Refund Reason</label>
+                <input
+                  type="text"
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={restock}
+                  onChange={(e) => setRestock(e.target.checked)}
+                  className="rounded text-purple-500 focus:ring-0"
+                />
+                <span>Restock items back into inventory</span>
+              </label>
+              <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsRefundModalOpen(false)}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteRefund}
+                  disabled={refunding}
+                  className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold"
+                >
+                  {refunding ? "Processing..." : "Confirm Refund"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRM MODAL */}
+      {deletingOrder && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#0e121e] border border-rose-500/30 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center gap-2.5 text-rose-400">
+              <AlertTriangle className="w-5 h-5" />
+              <h3 className="text-sm font-black text-white">Delete Order?</h3>
+            </div>
+            <p className="text-xs text-slate-300">
+              Are you sure you want to delete order <span className="font-bold text-white">#{deletingOrder.order_number}</span>?
+            </p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                onClick={() => setDeletingOrder(null)}
+                className="px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 font-bold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteOrder}
+                disabled={deleting}
+                className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs"
+              >
+                {deleting ? "Deleting..." : "Confirm Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

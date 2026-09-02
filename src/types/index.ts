@@ -13,6 +13,21 @@ export interface Category {
   children?: Category[];
 }
 
+export interface Brand {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  logo?: string | null;
+  website?: string | null;
+  is_featured: boolean;
+  display_order: number;
+  products_count?: number;
+  products?: Product[];
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface ProductImage {
   id: number;
   product_id: number;
@@ -42,7 +57,7 @@ export interface Review {
   user_avatar?: string | null;
   rating: number;
   title?: string | null;
-  comment: string;
+  comment?: string | null;
   is_verified_purchase: boolean;
   is_approved?: boolean;
   created_at: string;

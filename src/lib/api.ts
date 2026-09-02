@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Address, AdminAnalytics, Category, CouponValidation, Order, Product, User } from "@/types";
+import { Address, AdminAnalytics, Brand, Category, CouponValidation, Order, Product, User } from "@/types";
 
 const API_BASE_URL = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api")
@@ -84,6 +84,17 @@ export const api = {
     return res.data;
   },
 
+  // Brands
+  async getBrands(): Promise<Brand[]> {
+    const res = await apiClient.get("/brands");
+    return res.data;
+  },
+
+  async getBrand(slug: string): Promise<Brand> {
+    const res = await apiClient.get(`/brands/${slug}`);
+    return res.data;
+  },
+
   // Coupon
   async validateCoupon(code: string, subtotal: number): Promise<CouponValidation> {
     const res = await apiClient.post("/coupons/validate", { code, subtotal });
@@ -134,7 +145,7 @@ export const api = {
   async submitReview(productId: number, data: {
     rating: number;
     title?: string;
-    comment: string;
+    comment?: string;
     user_name?: string;
   }): Promise<any> {
     const res = await apiClient.post(`/products/${productId}/reviews`, data);

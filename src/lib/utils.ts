@@ -41,4 +41,3 @@ export function formatDateTime(dateVal: string | Date | undefined | null): strin
   return `${formatDate(d)}, ${formatTime(d)}`;
 }
 
-

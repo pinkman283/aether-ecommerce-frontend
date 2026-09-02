@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans, Geist } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { cn } from "@/lib/utils";
 
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  variable: "--font-sans",
-});
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "AETHER | Next-Gen Industrial Audio & Setup Gear",
@@ -21,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth">
-      <body className={`${jakarta.variable} font-sans antialiased min-h-screen flex flex-col bg-[#090a0f] text-slate-100`}>
+    <html lang="en" className={cn("dark scroll-smooth", "font-sans", geist.variable)}>
+      <body className={`${geist.variable} font-sans antialiased min-h-screen flex flex-col bg-[#090a0f] text-slate-100`}>
         <AppProviders>
           {children}
         </AppProviders>

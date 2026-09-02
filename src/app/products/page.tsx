@@ -33,6 +33,12 @@ function ProductCatalogContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [perPage, setPerPage] = useState(12);
+
   // Filters State
   const [search, setSearch] = useState(currentSearch);
   const [selectedCategory, setSelectedCategory] = useState(currentCategory);
@@ -60,13 +66,19 @@ function ProductCatalogContent() {
     setSearch(searchParams.get("search") || "");
   }, [searchParams]);
 
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, search, sort, minPrice, maxPrice, minRating, inStockOnly]);
+
   useEffect(() => {
     async function fetchCatalog() {
       setLoading(true);
       try {
         const params: any = {
           sort,
-          per_page: 24,
+          per_page: perPage,
+          page: currentPage,
         };
         if (selectedCategory) params.category = selectedCategory;
         if (search.trim()) params.search = search;
@@ -77,6 +89,9 @@ function ProductCatalogContent() {
 
         const res = await api.getProducts(params);
         setProducts(res.data || []);
+        if (res.current_page) setCurrentPage(res.current_page);
+        if (res.last_page) setLastPage(res.last_page);
+        if (res.total !== undefined) setTotalCount(res.total);
       } catch (err) {
         console.error("Failed to fetch catalog:", err);
       } finally {
@@ -84,7 +99,7 @@ function ProductCatalogContent() {
       }
     }
     fetchCatalog();
-  }, [selectedCategory, search, sort, minPrice, maxPrice, minRating, inStockOnly]);
+  }, [selectedCategory, search, sort, minPrice, maxPrice, minRating, inStockOnly, currentPage, perPage]);
 
   const handleCategoryClick = (slug: string) => {
     const nextSlug = selectedCategory === slug ? "" : slug;
@@ -132,7 +147,7 @@ function ProductCatalogContent() {
       </div>
 
       {/* Top Search & Filter Bar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-[#0e121e] border border-white/10 mb-8">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl theme-card mb-8">
         {/* Search input */}
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -172,11 +187,11 @@ function ProductCatalogContent() {
               onChange={(e) => setSort(e.target.value)}
               className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
             >
-              <option value="popular" className="bg-[#0e121e]">Most Popular</option>
-              <option value="newest" className="bg-[#0e121e]">Newest Releases</option>
-              <option value="rating" className="bg-[#0e121e]">Top Rated</option>
-              <option value="price_asc" className="bg-[#0e121e]">Price: Low to High</option>
-              <option value="price_desc" className="bg-[#0e121e]">Price: High to Low</option>
+              <option value="popular">Most Popular</option>
+              <option value="newest">Newest Releases</option>
+              <option value="rating">Top Rated</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
             </select>
           </div>
 
@@ -198,7 +213,7 @@ function ProductCatalogContent() {
         
         {/* Left Filter Sidebar (Desktop) */}
         <aside className="hidden md:block space-y-6">
-          <div className="p-5 rounded-3xl bg-[#0e121e] border border-white/10 space-y-6 sticky top-24">
+          <div className="p-5 rounded-3xl theme-card space-y-6 sticky top-24">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <Filter className="w-3.5 h-3.5 text-cyan-400" /> Filter Gear
@@ -363,14 +378,34 @@ function ProductCatalogContent() {
             </div>
           )}
 
+          {/* Results Summary Bar */}
+          {!loading && products.length > 0 && (
+            <div className="flex items-center justify-between pb-4 mb-2 text-xs text-slate-400">
+              <span>
+                Showing <strong className="text-white">{products.length}</strong> of <strong className="text-white">{totalCount || products.length}</strong> hardware models
+              </span>
+              {lastPage > 1 && (
+                <span className="text-[11px] font-mono">
+                  Page {currentPage} of {lastPage}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Catalog Grid */}
           {loading ? (
-            <div className="py-24 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
-              <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs font-bold uppercase tracking-wider">Loading Studio Catalog...</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-3xl theme-card p-4 space-y-4 animate-pulse">
+                  <div className="w-full aspect-square rounded-2xl bg-white/5" />
+                  <div className="h-4 bg-white/5 rounded w-3/4" />
+                  <div className="h-3 bg-white/5 rounded w-1/2" />
+                  <div className="h-9 bg-white/5 rounded-2xl mt-4" />
+                </div>
+              ))}
             </div>
           ) : products.length === 0 ? (
-            <div className="p-12 rounded-3xl bg-[#0e121e] border border-white/10 text-center space-y-4">
+            <div className="p-12 rounded-3xl theme-card text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto">
                 <Search className="w-8 h-8 text-slate-500" />
               </div>
@@ -380,16 +415,64 @@ function ProductCatalogContent() {
               </p>
               <button
                 onClick={clearAllFilters}
-                className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition-all"
+                className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition-all cursor-pointer"
               >
                 Clear All Filters
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {lastPage > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-6 border-t border-white/10">
+                  <button
+                    disabled={currentPage <= 1}
+                    onClick={() => {
+                      setCurrentPage((p) => Math.max(1, p - 1));
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-white/10 transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                  >
+                    ← Previous
+                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    {Array.from({ length: lastPage }, (_, i) => i + 1).map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        onClick={() => {
+                          setCurrentPage(pageNum);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          currentPage === pageNum
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                            : "bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    disabled={currentPage >= lastPage}
+                    onClick={() => {
+                      setCurrentPage((p) => Math.min(lastPage, p + 1));
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-white/10 transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

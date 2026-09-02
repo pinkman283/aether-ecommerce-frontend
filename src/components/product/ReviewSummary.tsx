@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Star, ShieldCheck, Plus, CheckCircle2, AlertCircle } from "lucide-react";
+import { Star, ShieldCheck, Plus, CheckCircle2, AlertCircle, X } from "lucide-react";
 import { Review } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
+import { toast } from "sonner";
 
 interface ReviewSummaryProps {
   productId: number;
@@ -34,29 +35,38 @@ export function ReviewSummary({
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim()) return;
+    if (rating < 1 || rating > 5) {
+      toast.error("Please select a rating score between 1 and 5 stars.");
+      return;
+    }
 
     setLoading(true);
     try {
       const res = await api.submitReview(productId, {
         rating,
-        title,
-        comment,
-        user_name: userName || "Verified Studio Buyer",
+        title: title.trim() || undefined,
+        comment: comment.trim() || undefined,
+        user_name: userName.trim() || (user?.name || "Verified Studio Buyer"),
       });
 
       if (res.review) {
         setLocalReviews([res.review, ...localReviews]);
       }
-      setSuccessMsg("Your review has been verified and published!");
+      const successFeedback = comment.trim() 
+        ? "Your review and rating have been published!" 
+        : "Your rating has been successfully submitted!";
+      toast.success(successFeedback);
+      setSuccessMsg(successFeedback);
       setTimeout(() => {
         setIsModalOpen(false);
         setSuccessMsg(null);
         setTitle("");
         setComment("");
-      }, 1500);
-    } catch (err) {
+      }, 1200);
+    } catch (err: any) {
       console.error(err);
+      const errMsg = err?.response?.data?.message || "Failed to submit review. Please try again.";
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -79,12 +89,12 @@ export function ReviewSummary({
           onClick={() => setIsModalOpen(true)}
           className="self-start md:self-auto px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs font-bold text-white flex items-center gap-2 transition-all hover:border-indigo-400/40"
         >
-          <Plus className="w-4 h-4 text-cyan-400" /> Write a Review
+          <Plus className="w-4 h-4 text-cyan-400" /> Write a Review / Rate
         </button>
       </div>
 
       {/* Breakdown Card */}
-      <div className="p-6 rounded-3xl bg-[#0e121e] border border-white/10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+      <div className="p-6 rounded-3xl theme-card grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
         <div className="md:col-span-4 text-center md:text-left border-b md:border-b-0 md:border-r border-white/10 pb-6 md:pb-0 md:pr-8">
           <span className="text-5xl font-black text-white">{Number(ratingAverage || 0).toFixed(1)}</span>
           <div className="flex justify-center md:justify-start gap-1 text-amber-400 my-2">
@@ -123,12 +133,12 @@ export function ReviewSummary({
       {/* Reviews List */}
       <div className="space-y-4">
         {localReviews.length === 0 ? (
-          <p className="text-xs text-slate-400 italic">No reviews yet. Be the first to share your thoughts!</p>
+          <p className="text-xs text-slate-400 italic">No reviews yet. Be the first to share your rating!</p>
         ) : (
           localReviews.map((rev) => (
             <div
               key={rev.id}
-              className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3"
+              className="p-5 rounded-2xl theme-card space-y-3"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -165,7 +175,11 @@ export function ReviewSummary({
               {rev.title && (
                 <h5 className="text-xs font-extrabold text-slate-200">{rev.title}</h5>
               )}
-              <p className="text-xs text-slate-400 leading-relaxed">{rev.comment}</p>
+              {rev.comment ? (
+                <p className="text-xs text-slate-400 leading-relaxed">{rev.comment}</p>
+              ) : (
+                <p className="text-[11px] text-slate-500 italic">Rated {rev.rating} out of 5 stars</p>
+              )}
             </div>
           ))
         )}
@@ -179,10 +193,19 @@ export function ReviewSummary({
             className="fixed inset-0 bg-black/80 backdrop-blur-sm"
           />
 
-          <div className="relative w-full max-w-lg rounded-3xl bg-[#0e121e] border border-white/15 shadow-2xl p-6 sm:p-8 z-10">
-            <h3 className="text-lg font-black text-white mb-1">Write a Review</h3>
+          <div className="relative w-full max-w-lg rounded-3xl theme-card p-6 sm:p-8 z-10 animate-in fade-in zoom-in-95 duration-200">
+            {/* Close Button X */}
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-5 right-5 p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white transition-all cursor-pointer"
+              title="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <h3 className="text-lg font-black text-white mb-1 pr-8">Submit Rating & Review</h3>
             <p className="text-xs text-slate-400 mb-5">
-              Share your genuine feedback on build quality, acoustics, and daily usability.
+              Select your star rating. Written feedback and headline are optional.
             </p>
 
             {successMsg ? (
@@ -194,14 +217,19 @@ export function ReviewSummary({
               <form onSubmit={handleSubmitReview} className="space-y-4">
                 {/* Rating Picker */}
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1.5">Rating Score</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-300">
+                      Rating Score <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-xs font-bold text-amber-400">{rating} of 5 Stars</span>
+                  </div>
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((s) => (
                       <button
                         key={s}
                         type="button"
                         onClick={() => setRating(s)}
-                        className={`p-2 rounded-xl border transition-all ${
+                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
                           s <= rating
                             ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
                             : "bg-white/5 border-white/10 text-slate-600"
@@ -215,7 +243,9 @@ export function ReviewSummary({
 
                 {!isAuthenticated && (
                   <div>
-                    <label className="text-xs font-bold text-slate-300 block mb-1">Your Name</label>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">
+                      Your Name <span className="text-slate-500 font-normal">(Optional)</span>
+                    </label>
                     <input
                       type="text"
                       value={userName}
@@ -227,7 +257,9 @@ export function ReviewSummary({
                 )}
 
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Review Headline</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">
+                    Review Headline <span className="text-slate-500 font-normal">(Optional)</span>
+                  </label>
                   <input
                     type="text"
                     value={title}
@@ -238,13 +270,14 @@ export function ReviewSummary({
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Your Experience</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">
+                    Your Experience <span className="text-slate-500 font-normal">(Optional)</span>
+                  </label>
                   <textarea
                     rows={4}
-                    required
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="What did you think of the ergonomics, acoustic soundstage, and battery performance?"
+                    placeholder="Optional: What did you think of the ergonomics, acoustic soundstage, and battery performance?"
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-3.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
                   />
                 </div>
@@ -253,16 +286,16 @@ export function ReviewSummary({
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold uppercase tracking-wide transition-all shadow-md shadow-indigo-600/30"
+                    className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold uppercase tracking-wide transition-all shadow-md shadow-indigo-600/30 cursor-pointer"
                   >
-                    {loading ? "Submitting..." : "Publish Review"}
+                    {loading ? "Submitting..." : comment.trim() ? "Publish Review" : "Submit Rating"}
                   </button>
                 </div>
               </form>
