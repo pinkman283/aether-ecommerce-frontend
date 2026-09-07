@@ -390,7 +390,7 @@ export default function AdminLeadsPage() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setStatusFilter(tab.id)}
+                onClick={() => setStatusFilter(statusFilter === tab.id ? "all" : tab.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   statusFilter === tab.id
                     ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"

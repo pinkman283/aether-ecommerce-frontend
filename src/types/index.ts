@@ -274,6 +274,7 @@ export interface CouponValidation {
   valid: boolean;
   code?: string;
   type?: 'percentage' | 'fixed';
+  discount_type?: string;
   value?: number;
   discount_amount?: number;
   message: string;
@@ -805,3 +806,887 @@ export interface AuditLogsResponse {
   stats: AuditLogStats;
   facets: AuditLogFacets;
 }
+
+// ==========================================
+// ACCOUNTING & GENERAL LEDGER TYPES
+// ==========================================
+
+export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'cogs' | 'expense';
+
+export interface ChartOfAccountItem {
+  id: number;
+  account_code: string;
+  account_name: string;
+  account_type: AccountType;
+  parent_id?: number | null;
+  is_system: boolean;
+  is_active: boolean;
+  description?: string | null;
+  balance: number;
+  normal_balance: 'Debit' | 'Credit';
+}
+
+export interface JournalEntryLineItem {
+  id: number;
+  journal_entry_id: number;
+  chart_of_account_id: number;
+  debit: number;
+  credit: number;
+  memo?: string | null;
+  account?: ChartOfAccountItem;
+  journal_entry?: {
+    id: number;
+    entry_number: string;
+    entry_date: string;
+    reference_type?: string | null;
+    reference_number?: string | null;
+    narration: string;
+  } | null;
+  journalEntry?: {
+    id: number;
+    entry_number: string;
+    entry_date: string;
+    reference_type?: string | null;
+    reference_number?: string | null;
+    narration: string;
+  } | null;
+}
+
+export interface JournalEntryItem {
+  id: number;
+  entry_number: string;
+  entry_date: string;
+  reference_type?: string | null;
+  reference_id?: number | null;
+  reference_number?: string | null;
+  narration: string;
+  status: 'posted' | 'draft' | 'void';
+  created_by_user_id?: number | null;
+  created_by_user?: {
+    id: number;
+    name: string;
+    email: string;
+  } | null;
+  lines: JournalEntryLineItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BankAccountItem {
+  id: number;
+  account_name: string;
+  account_type: 'cash' | 'bank' | 'mfs';
+  account_number?: string | null;
+  bank_name?: string | null;
+  branch_name?: string | null;
+  chart_of_account_id?: number | null;
+  chart_of_account?: ChartOfAccountItem | null;
+  opening_balance: number;
+  current_balance: number;
+  is_active: boolean;
+}
+
+export interface CustomerPaymentItem {
+  id: number;
+  payment_number: string;
+  order_id: number;
+  user_id?: number | null;
+  amount: number;
+  payment_method: string;
+  bank_account_id?: number | null;
+  bank_account?: BankAccountItem | null;
+  payment_date: string;
+  reference_number?: string | null;
+  notes?: string | null;
+  created_by_user?: {
+    id: number;
+    name: string;
+  } | null;
+  order?: {
+    id: number;
+    order_number: string;
+    customer_name: string;
+    total_amount: number;
+  } | null;
+}
+
+export interface SupplierPaymentItem {
+  id: number;
+  payment_number: string;
+  purchase_order_id?: number | null;
+  vendor_id: number;
+  vendor?: {
+    id: number;
+    name: string;
+    vendor_code?: string;
+  } | null;
+  purchase_order?: {
+    id: number;
+    po_number: string;
+  } | null;
+  amount: number;
+  payment_method: string;
+  bank_account_id?: number | null;
+  bank_account?: BankAccountItem | null;
+  payment_date: string;
+  reference_number?: string | null;
+  notes?: string | null;
+  created_by_user?: {
+    id: number;
+    name: string;
+  } | null;
+}
+
+export interface AccountingOverviewResponse {
+  success: boolean;
+  period: {
+    from: string;
+    to: string;
+  };
+  kpis: {
+    gross_revenue: number;
+    discounts: number;
+    net_revenue: number;
+    cogs: number;
+    gross_profit: number;
+    gross_margin_percent: number;
+    operating_expenses: number;
+    net_profit: number;
+    net_margin_percent: number;
+    accounts_receivable: number;
+    accounts_payable: number;
+    liquid_cash_and_bank: number;
+    inventory_valuation: number;
+    collected_in_period?: number;
+    disbursed_in_period?: number;
+  };
+  revenue_breakdown?: {
+    online_sales: number;
+    pos_sales: number;
+    shipping_income: number;
+    discounts: number;
+    returns: number;
+  };
+  expense_breakdown: {
+    account_code: string;
+    account_name: string;
+    total_amount: number;
+  }[];
+  daily_trends: {
+    date: string;
+    revenue: number;
+    cogs: number;
+    expense: number;
+    total_cost?: number;
+    gross_profit?: number;
+    net_profit: number;
+  }[];
+  bank_accounts: BankAccountItem[];
+  recent_entries: JournalEntryItem[];
+}
+
+export interface AccountingLedgerResponse {
+  success: boolean;
+  entries: {
+    data: JournalEntryItem[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+  summary: {
+    total_debit: number;
+    total_credit: number;
+    is_balanced: boolean;
+  };
+}
+
+export interface AccountingReceivablesResponse {
+  success: boolean;
+  summary?: {
+    total_invoiced: number;
+    total_collected: number;
+    total_due: number;
+    collection_rate_percent: number;
+    due_soon: number;
+    overdue: number;
+  };
+  aging: {
+    current: number;
+    days_31_60: number;
+    days_61_90: number;
+    days_90_plus: number;
+    total: number;
+  };
+  receivables: {
+    id: number;
+    order_number: string;
+    customer_name: string;
+    customer_email?: string | null;
+    customer_phone?: string | null;
+    order_date: string;
+    days_open: number;
+    total_amount: number;
+    paid_amount: number;
+    due_amount: number;
+    payment_status: string;
+    order_status: string;
+  }[];
+  recent_payments: CustomerPaymentItem[];
+}
+
+export interface AccountingPayablesResponse {
+  success: boolean;
+  summary?: {
+    total_billed: number;
+    total_paid: number;
+    total_due: number;
+    disbursement_rate_percent: number;
+    due_soon: number;
+    overdue: number;
+  };
+  aging: {
+    current: number;
+    days_31_60: number;
+    days_61_90: number;
+    days_90_plus: number;
+    total: number;
+  };
+  payables: {
+    id: number;
+    receipt_number: string;
+    po_number?: string | null;
+    purchase_order_id?: number | null;
+    vendor_id: number;
+    vendor_name?: string;
+    received_date: string;
+    days_open: number;
+    total_amount: number;
+    paid_amount: number;
+    due_amount: number;
+  }[];
+  recent_payments: SupplierPaymentItem[];
+  vendors: {
+    id: number;
+    name: string;
+    vendor_code?: string;
+    email?: string;
+    phone?: string;
+  }[];
+}
+
+export interface AccountingBankingResponse {
+  success: boolean;
+  accounts: BankAccountItem[];
+  summary: {
+    total_cash: number;
+    total_bank: number;
+    total_mfs: number;
+    total_liquidity: number;
+  };
+  recent_transactions: JournalEntryLineItem[];
+}
+
+export interface AccountingReportsResponse {
+  success: boolean;
+  period: {
+    from: string;
+    to: string;
+  };
+  income_statement: {
+    revenue_lines: { code: string; name: string; amount: number }[];
+    total_revenue: number;
+    cogs_lines: { code: string; name: string; amount: number }[];
+    total_cogs: number;
+    gross_profit: number;
+    gross_margin_percent: number;
+    expense_lines: { code: string; name: string; amount: number }[];
+    total_expenses: number;
+    net_income: number;
+    net_margin_percent: number;
+  };
+  balance_sheet: {
+    as_of_date: string;
+    assets: { code: string; name: string; amount: number }[];
+    total_assets: number;
+    liabilities: { code: string; name: string; amount: number }[];
+    total_liabilities: number;
+    equity: { code: string; name: string; amount: number }[];
+    total_equity: number;
+    total_liabilities_and_equity: number;
+    is_balanced: boolean;
+  };
+  cash_flow: {
+    cash_from_customers: number;
+    cash_paid_suppliers: number;
+    cash_paid_expenses: number;
+    net_operating_cash_flow: number;
+    opening_cash_balance: number;
+    closing_cash_balance: number;
+  };
+  trial_balance: {
+    accounts: {
+      code: string;
+      name: string;
+      type: AccountType;
+      total_debit: number;
+      total_credit: number;
+      ending_debit: number;
+      ending_credit: number;
+    }[];
+    total_debit: number;
+    total_credit: number;
+    is_balanced: boolean;
+  };
+}
+
+// ==========================================
+// Phase 1: Products Palette & Storefront CMS
+// ==========================================
+
+export interface Color {
+  id: number;
+  name: string;
+  hex_code: string;
+  status: 'active' | 'inactive';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BlogCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  posts_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BlogTag {
+  id: number;
+  name: string;
+  slug: string;
+  posts_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BlogPost {
+  id: number;
+  category_id?: number | null;
+  author_id?: number | null;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  content: string;
+  featured_image?: string | null;
+  status: 'published' | 'draft' | 'archived';
+  views_count: number;
+  published_at?: string | null;
+  category?: BlogCategory;
+  tags?: BlogTag[];
+  author?: { id: number; name: string; email?: string };
+  comments_count?: number;
+  comments?: BlogComment[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BlogComment {
+  id: number;
+  post_id: number;
+  user_id?: number | null;
+  author_name: string;
+  author_email: string;
+  comment: string;
+  is_approved: boolean;
+  post?: { id: number; title: string; slug: string };
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BlogSummary {
+  metrics: {
+    total_posts: number;
+    published_posts: number;
+    draft_posts: number;
+    total_categories: number;
+    total_tags: number;
+    total_comments: number;
+    pending_comments: number;
+    total_views: number;
+  };
+  recent_posts: BlogPost[];
+}
+
+export interface CmsPage {
+  id: number;
+  title: string;
+  slug: string;
+  content: string;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FooterLink {
+  id: number;
+  column_group: string;
+  title: string;
+  url: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SocialLink {
+  id: number;
+  platform: string;
+  url: string;
+  icon?: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ==========================================
+// Phase 2: Reviews & Marketing Banners
+// ==========================================
+
+export interface ReviewSummary {
+  total_reviews: number;
+  approved_reviews: number;
+  pending_reviews: number;
+  average_rating: number;
+  rating_distribution: Record<number, number>;
+}
+
+export type BannerDestinationType = 'product' | 'category' | 'brand' | 'collection' | 'promotion' | 'page' | 'custom';
+
+export interface Banner {
+  id: number;
+  title: string;
+  subtitle?: string | null;
+  eyebrow?: string | null;
+  image_url: string;
+  mobile_image_url?: string | null;
+  alt_text?: string | null;
+  cta_text?: string | null;
+  cta_link?: string | null;
+  destination_type?: BannerDestinationType;
+  destination_id?: number | null;
+  promotion_id?: number | null;
+  placement: string;
+  badge?: string | null;
+  discount_tag?: string | null;
+  sort_order: number;
+  is_active: boolean;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  clicks_count: number;
+  impressions_count: number;
+  computed_link?: string;
+  is_currently_visible?: boolean;
+  promotion?: Promotion | null;
+  product?: { id: number; name: string; slug: string; price: number; compare_at_price?: number | null } | null;
+  category?: { id: number; name: string; slug: string } | null;
+  brand?: { id: number; name: string; slug: string } | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface HomepageBannersResponse {
+  primary_banners: Banner[];
+  secondary_banners: Banner[];
+  bottom_banners?: Banner[];
+  middle_banners?: Banner[];
+  top_strip?: Banner | null;
+  all_active_count: number;
+}
+
+
+// ==========================================
+// Phase 3: Integrations & Extended Settings
+// ==========================================
+
+export interface Integration {
+  id: number;
+  provider: string;
+  name: string;
+  category: 'payment' | 'sms' | 'email' | 'courier' | 'whatsapp' | 'analytics' | 'fraud';
+  description?: string | null;
+  icon?: string | null;
+  is_enabled: boolean;
+  is_test_mode: boolean;
+  credentials?: Record<string, any>;
+  settings?: Record<string, any>;
+  last_tested_at?: string | null;
+  test_status: 'connected' | 'failed' | 'untested';
+  test_message?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface IntegrationStats {
+  total: number;
+  active: number;
+  connected: number;
+  categories: string[];
+}
+
+export interface ShippingZone {
+  id: string;
+  name: string;
+  rate: number;
+  duration: string;
+  free_threshold: number;
+  is_active: boolean;
+}
+
+export interface OrderStatusConfig {
+  id: string;
+  label: string;
+  color: string;
+  is_system: boolean;
+  sms_trigger: boolean;
+  email_trigger: boolean;
+}
+
+export interface SeoSettings {
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  google_site_verification?: string;
+  bing_site_verification?: string;
+  og_image?: string;
+  canonical_base_url?: string;
+}
+
+export interface PwaSettings {
+  name?: string;
+  short_name?: string;
+  theme_color?: string;
+  background_color?: string;
+  display?: string;
+  orientation?: string;
+  start_url?: string;
+  scope?: string;
+  icon_192?: string;
+  icon_512?: string;
+}
+
+export interface NotificationTemplate {
+  title?: string;
+  sms_body: string;
+  email_subject: string;
+}
+
+export interface BusinessContactSettings {
+  legal_name?: string;
+  hotline?: string;
+  support_email?: string;
+  whatsapp_number?: string;
+  warehouse_address?: string;
+  order_prefix?: string;
+  invoice_prefix?: string;
+  currency_symbol?: string;
+  currency_code?: string;
+}
+
+export interface ExtendedSettingsResponse {
+  shipping_zones: ShippingZone[];
+  order_statuses: OrderStatusConfig[];
+  seo_meta: SeoSettings;
+  pwa_manifest: PwaSettings;
+  notification_templates: Record<string, NotificationTemplate>;
+  business_contact: BusinessContactSettings;
+  general: Record<string, any>;
+  system_info: {
+    php_version: string;
+    laravel_version: string;
+    server_software: string;
+    environment: string;
+    cache_driver: string;
+    database_driver: string;
+  };
+}
+
+// ==========================================
+// Phase 4: 14-Report Analytics & Intelligence
+// ==========================================
+
+export interface ReportSummaryItem {
+  label: string;
+  value: string | number;
+}
+
+export interface ReportData {
+  report_type: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  generated_at: string;
+  summary: ReportSummaryItem[];
+  columns: string[];
+  rows: Array<Record<string, any>>;
+  status_breakdown?: Array<Record<string, any>>;
+}
+
+// ==========================================
+// Enterprise Promotions & Discounts System
+// ==========================================
+
+export type PromotionType =
+  | 'discount_code'
+  | 'claimable_coupon'
+  | 'automatic_discount'
+  | 'customer_reward'
+  | 'next_order_discount';
+
+export type DiscountType =
+  | 'percentage'
+  | 'fixed_amount'
+  | 'free_shipping'
+  | 'buy_x_get_y'
+  | 'product_fixed_discount'
+  | 'product_percentage_discount';
+
+export type PromotionStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'active'
+  | 'paused'
+  | 'expired'
+  | 'archived';
+
+export interface PromotionCode {
+  id: number;
+  promotion_id: number;
+  code: string;
+  usage_limit: number | null;
+  used_count: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PromotionProductTarget {
+  id: number;
+  promotion_id: number;
+  target_type: 'product' | 'category' | 'brand';
+  target_id: number;
+  is_exclusion: boolean;
+}
+
+export interface PromotionCustomerRestriction {
+  id: number;
+  promotion_id: number;
+  user_id: number;
+  reason?: string;
+  is_used: boolean;
+  used_at?: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+export interface Promotion {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  promotion_type: PromotionType;
+  discount_type: DiscountType;
+  discount_value: number;
+  max_discount_amount?: number | null;
+  bxgy_buy_quantity?: number | null;
+  bxgy_get_quantity?: number | null;
+  bxgy_reward_discount_percent?: number | null;
+  bxgy_max_applications?: number | null;
+  applies_to: 'entire_order' | 'specific_products' | 'specific_categories' | 'specific_brands' | 'shipping';
+  status: PromotionStatus;
+  min_order_amount: number;
+  max_order_amount?: number | null;
+  min_quantity?: number | null;
+  max_quantity?: number | null;
+  customer_eligibility: 'all' | 'specific_customers' | 'new_customers' | 'existing_customers' | 'first_order_only' | 'next_order_only';
+  payment_methods?: string[] | null;
+  shipping_methods?: string[] | null;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  claim_deadline?: string | null;
+  claim_validity_days?: number | null;
+  total_usage_limit?: number | null;
+  total_used_count: number;
+  per_customer_usage_limit: number;
+  total_claim_limit?: number | null;
+  total_claimed_count: number;
+  is_stackable: boolean;
+  can_combine_with_free_shipping: boolean;
+  can_combine_with_order_discounts: boolean;
+  can_combine_with_product_discounts: boolean;
+  priority: number;
+  banner_image?: string | null;
+  thumbnail_image?: string | null;
+  badge_text?: string | null;
+  cta_text?: string | null;
+  cta_destination?: string | null;
+  is_featured: boolean;
+  codes?: PromotionCode[];
+  product_targets?: PromotionProductTarget[];
+  customer_restrictions?: PromotionCustomerRestriction[];
+  claims_count?: number;
+  redemptions_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PromotionClaim {
+  id: number;
+  promotion_id: number;
+  user_id: number;
+  claimed_code: string;
+  status: 'claimed' | 'redeemed' | 'expired';
+  claimed_at: string;
+  expires_at?: string | null;
+  redeemed_at?: string | null;
+  promotion?: Promotion;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  order?: {
+    id: number;
+    order_number: string;
+  };
+}
+
+export interface PromotionRedemption {
+  id: number;
+  promotion_id?: number | null;
+  promotion_code_id?: number | null;
+  promotion_claim_id?: number | null;
+  order_id: number;
+  user_id?: number | null;
+  customer_email: string;
+  code_used?: string | null;
+  promotion_type: string;
+  discount_type: string;
+  discount_amount: number;
+  order_subtotal: number;
+  order_total: number;
+  created_at: string;
+  promotion?: {
+    id: number;
+    name: string;
+  };
+  order?: {
+    id: number;
+    order_number: string;
+  };
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+export interface StoreCreditAccount {
+  id: number;
+  user_id: number;
+  balance: number;
+  total_credited: number;
+  total_debited: number;
+  is_frozen: boolean;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+  };
+  updated_at: string;
+}
+
+export interface StoreCreditTransaction {
+  id: number;
+  account_id: number;
+  user_id: number;
+  type: 'credit' | 'debit' | 'adjustment' | 'refund' | 'reward' | 'compensation';
+  amount: number;
+  balance_after: number;
+  reason: string;
+  reference_type?: string | null;
+  reference_id?: string | null;
+  created_at: string;
+  created_by?: {
+    id: number;
+    name: string;
+  };
+}
+
+export interface AppliedPromotionItem {
+  promotion_id: number;
+  promotion_name: string;
+  code?: string | null;
+  claim_id?: number | null;
+  type: string;
+  discount_type: string;
+  discount_amount: number;
+  breakdown?: string | null;
+}
+
+export interface PromotionEvaluationResult {
+  valid: boolean;
+  subtotal: number;
+  item_discount: number;
+  order_discount: number;
+  shipping_discount: number;
+  total_discount: number;
+  shipping_amount: number;
+  base_shipping_rate: number;
+  tax_amount: number;
+  grand_total: number;
+  applied_promotions: AppliedPromotionItem[];
+  message?: string | null;
+  error_message?: string | null;
+  customer_store_credit_balance?: number;
+}
+
+export interface PromotionAnalyticsData {
+  kpis: {
+    total_redemptions: number;
+    total_discount_volume: number;
+    total_revenue_with_promos: number;
+    total_claims: number;
+    redeemed_claims: number;
+    expired_claims: number;
+    claim_conversion_rate: number;
+    store_credit_issued: number;
+    store_credit_redeemed: number;
+    active_store_credit_balance: number;
+  };
+  top_promotions: {
+    id: number;
+    name: string;
+    promotion_type: string;
+    discount_type: string;
+    discount_value: number;
+    total_used_count: number;
+    redemptions_count: number;
+  }[];
+  recent_trend: {
+    date: string;
+    count: number;
+    discount_sum: number;
+    revenue_sum: number;
+  }[];
+}
+

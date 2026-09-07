@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +34,8 @@ export function CartDrawer() {
     appliedCoupon,
     applyCoupon,
     removeCoupon,
+    promotionEvaluation,
+    setPromotionEvaluation,
     getSubtotal,
     getDiscount,
     getShipping,
@@ -58,6 +60,36 @@ export function CartDrawer() {
   const freeShippingProgress = Math.min(100, (subtotal / freeShippingThreshold) * 100);
   const amountToFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
 
+  // Auto-evaluate promotions on cart change
+  useEffect(() => {
+    if (!isCartOpen || items.length === 0) return;
+
+    let isMounted = true;
+    const evaluate = async () => {
+      try {
+        const payload = {
+          items: items.map((i) => ({
+            product_id: i.product.id,
+            quantity: i.quantity,
+            price: Number(i.product.price) + (i.variant ? Number(i.variant.price_modifier) : 0),
+            category_id: (i.product as any).category_id,
+          })),
+          code: appliedCoupon?.code || undefined,
+        };
+        const res = await api.evaluatePromotions(payload);
+        if (isMounted && res.valid) {
+          setPromotionEvaluation(res);
+        }
+      } catch (e) {
+        // silent fallback
+      }
+    };
+    evaluate();
+    return () => {
+      isMounted = false;
+    };
+  }, [isCartOpen, items, appliedCoupon?.code, setPromotionEvaluation]);
+
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!couponInput.trim()) return;
@@ -66,12 +98,29 @@ export function CartDrawer() {
     setCouponError(null);
 
     try {
-      const result = await api.validateCoupon(couponInput, subtotal);
+      const payload = {
+        items: items.map((i) => ({
+          product_id: i.product.id,
+          quantity: i.quantity,
+          price: Number(i.product.price) + (i.variant ? Number(i.variant.price_modifier) : 0),
+          category_id: (i.product as any).category_id,
+        })),
+        code: couponInput.trim(),
+      };
+      const result = await api.evaluatePromotions(payload);
       if (result.valid) {
-        applyCoupon(result);
+        setPromotionEvaluation(result);
+        applyCoupon({
+          valid: true,
+          code: couponInput.trim().toUpperCase(),
+          discount_type: (result.applied_promotions?.[0]?.discount_type as any) || "fixed",
+          value: result.total_discount,
+          discount_amount: result.total_discount,
+          message: result.message || "Promotion applied!",
+        });
         setCouponInput("");
       } else {
-        setCouponError(result.message || "Invalid coupon code.");
+        setCouponError(result.error_message || "Invalid or ineligible promotion code.");
       }
     } catch (err: any) {
       setCouponError(err.response?.data?.message || "Failed to validate coupon.");
@@ -318,12 +367,27 @@ export function CartDrawer() {
                       <span className="text-white font-medium">{formatPrice(subtotal)}</span>
                     </div>
 
-                    {discount > 0 && (
+                    {/* Itemized Applied Promotions */}
+                    {promotionEvaluation?.applied_promotions && promotionEvaluation.applied_promotions.length > 0 ? (
+                      <div className="space-y-1 py-1 border-t border-dashed border-white/10">
+                        {promotionEvaluation.applied_promotions.map((p, idx) => (
+                          <div key={idx} className="flex justify-between text-[11px] text-amber-300">
+                            <span className="flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-amber-400" />
+                              {p.promotion_name} {p.code ? `(${p.code})` : ""}
+                            </span>
+                            <span className="font-mono font-bold">
+                              {p.discount_amount > 0 ? `-${formatPrice(p.discount_amount)}` : "Applied"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : discount > 0 ? (
                       <div className="flex justify-between text-emerald-400 font-medium">
-                        <span>Coupon Discount</span>
+                        <span>Discount</span>
                         <span>-{formatPrice(discount)}</span>
                       </div>
-                    )}
+                    ) : null}
 
                     <div className="flex justify-between">
                       <span>Estimated Shipping</span>

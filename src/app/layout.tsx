@@ -1,26 +1,119 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Geist } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/AppProviders";
 import { cn } from "@/lib/utils";
+import { DEFAULT_THEME_SETTINGS, ThemeSettings, getHexLuminance, useThemeStore } from "@/store/useThemeStore";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
-export const metadata: Metadata = {
-  title: "AETHER | Next-Gen Industrial Audio & Setup Gear",
-  description: "State-of-the-art studio monitors, active noise-cancelling headphones, custom mechanical keyboards, and modular daily essentials.",
-  keywords: ["Aether Audio", "Studio Headphones", "Mechanical Keyboard", "EDC Backpack", "Audiophile Gear"],
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const serverTheme = await getServerTheme();
+  const brand = serverTheme.store_brand_name || "AETHER";
+  const tagline = serverTheme.store_brand_tagline || "Official Store";
+  return {
+    title: `${brand} | ${tagline}`,
+    description: `Official ${brand} online store. Premium hardware, custom audio acoustics, and modular daily essentials.`,
+    keywords: [brand, "Studio Equipment", "Audio Gear", "Online Store", "Hardware"],
+  };
+}
 
-export default function RootLayout({
+async function getServerTheme(): Promise<ThemeSettings> {
+  try {
+    const apiUrl = process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api";
+    const res = await fetch(`${apiUrl}/theme-settings`, {
+      cache: "no-store",
+      next: { revalidate: 0 },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { ...DEFAULT_THEME_SETTINGS, ...data };
+    }
+  } catch (err) {
+    console.warn("SSR theme fetch fallback triggered:", err);
+  }
+  return DEFAULT_THEME_SETTINGS;
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const serverTheme = await getServerTheme();
+  useThemeStore.setState({ theme: serverTheme, isLoaded: true });
+  const isLight = getHexLuminance(serverTheme.theme_bg_color) > 0.45;
+  const isFooterLight = getHexLuminance(serverTheme.theme_footer_bg_color || "#1f242e") > 0.45;
+  const footerBg = serverTheme.theme_footer_bg_color || "#1f242e";
+  const footerText = serverTheme.theme_footer_text_color || (isFooterLight ? "#475569" : "#94a3b8");
+  const footerBorder = isFooterLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.08)";
+  const footerHeading = isFooterLight ? "#0f172a" : "#ffffff";
+  const footerRibbonBg = isFooterLight ? "rgba(0, 0, 0, 0.02)" : "rgba(255, 255, 255, 0.02)";
+  const footerInputBg = isFooterLight ? "#ffffff" : "rgba(255, 255, 255, 0.05)";
+  const footerInputBorder = isFooterLight ? "#cbd5e1" : "rgba(255, 255, 255, 0.12)";
+  const footerInputText = isFooterLight ? "#0f172a" : "#ffffff";
+  const footerSocialBg = isFooterLight ? "#ffffff" : "rgba(255, 255, 255, 0.05)";
+  const footerSocialBorder = isFooterLight ? "#e2e8f0" : "rgba(255, 255, 255, 0.1)";
+  const footerLogoBg = isFooterLight ? "#f8fafc" : "#0d1017";
+
   return (
-    <html lang="en" className={cn("dark scroll-smooth", "font-sans", geist.variable)}>
-      <body className={`${geist.variable} font-sans antialiased min-h-screen flex flex-col bg-[#090a0f] text-slate-100`}>
-        <AppProviders>
+    <html
+      lang="en"
+      className={cn(isLight ? "theme-light-mode" : "dark", "scroll-smooth font-sans", geist.variable)}
+      suppressHydrationWarning
+    >
+      <head>
+        {serverTheme.store_brand_logo && (
+          <link rel="preload" as="image" href={serverTheme.store_brand_logo} fetchPriority="high" />
+        )}
+        {serverTheme.split_reveal_image && (
+          <link rel="preload" as="image" href={serverTheme.split_reveal_image} fetchPriority="high" />
+        )}
+        <style
+          id="theme-server-vars"
+          dangerouslySetInnerHTML={{
+            __html: `
+              :root {
+                --theme-primary: ${serverTheme.theme_primary_color};
+                --theme-secondary: ${serverTheme.theme_secondary_color};
+                --theme-bg: ${serverTheme.theme_bg_color};
+                --theme-card-bg: ${serverTheme.theme_card_bg_color};
+                --theme-card-border: ${serverTheme.theme_card_border_color || (isLight ? "#e2e8f0" : "rgba(255, 255, 255, 0.08)")};
+                --theme-text-heading: ${serverTheme.theme_text_heading_color || (isLight ? "#0f172a" : "#ffffff")};
+                --theme-text-body: ${serverTheme.theme_text_body_color || (isLight ? "#475569" : "#94a3b8")};
+                --theme-btn-primary-bg: ${serverTheme.theme_btn_primary_bg || serverTheme.theme_primary_color};
+                --theme-btn-primary-text: ${serverTheme.theme_btn_primary_text || "#ffffff"};
+                --theme-btn-secondary-bg: ${serverTheme.theme_btn_secondary_bg || (isLight ? "#f1f5f9" : "rgba(255, 255, 255, 0.05)")};
+                --theme-btn-secondary-text: ${serverTheme.theme_btn_secondary_text || (isLight ? "#0f172a" : "#ffffff")};
+                --theme-tab-active-bg: ${serverTheme.theme_tab_active_bg || serverTheme.theme_primary_color};
+                --theme-tab-active-text: ${serverTheme.theme_tab_active_text || "#ffffff"};
+                --theme-hover-bg: ${serverTheme.theme_hover_bg || (isLight ? "rgba(0, 0, 0, 0.05)" : "rgba(255, 255, 255, 0.08)")};
+                --theme-hover-text: ${serverTheme.theme_hover_text || serverTheme.theme_primary_color};
+                --theme-nav-btn-bg: ${serverTheme.theme_nav_btn_bg || (isLight ? "#ffffff" : "#0c101d")};
+                --theme-nav-btn-color: ${serverTheme.theme_nav_btn_color || (isLight ? "#0f172a" : "#ffffff")};
+                --theme-footer-bg: ${footerBg};
+                --theme-footer-text: ${footerText};
+                --theme-footer-border: ${footerBorder};
+                --theme-footer-heading: ${footerHeading};
+                --theme-footer-ribbon-bg: ${footerRibbonBg};
+                --theme-footer-input-bg: ${footerInputBg};
+                --theme-footer-input-border: ${footerInputBorder};
+                --theme-footer-input-text: ${footerInputText};
+                --theme-footer-social-bg: ${footerSocialBg};
+                --theme-footer-social-border: ${footerSocialBorder};
+                --theme-footer-logo-inner-bg: ${footerLogoBg};
+              }
+            `,
+          }}
+        />
+      </head>
+      <body
+        className={`${geist.variable} font-sans antialiased min-h-screen flex flex-col`}
+        style={{ backgroundColor: serverTheme.theme_bg_color }}
+        suppressHydrationWarning
+      >
+        <AppProviders initialTheme={serverTheme}>
           {children}
         </AppProviders>
       </body>

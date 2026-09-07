@@ -72,7 +72,8 @@ export default function AdminBrandingPage() {
       const dataUrl = event.target?.result as string;
       setBrandLogo(dataUrl);
       setLogoInputUrl(dataUrl);
-      toast.success("Logo uploaded! Click 'Save Branding' to publish.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast.success("New logo uploaded! Previous logo replaced. Click 'Save Branding' to publish.");
     };
     reader.readAsDataURL(file);
   };
@@ -81,7 +82,7 @@ export default function AdminBrandingPage() {
     setBrandLogo("");
     setLogoInputUrl("");
     if (fileInputRef.current) fileInputRef.current.value = "";
-    toast.info("Logo removed. Storefront will use default typography monogram.");
+    toast.info("Logo removed and deleted. Storefront will use default typography monogram.");
   };
 
   const isDirty = useMemo(() => {
@@ -109,11 +110,18 @@ export default function AdminBrandingPage() {
       return;
     }
     setSaving(true);
+    const isCustomSplitTitle = Boolean(
+      initialSettings?.split_reveal_title &&
+      initialSettings.split_reveal_title !== "AETHER" &&
+      initialSettings.split_reveal_title !== (initialSettings.store_brand_name || "AETHER")
+    );
+
     const payload = {
       ...initialSettings,
       store_brand_name: brandName,
       store_brand_tagline: brandTagline,
       store_brand_logo: brandLogo,
+      split_reveal_title: isCustomSplitTitle ? initialSettings.split_reveal_title : brandName,
     };
 
     try {
@@ -226,12 +234,16 @@ export default function AdminBrandingPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
               
               {/* Active Logo Visual Box */}
-              <div className="w-24 h-16 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+              <div className="w-20 h-20 rounded-full border-2 border-cyan-400/40 bg-white/[0.04] p-1.5 flex items-center justify-center shrink-0 shadow-lg relative">
                 {brandLogo ? (
-                  <img src={brandLogo} alt={brandName} className="max-h-12 w-auto object-contain" />
+                  <img
+                    src={brandLogo}
+                    alt={brandName}
+                    className="w-full h-full object-contain rounded-full drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]"
+                  />
                 ) : (
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-sm text-white shadow-sm"
+                    className="w-full h-full rounded-full flex items-center justify-center font-black text-base text-white shadow-md"
                     style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
                   >
                     {brandName?.charAt(0) || "Æ"}

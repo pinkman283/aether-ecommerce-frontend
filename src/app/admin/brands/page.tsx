@@ -26,6 +26,7 @@ import { Brand } from "@/types";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 export default function AdminBrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -467,135 +468,177 @@ export default function AdminBrandsPage() {
         </table>
       </ScrollableTableCard>
 
-      {/* View Brand Modal */}
-      {viewingBrand && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setViewingBrand(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-lg rounded-3xl bg-[#0e121e] border border-cyan-500/30 shadow-2xl p-6 sm:p-8 z-10 max-h-[90vh] overflow-y-auto space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center text-cyan-400 font-black text-sm shrink-0 overflow-hidden">
-                  {viewingBrand.logo ? (
-                    <img src={viewingBrand.logo} alt="" className="w-full h-full object-contain p-1" />
-                  ) : (
-                    <span>{viewingBrand.name.substring(0, 2).toUpperCase()}</span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400 block">
-                    Manufacturer Profile
+      {/* View Brand Slide-Over Drawer */}
+      <Sheet open={!!viewingBrand} onOpenChange={(open) => { if (!open) setViewingBrand(null); }}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:w-[480px] md:w-[520px] sm:!max-w-[520px] max-w-full bg-[#0b0e17] border-l border-white/[0.08] p-0 flex flex-col justify-between shadow-2xl text-slate-100 overflow-hidden"
+        >
+          {viewingBrand && (
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Compact Header: h-12 */}
+              <div className="h-12 px-6 border-b border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2 min-w-0 pr-3">
+                  <SheetTitle className="text-xs font-semibold text-white tracking-wide shrink-0">
+                    Brand Profile
+                  </SheetTitle>
+                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 rounded shrink-0">
+                    #{viewingBrand.id}
                   </span>
-                  <h3 className="text-lg font-black text-white">{viewingBrand.name}</h3>
-                </div>
-              </div>
-              <button onClick={() => setViewingBrand(null)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/5">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Products</span>
-                  <span className="text-sm font-black text-cyan-400">{viewingBrand.products_count ?? 0} Catalog Items</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tier Status</span>
-                  <span className="text-sm font-black text-amber-400">
-                    {viewingBrand.is_featured ? "Featured Tier" : "Standard Tier"}
+                  <span className="text-slate-600 text-xs shrink-0">·</span>
+                  <span className="text-xs text-slate-400 truncate max-w-[200px]">
+                    {viewingBrand.name}
                   </span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingBrand(null)}
+                  className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {viewingBrand.website && (
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Website</span>
-                  <a
-                    href={viewingBrand.website.startsWith("http") ? viewingBrand.website : `https://${viewingBrand.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-cyan-400 hover:text-cyan-300 font-mono text-xs flex items-center gap-1.5"
-                  >
-                    <span>{viewingBrand.website}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              )}
-
-              {viewingBrand.description && (
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Description</span>
-                  <p className="text-slate-300 leading-relaxed">{viewingBrand.description}</p>
-                </div>
-              )}
-
-              {/* Linked Products Preview */}
-              {viewingBrand.products && viewingBrand.products.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-white/5">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Associated Hardware Products
-                  </span>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                    {viewingBrand.products.map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5 text-slate-200"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {p.primary_image?.image_url && (
-                            <img src={p.primary_image.image_url} alt="" className="w-7 h-7 rounded-lg object-cover bg-slate-900 border border-white/10" />
-                          )}
-                          <span className="font-bold truncate text-xs">{p.name}</span>
-                        </div>
-                        <span className="text-cyan-400 font-bold shrink-0 font-mono text-xs">${Number(p.price).toFixed(2)}</span>
-                      </div>
-                    ))}
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 text-xs">
+                <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+                  <div className="w-12 h-12 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center text-cyan-400 font-bold text-sm shrink-0 overflow-hidden">
+                    {viewingBrand.logo ? (
+                      <img src={viewingBrand.logo} alt="" className="w-full h-full object-contain p-1" />
+                    ) : (
+                      <span>{viewingBrand.name.substring(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">{viewingBrand.name}</h4>
+                    <span className="text-[10px] font-mono text-slate-400">{viewingBrand.slug}</span>
                   </div>
                 </div>
-              )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Catalog Items</span>
+                    <p className="text-sm font-bold text-cyan-400">{viewingBrand.products_count ?? 0}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Tier</span>
+                    <p className="text-sm font-bold text-amber-400">
+                      {viewingBrand.is_featured ? "Featured" : "Standard"}
+                    </p>
+                  </div>
+                </div>
+
+                {viewingBrand.website && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Website</span>
+                    <a
+                      href={viewingBrand.website.startsWith("http") ? viewingBrand.website : `https://${viewingBrand.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 font-mono text-xs flex items-center gap-1.5"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>{viewingBrand.website}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+
+                {viewingBrand.description && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Description</span>
+                    <p className="text-slate-300 leading-relaxed text-xs">{viewingBrand.description}</p>
+                  </div>
+                )}
+
+                {viewingBrand.products && viewingBrand.products.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-white/5">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                      Associated Products
+                    </span>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {viewingBrand.products.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/5 text-slate-200"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {p.primary_image?.image_url && (
+                              <img src={p.primary_image.image_url} alt="" className="w-7 h-7 rounded-md object-cover bg-slate-900 border border-white/10" />
+                            )}
+                            <span className="font-medium truncate text-xs">{p.name}</span>
+                          </div>
+                          <span className="text-cyan-400 font-bold shrink-0 font-mono text-xs">${Number(p.price).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Compact Footer: h-12 */}
+              <div className="h-12 px-6 border-t border-white/[0.06] bg-[#0b0e17] flex items-center justify-end shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const b = viewingBrand;
+                    setViewingBrand(null);
+                    handleOpenEdit(b);
+                  }}
+                  className="h-8 px-4 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Edit Brand</span>
+                </button>
+              </div>
             </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
-            <div className="flex justify-end pt-3 border-t border-white/10">
-              <button
-                onClick={() => {
-                  const b = viewingBrand;
-                  setViewingBrand(null);
-                  handleOpenEdit(b);
-                }}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wide transition-all shadow-md cursor-pointer"
-              >
-                Edit Brand
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create / Edit Brand Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-md rounded-2xl bg-[#0e121e] border border-white/15 shadow-2xl p-6 sm:p-8 z-10 space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="text-lg font-black text-white">
-                {editingBrand ? `Edit Brand: ${editingBrand.name}` : "Create New Brand"}
-              </h3>
+      {/* Create / Edit Brand Slide-over Drawer */}
+      <Sheet open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:w-[520px] md:w-[560px] sm:!max-w-[560px] max-w-full bg-[#0b0e17] border-l border-white/[0.08] p-0 flex flex-col justify-between shadow-2xl text-slate-100 overflow-hidden"
+        >
+          <form onSubmit={handleSaveBrand} className="flex flex-col h-full overflow-hidden">
+            {/* Compact Header: h-12 */}
+            <div className="h-12 px-6 border-b border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 min-w-0 pr-3">
+                <SheetTitle className="text-xs font-semibold text-white tracking-wide shrink-0">
+                  {editingBrand ? "Edit Brand" : "New Brand"}
+                </SheetTitle>
+                {editingBrand && (
+                  <>
+                    <span className="text-[10px] font-mono text-slate-400 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0">
+                      #{editingBrand.id}
+                    </span>
+                    <span className="text-slate-600 text-xs shrink-0">·</span>
+                    <span className="text-xs text-slate-400 truncate max-w-[220px]">
+                      {editingBrand.name}
+                    </span>
+                  </>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
                 title="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveBrand} className="space-y-3.5">
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                  Brand Name <span className="text-rose-500 font-bold">*</span>
+            {/* Scrollable un-boxed form canvas */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300">
+                  Brand Name <span className="text-rose-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -603,91 +646,93 @@ export default function AdminBrandsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Sennheiser, Focal, AETHER Studio"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-cyan-400"
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400/50 focus:outline-none transition"
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Website URL (Optional)</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300">Website URL (Optional)</label>
                 <input
                   type="url"
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
                   placeholder="https://manufacturer.com"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-cyan-400"
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400/50 focus:outline-none transition"
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Logo URL (Optional)</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300">Logo URL (Optional)</label>
                 <input
                   type="text"
                   value={logo}
                   onChange={(e) => setLogo(e.target.value)}
                   placeholder="https://example.com/logo.png"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-cyan-400"
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400/50 focus:outline-none transition"
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Description (Optional)</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300">Description (Optional)</label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Brand acoustic philosophy, background, and origin..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white focus:outline-none focus:border-cyan-400 resize-none text-xs"
+                  className="w-full rounded-lg border border-white/10 bg-[#131722] p-3 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400/50 focus:outline-none transition resize-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Display Order</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">Display Order</label>
                   <input
                     type="number"
                     value={displayOrder}
                     onChange={(e) => setDisplayOrder(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-400"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400/50 focus:outline-none transition"
                   />
                 </div>
 
                 <div className="flex items-end pb-2">
-                  <label className="flex items-center gap-2 cursor-pointer text-slate-300 font-bold">
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-300 text-xs font-medium">
                     <input
                       type="checkbox"
                       checked={isFeatured}
                       onChange={(e) => setIsFeatured(e.target.checked)}
-                      className="rounded bg-white/5 border-white/20 text-cyan-500 accent-cyan-500 w-4 h-4 cursor-pointer"
+                      className="rounded bg-white/5 border-white/20 text-cyan-400 accent-cyan-400 w-4 h-4 cursor-pointer"
                     />
                     <span>Featured Tier</span>
                   </label>
                 </div>
               </div>
+            </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || (editingBrand ? !isEditDirty : false)}
-                  className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wide transition-all shadow-md cursor-pointer ${
-                    editingBrand && !isEditDirty
-                      ? "bg-white/10 text-slate-500 cursor-not-allowed border border-white/5"
-                      : "bg-cyan-500 hover:bg-cyan-400 text-slate-950"
-                  }`}
-                >
-                  {saving ? "Saving..." : editingBrand ? "Update Brand" : "Create Brand"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            {/* Compact Footer: h-12 */}
+            <div className="h-12 px-6 border-t border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-xs font-medium text-slate-400 hover:text-white transition px-1 py-1 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving || (editingBrand ? !isEditDirty : false)}
+                className={`h-8 px-4 rounded-lg text-xs font-semibold transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-sm ${
+                  editingBrand && !isEditDirty
+                    ? "bg-white/10 text-slate-500 cursor-not-allowed border border-white/5"
+                    : "bg-cyan-400 hover:bg-cyan-300 text-slate-950"
+                }`}
+              >
+                {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                <span>{saving ? "Saving..." : editingBrand ? "Save Changes" : "Create Brand"}</span>
+              </button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
 
       {/* Delete Confirmation Modal */}
       {deletingBrand && (

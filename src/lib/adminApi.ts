@@ -30,7 +30,40 @@ import {
   User, 
   Vendor, 
   VendorAnalyticsItem, 
-  VendorProduct 
+  VendorProduct,
+  AccountingOverviewResponse,
+  AccountingLedgerResponse,
+  AccountingReceivablesResponse,
+  AccountingPayablesResponse,
+  AccountingBankingResponse,
+  AccountingReportsResponse,
+  ChartOfAccountItem,
+  JournalEntryItem,
+  CustomerPaymentItem,
+  SupplierPaymentItem,
+  BankAccountItem,
+  Color,
+  BlogCategory,
+  BlogTag,
+  BlogPost,
+  BlogComment,
+  BlogSummary,
+  CmsPage,
+  FooterLink,
+  SocialLink,
+  ReviewSummary,
+  Banner,
+  Integration,
+  IntegrationStats,
+  ExtendedSettingsResponse,
+  ReportData,
+  Promotion,
+  PromotionCode,
+  PromotionClaim,
+  PromotionRedemption,
+  StoreCreditAccount,
+  StoreCreditTransaction,
+  PromotionAnalyticsData,
 } from "@/types";
 
 const API_BASE_URL = typeof window !== "undefined"
@@ -983,6 +1016,729 @@ export const adminApi = {
     const res = await adminClient.post("/admin/theme/reset");
     return res.data;
   },
+
+  // ==========================================
+  // ACCOUNTING & GENERAL LEDGER
+  // ==========================================
+  async getAccountingOverview(params?: { period?: string; date_from?: string; date_to?: string }): Promise<AccountingOverviewResponse> {
+    const res = await adminClient.get("/admin/accounting/overview", { params });
+    return res.data;
+  },
+
+  async getChartOfAccounts(params?: { account_type?: string; is_active?: boolean }): Promise<{ success: boolean; accounts: ChartOfAccountItem[] }> {
+    const res = await adminClient.get("/admin/accounting/accounts", { params });
+    return res.data;
+  },
+
+  async createChartOfAccount(data: {
+    account_code: string;
+    account_name: string;
+    account_type: string;
+    parent_id?: number | null;
+    description?: string;
+  }): Promise<{ success: boolean; message: string; account: ChartOfAccountItem }> {
+    const res = await adminClient.post("/admin/accounting/accounts", data);
+    return res.data;
+  },
+
+  async getAccountingLedger(params?: {
+    page?: number;
+    per_page?: number;
+    search?: string;
+    chart_of_account_id?: number;
+    account_code?: string;
+    date_from?: string;
+    date_to?: string;
+    status?: string;
+  }): Promise<AccountingLedgerResponse> {
+    const res = await adminClient.get("/admin/accounting/ledger", { params });
+    return res.data;
+  },
+
+  async createJournalEntry(data: {
+    entry_date: string;
+    narration: string;
+    reference_number?: string;
+    lines: {
+      chart_of_account_id?: number;
+      account_code?: string;
+      debit: number;
+      credit: number;
+      memo?: string;
+    }[];
+  }): Promise<{ success: boolean; message: string; entry: JournalEntryItem }> {
+    const res = await adminClient.post("/admin/accounting/ledger/journal-entry", data);
+    return res.data;
+  },
+
+  async getAccountingReceivables(): Promise<AccountingReceivablesResponse> {
+    const res = await adminClient.get("/admin/accounting/receivables");
+    return res.data;
+  },
+
+  async recordCustomerPayment(data: {
+    order_id: number;
+    amount: number;
+    payment_method: string;
+    bank_account_id?: number | null;
+    payment_date: string;
+    reference_number?: string;
+    notes?: string;
+  }): Promise<{ success: boolean; message: string; payment: CustomerPaymentItem }> {
+    const res = await adminClient.post("/admin/accounting/receivables/payment", data);
+    return res.data;
+  },
+
+  async getAccountingPayables(): Promise<AccountingPayablesResponse> {
+    const res = await adminClient.get("/admin/accounting/payables");
+    return res.data;
+  },
+
+  async recordSupplierPayment(data: {
+    vendor_id: number;
+    purchase_order_id?: number | null;
+    amount: number;
+    payment_method: string;
+    bank_account_id?: number | null;
+    payment_date: string;
+    reference_number?: string;
+    notes?: string;
+  }): Promise<{ success: boolean; message: string; payment: SupplierPaymentItem }> {
+    const res = await adminClient.post("/admin/accounting/payables/payment", data);
+    return res.data;
+  },
+
+  async getAccountingBanking(): Promise<AccountingBankingResponse> {
+    const res = await adminClient.get("/admin/accounting/banking");
+    return res.data;
+  },
+
+  async createBankTransfer(data: {
+    from_bank_account_id: number;
+    to_bank_account_id: number;
+    amount: number;
+    reference_number?: string;
+    notes?: string;
+  }): Promise<{ success: boolean; message: string; journal_entry: JournalEntryItem }> {
+    const res = await adminClient.post("/admin/accounting/banking/transfer", data);
+    return res.data;
+  },
+
+  async getAccountingReports(params?: { period?: string; date_from?: string; date_to?: string }): Promise<AccountingReportsResponse> {
+    const res = await adminClient.get("/admin/accounting/reports", { params });
+    return res.data;
+  },
+
+  getAccountingExportUrl(type: string): string {
+    const baseUrl = adminClient.defaults.baseURL || "http://127.0.0.1:8000/api";
+    const token = typeof window !== "undefined" ? localStorage.getItem("aether_admin_token") : "";
+    return `${baseUrl}/admin/accounting/export?type=${type}&api_token=${token}`;
+  },
+
+  // ==========================================
+  // Phase 1: Color Swatch Management
+  // ==========================================
+  async getColors(params?: { search?: string; status?: string }): Promise<Color[]> {
+    const res = await adminClient.get("/admin/colors", { params });
+    return res.data;
+  },
+
+  async createColor(data: { name: string; hex_code: string; status?: 'active' | 'inactive' }): Promise<{ message: string; color: Color }> {
+    const res = await adminClient.post("/admin/colors", data);
+    return res.data;
+  },
+
+  async updateColor(id: number, data: { name: string; hex_code: string; status?: 'active' | 'inactive' }): Promise<{ message: string; color: Color }> {
+    const res = await adminClient.put(`/admin/colors/${id}`, data);
+    return res.data;
+  },
+
+  async toggleColorStatus(id: number): Promise<{ message: string; color: Color }> {
+    const res = await adminClient.patch(`/admin/colors/${id}/status`);
+    return res.data;
+  },
+
+  async deleteColor(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/colors/${id}`);
+    return res.data;
+  },
+
+  // ==========================================
+  // Phase 1: Blog & Editorial Publishing
+  // ==========================================
+  async getBlogSummary(): Promise<BlogSummary> {
+    const res = await adminClient.get("/admin/blog/summary");
+    return res.data;
+  },
+
+  async getBlogPosts(params?: { page?: number; per_page?: number; search?: string; status?: string; category_id?: number }): Promise<{
+    data: BlogPost[];
+    current_page: number;
+    last_page: number;
+    total: number;
+    per_page: number;
+  }> {
+    const res = await adminClient.get("/admin/blog/posts", { params });
+    return res.data;
+  },
+
+  async getBlogPost(id: number): Promise<BlogPost> {
+    const res = await adminClient.get(`/admin/blog/posts/${id}`);
+    return res.data;
+  },
+
+  async createBlogPost(data: {
+    title: string;
+    slug?: string;
+    excerpt?: string;
+    content: string;
+    featured_image?: string;
+    category_id?: number | null;
+    status?: 'published' | 'draft' | 'archived';
+    tag_ids?: number[];
+  }): Promise<{ message: string; post: BlogPost }> {
+    const res = await adminClient.post("/admin/blog/posts", data);
+    return res.data;
+  },
+
+  async updateBlogPost(id: number, data: {
+    title: string;
+    slug?: string;
+    excerpt?: string;
+    content: string;
+    featured_image?: string;
+    category_id?: number | null;
+    status?: 'published' | 'draft' | 'archived';
+    tag_ids?: number[];
+  }): Promise<{ message: string; post: BlogPost }> {
+    const res = await adminClient.put(`/admin/blog/posts/${id}`, data);
+    return res.data;
+  },
+
+  async toggleBlogPostStatus(id: number): Promise<{ message: string; post: BlogPost }> {
+    const res = await adminClient.patch(`/admin/blog/posts/${id}/status`);
+    return res.data;
+  },
+
+  async deleteBlogPost(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/blog/posts/${id}`);
+    return res.data;
+  },
+
+  async getBlogCategories(): Promise<BlogCategory[]> {
+    const res = await adminClient.get("/admin/blog/categories");
+    return res.data;
+  },
+
+  async createBlogCategory(data: { name: string; slug?: string; description?: string }): Promise<{ message: string; category: BlogCategory }> {
+    const res = await adminClient.post("/admin/blog/categories", data);
+    return res.data;
+  },
+
+  async updateBlogCategory(id: number, data: { name: string; slug?: string; description?: string }): Promise<{ message: string; category: BlogCategory }> {
+    const res = await adminClient.put(`/admin/blog/categories/${id}`, data);
+    return res.data;
+  },
+
+  async deleteBlogCategory(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/blog/categories/${id}`);
+    return res.data;
+  },
+
+  async getBlogTags(): Promise<BlogTag[]> {
+    const res = await adminClient.get("/admin/blog/tags");
+    return res.data;
+  },
+
+  async createBlogTag(data: { name: string; slug?: string }): Promise<{ message: string; tag: BlogTag }> {
+    const res = await adminClient.post("/admin/blog/tags", data);
+    return res.data;
+  },
+
+  async updateBlogTag(id: number, data: { name: string; slug?: string }): Promise<{ message: string; tag: BlogTag }> {
+    const res = await adminClient.put(`/admin/blog/tags/${id}`, data);
+    return res.data;
+  },
+
+  async deleteBlogTag(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/blog/tags/${id}`);
+    return res.data;
+  },
+
+  async getBlogComments(params?: { page?: number; per_page?: number; search?: string; is_approved?: boolean }): Promise<{
+    data: BlogComment[];
+    current_page: number;
+    last_page: number;
+    total: number;
+  }> {
+    const res = await adminClient.get("/admin/blog/comments", { params });
+    return res.data;
+  },
+
+  async toggleBlogCommentApproval(id: number): Promise<{ message: string; comment: BlogComment }> {
+    const res = await adminClient.patch(`/admin/blog/comments/${id}/approval`);
+    return res.data;
+  },
+
+  async deleteBlogComment(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/blog/comments/${id}`);
+    return res.data;
+  },
+
+  // ==========================================
+  // Phase 1: Online Store CMS & Navigation
+  // ==========================================
+  async getCmsPages(params?: { search?: string; is_active?: boolean }): Promise<CmsPage[]> {
+    const res = await adminClient.get("/admin/online-store/pages", { params });
+    return res.data;
+  },
+
+  async getCmsPage(id: number): Promise<CmsPage> {
+    const res = await adminClient.get(`/admin/online-store/pages/${id}`);
+    return res.data;
+  },
+
+  async createCmsPage(data: {
+    title: string;
+    slug?: string;
+    content: string;
+    meta_title?: string;
+    meta_description?: string;
+    is_active?: boolean;
+  }): Promise<{ message: string; page: CmsPage }> {
+    const res = await adminClient.post("/admin/online-store/pages", data);
+    return res.data;
+  },
+
+  async updateCmsPage(id: number, data: {
+    title: string;
+    slug?: string;
+    content: string;
+    meta_title?: string;
+    meta_description?: string;
+    is_active?: boolean;
+  }): Promise<{ message: string; page: CmsPage }> {
+    const res = await adminClient.put(`/admin/online-store/pages/${id}`, data);
+    return res.data;
+  },
+
+  async toggleCmsPageStatus(id: number): Promise<{ message: string; page: CmsPage }> {
+    const res = await adminClient.patch(`/admin/online-store/pages/${id}/status`);
+    return res.data;
+  },
+
+  async deleteCmsPage(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/online-store/pages/${id}`);
+    return res.data;
+  },
+
+  async getFooterLinks(): Promise<FooterLink[]> {
+    const res = await adminClient.get("/admin/online-store/footer-links");
+    return res.data;
+  },
+
+  async createFooterLink(data: {
+    column_group: string;
+    title: string;
+    url: string;
+    sort_order?: number;
+    is_active?: boolean;
+  }): Promise<{ message: string; footer_link: FooterLink }> {
+    const res = await adminClient.post("/admin/online-store/footer-links", data);
+    return res.data;
+  },
+
+  async updateFooterLink(id: number, data: {
+    column_group: string;
+    title: string;
+    url: string;
+    sort_order?: number;
+    is_active?: boolean;
+  }): Promise<{ message: string; footer_link: FooterLink }> {
+    const res = await adminClient.put(`/admin/online-store/footer-links/${id}`, data);
+    return res.data;
+  },
+
+  async deleteFooterLink(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/online-store/footer-links/${id}`);
+    return res.data;
+  },
+
+  async getSocialLinks(): Promise<SocialLink[]> {
+    const res = await adminClient.get("/admin/online-store/social-links");
+    return res.data;
+  },
+
+  async createSocialLink(data: {
+    platform: string;
+    url: string;
+    icon?: string;
+    sort_order?: number;
+    is_active?: boolean;
+  }): Promise<{ message: string; social_link: SocialLink }> {
+    const res = await adminClient.post("/admin/online-store/social-links", data);
+    return res.data;
+  },
+
+  async updateSocialLink(id: number, data: {
+    platform: string;
+    url: string;
+    icon?: string;
+    sort_order?: number;
+    is_active?: boolean;
+  }): Promise<{ message: string; social_link: SocialLink }> {
+    const res = await adminClient.put(`/admin/online-store/social-links/${id}`, data);
+    return res.data;
+  },
+
+  async deleteSocialLink(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/online-store/social-links/${id}`);
+    return res.data;
+  },
+
+  // ==========================================
+  // Phase 2: Enhanced Reviews Management
+  // ==========================================
+  async getReviewSummary(): Promise<ReviewSummary> {
+    const res = await adminClient.get("/admin/reviews/summary");
+    return res.data;
+  },
+
+  async createReview(data: {
+    product_id: number;
+    user_name: string;
+    rating: number;
+    title?: string;
+    comment: string;
+    is_verified_purchase?: boolean;
+    is_approved?: boolean;
+  }): Promise<{ message: string; review: any }> {
+    const res = await adminClient.post("/admin/reviews", data);
+    return res.data;
+  },
+
+  async updateReview(
+    id: number,
+    data: {
+      user_name: string;
+      rating: number;
+      title?: string;
+      comment: string;
+      is_verified_purchase?: boolean;
+      is_approved?: boolean;
+    }
+  ): Promise<{ message: string; review: any }> {
+    const res = await adminClient.put(`/admin/reviews/${id}`, data);
+    return res.data;
+  },
+
+  async bulkApproveReviews(ids: number[]): Promise<{ message: string }> {
+    const res = await adminClient.post("/admin/reviews/bulk-approve", { ids });
+    return res.data;
+  },
+
+  async bulkRejectReviews(ids: number[]): Promise<{ message: string }> {
+    const res = await adminClient.post("/admin/reviews/bulk-reject", { ids });
+    return res.data;
+  },
+
+  // ==========================================
+  // Phase 2: Banners & Marketing Campaigns
+  // ==========================================
+  async getBanners(params?: { placement?: string; is_active?: boolean; search?: string }): Promise<Banner[]> {
+    const res = await adminClient.get("/admin/banners", { params });
+    return res.data;
+  },
+
+  async getBanner(id: number): Promise<Banner> {
+    const res = await adminClient.get(`/admin/banners/${id}`);
+    return res.data;
+  },
+
+  async createBanner(data: Partial<Banner>): Promise<{ message: string; banner: Banner }> {
+    const res = await adminClient.post("/admin/banners", data);
+    return res.data;
+  },
+
+  async updateBanner(id: number, data: Partial<Banner>): Promise<{ message: string; banner: Banner }> {
+    const res = await adminClient.put(`/admin/banners/${id}`, data);
+    return res.data;
+  },
+
+  async toggleBannerStatus(id: number): Promise<{ message: string; banner: Banner }> {
+    const res = await adminClient.patch(`/admin/banners/${id}/status`);
+    return res.data;
+  },
+
+  async deleteBanner(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/banners/${id}`);
+    return res.data;
+  },
+
+  async uploadBannerImage(file: File): Promise<{ message: string; image_url: string; path: string }> {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await adminClient.post("/admin/banners/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  async reorderBanners(items: { id: number; sort_order: number }[]): Promise<{ message: string }> {
+    const res = await adminClient.post("/admin/banners/reorder", { items });
+    return res.data;
+  },
+
+  // ==========================================
+  // Phase 3: Integrations & Extended Settings
+  // ==========================================
+
+  async getIntegrations(): Promise<{ integrations: Integration[]; stats: IntegrationStats }> {
+    const res = await adminClient.get("/admin/integrations");
+    return res.data;
+  },
+
+  async getIntegration(provider: string): Promise<{ integration: Integration }> {
+    const res = await adminClient.get(`/admin/integrations/${provider}`);
+    return res.data;
+  },
+
+  async updateIntegration(provider: string, data: any): Promise<{ message: string; integration: Integration }> {
+    const res = await adminClient.put(`/admin/integrations/${provider}`, data);
+    return res.data;
+  },
+
+  async toggleIntegration(provider: string): Promise<{ message: string; is_enabled: boolean }> {
+    const res = await adminClient.post(`/admin/integrations/${provider}/toggle`);
+    return res.data;
+  },
+
+  async testIntegration(provider: string): Promise<{ success: boolean; message: string; latency_ms: number; last_tested_at: string; test_status: string }> {
+    const res = await adminClient.post(`/admin/integrations/${provider}/test`);
+    return res.data;
+  },
+
+  async getExtendedSettings(): Promise<ExtendedSettingsResponse> {
+    const res = await adminClient.get("/admin/settings/extended");
+    return res.data;
+  },
+
+  async updateSettingsGroup(group: string, data: any): Promise<{ message: string; data: any }> {
+    const res = await adminClient.put(`/admin/settings/group/${group}`, { data });
+    return res.data;
+  },
+
+  async clearSystemCache(type: string = "all"): Promise<{ success: boolean; message: string; cleared_components: string[]; timestamp: string }> {
+    const res = await adminClient.post("/admin/system/cache-clear", { type });
+    return res.data;
+  },
+
+  async generateSitemap(): Promise<{ success: boolean; total_urls: number; sitemap_url: string; generated_at: string; entries_sample: any[] }> {
+    const res = await adminClient.post("/admin/system/sitemap/generate");
+    return res.data;
+  },
+
+  // ==========================================
+  // Phase 4: 14-Report Analytics & Intelligence
+  // ==========================================
+
+  async getReport(type: string, params?: { start_date?: string; end_date?: string }): Promise<ReportData> {
+    const res = await adminClient.get(`/admin/reports/${type}`, { params });
+    return res.data;
+  },
+
+  getExportReportUrl(type: string, params?: { start_date?: string; end_date?: string }): string {
+    const query = new URLSearchParams();
+    if (params?.start_date) query.set("start_date", params.start_date);
+    if (params?.end_date) query.set("end_date", params.end_date);
+    return `${API_BASE_URL}/admin/reports/${type}/export?${query.toString()}`;
+  },
+
+  // ==========================================
+  // ENTERPRISE PROMOTIONS & DISCOUNTS SYSTEM
+  // ==========================================
+
+  async getPromotions(params?: {
+    search?: string;
+    type?: string;
+    status?: string;
+    discount_type?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<{
+    data: Promotion[];
+    current_page: number;
+    last_page: number;
+    total: number;
+    stats?: {
+      total: number;
+      active: number;
+      draft: number;
+      expired: number;
+      total_discount_volume: number;
+      total_redemptions: number;
+    };
+  }> {
+    const res = await adminClient.get("/admin/promotions", { params });
+    return res.data;
+  },
+
+  async getPromotion(id: number): Promise<Promotion> {
+    const res = await adminClient.get(`/admin/promotions/${id}`);
+    return res.data?.promotion || res.data;
+  },
+
+  async createPromotion(data: Partial<Promotion> & {
+    target_product_ids?: number[];
+    target_category_ids?: number[];
+    target_brand_ids?: number[];
+    excluded_product_ids?: number[];
+    customer_ids?: number[];
+    codes?: Array<{ code: string; usage_limit?: number | null }>;
+  }): Promise<{ message: string; promotion: Promotion }> {
+    const res = await adminClient.post("/admin/promotions", data);
+    return res.data;
+  },
+
+  async updatePromotion(id: number, data: Partial<Promotion> & {
+    target_product_ids?: number[];
+    target_category_ids?: number[];
+    target_brand_ids?: number[];
+    excluded_product_ids?: number[];
+    customer_ids?: number[];
+  }): Promise<{ message: string; promotion: Promotion }> {
+    const res = await adminClient.put(`/admin/promotions/${id}`, data);
+    return res.data;
+  },
+
+  async deletePromotion(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/promotions/${id}`);
+    return res.data;
+  },
+
+  async togglePromotionStatus(id: number): Promise<{ message: string; is_active: boolean; status: string }> {
+    const res = await adminClient.patch(`/admin/promotions/${id}/status`);
+    return res.data;
+  },
+
+  async generatePromotionCodes(id: number, data: {
+    count: number;
+    prefix?: string;
+    usage_limit_per_code?: number | null;
+  }): Promise<{ message: string; codes: PromotionCode[] }> {
+    const res = await adminClient.post(`/admin/promotions/${id}/generate-codes`, data);
+    return res.data;
+  },
+
+  async getPromotionCodes(params?: {
+    search?: string;
+    promotion_id?: number;
+    is_active?: boolean;
+    page?: number;
+    per_page?: number;
+  }): Promise<{
+    data: PromotionCode[];
+    current_page: number;
+    last_page: number;
+    total: number;
+  }> {
+    const res = await adminClient.get("/admin/promotions/codes", { params });
+    return res.data;
+  },
+
+  async getPromotionClaims(params?: {
+    search?: string;
+    promotion_id?: number;
+    status?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<{
+    data: PromotionClaim[];
+    current_page: number;
+    last_page: number;
+    total: number;
+  }> {
+    const res = await adminClient.get("/admin/promotions/claims", { params });
+    return res.data;
+  },
+
+  async getPromotionRedemptions(params?: {
+    search?: string;
+    promotion_id?: number;
+    user_id?: number;
+    order_id?: number;
+    page?: number;
+    per_page?: number;
+  }): Promise<{
+    data: PromotionRedemption[];
+    current_page: number;
+    last_page: number;
+    total: number;
+  }> {
+    const res = await adminClient.get("/admin/promotions/redemptions", { params });
+    return res.data;
+  },
+
+  async issueCustomerReward(data: {
+    user_id: number;
+    name: string;
+    discount_type: 'percentage' | 'fixed_amount';
+    discount_value: number;
+    min_order_amount?: number;
+    max_discount_amount?: number;
+    days_valid?: number;
+  }): Promise<{ message: string; promotion: Promotion; claim: PromotionClaim }> {
+    const res = await adminClient.post("/admin/promotions/customer-rewards", data);
+    return res.data;
+  },
+
+  async getStoreCreditAccounts(params?: {
+    search?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<{
+    data: StoreCreditAccount[];
+    current_page: number;
+    last_page: number;
+    total: number;
+  }> {
+    const res = await adminClient.get("/admin/promotions/store-credit/accounts", { params });
+    return res.data;
+  },
+
+  async adjustStoreCredit(data: {
+    user_id: number;
+    amount: number;
+    type: 'credit' | 'debit';
+    reason: string;
+  }): Promise<{ message: string; account: StoreCreditAccount; transaction: StoreCreditTransaction }> {
+    const res = await adminClient.post("/admin/promotions/store-credit/adjust", data);
+    return res.data;
+  },
+
+  async getStoreCreditLedger(params?: {
+    user_id?: number;
+    search?: string;
+    type?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<{
+    data: StoreCreditTransaction[];
+    current_page: number;
+    last_page: number;
+    total: number;
+  }> {
+    const res = await adminClient.get("/admin/promotions/store-credit/ledger", { params });
+    return res.data;
+  },
+
+  async getPromotionAnalytics(params?: {
+    date_from?: string;
+    date_to?: string;
+  }): Promise<PromotionAnalyticsData> {
+    const res = await adminClient.get("/admin/promotions/analytics", { params });
+    return res.data;
+  },
 };
 
 export interface PermissionItem {
@@ -1035,6 +1791,14 @@ export const ADMIN_PERMISSION_MODULES: PermissionModule[] = [
       { id: "expenses.manage", name: "Manage Expenses", description: "Record, categorize, and approve business operating expenses" },
       { id: "finance.reports_view", name: "View Financial Reports & P&L", description: "Access real-time Net Profit, COGS, and margin analytics" },
       { id: "finance.drilldown", name: "Financial Metric Drill-down", description: "Inspect individual orders and cost layers behind revenue and COGS" },
+    ],
+  },
+  {
+    name: "Accounting & General Ledger",
+    description: "Double-entry general ledger, chart of accounts, A/R customer dues, A/P supplier payables, bank accounts, and formal financial statements",
+    permissions: [
+      { id: "accounting.view", name: "View Accounting & Ledger", description: "Inspect general ledger, accounts receivable/payable, and financial reports" },
+      { id: "accounting.manage", name: "Manage Accounting", description: "Create journal entries, record payments, manage COA and banking transfers" },
     ],
   },
   {

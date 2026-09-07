@@ -29,6 +29,8 @@ interface LiveStorefrontPreviewProps {
   textBodyColor?: string;
   btnPrimaryBg?: string;
   btnPrimaryText?: string;
+  footerBgColor?: string;
+  footerTextColor?: string;
   radius?: string;
   announcementEnabled?: boolean;
   announcementText?: string;
@@ -54,6 +56,8 @@ export function LiveStorefrontPreview({
   textBodyColor = "#94a3b8",
   btnPrimaryBg,
   btnPrimaryText = "#ffffff",
+  footerBgColor = "#1f242e",
+  footerTextColor = "#94a3b8",
   radius = "rounded-lg",
   announcementEnabled = true,
   announcementText = "Free Express Shipping on orders over $100 • Code: WELCOME20 (-20%)",
@@ -75,6 +79,9 @@ export function LiveStorefrontPreview({
 
   const isLightCanvas = getHexLuminance(bgColor) > 0.45;
   const effectivePrimaryBtnBg = btnPrimaryBg || primaryColor;
+  const isLightFooter = getHexLuminance(footerBgColor || "#1f242e") > 0.45;
+  const footerHeadingColor = isLightFooter ? "#0f172a" : "#ffffff";
+  const effectiveFooterTextColor = footerTextColor || (isLightFooter ? "#475569" : "#94a3b8");
 
   return (
     <div className="space-y-3 sticky top-6">
@@ -415,6 +422,45 @@ export function LiveStorefrontPreview({
               </button>
             </div>
           )}
+
+          {/* MINI LIVE FOOTER PREVIEW */}
+          <div
+            className="mt-6 pt-3 pb-3 px-3 rounded-lg border-t transition-colors text-[10px]"
+            style={{
+              backgroundColor: footerBgColor || "#1f242e",
+              borderColor: isLightFooter ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.08)",
+              color: effectiveFooterTextColor,
+            }}
+          >
+            {/* Guarantees mini row */}
+            <div
+              className="grid grid-cols-2 gap-1.5 pb-2 mb-2 border-b"
+              style={{ borderColor: isLightFooter ? "rgba(0, 0, 0, 0.06)" : "rgba(255, 255, 255, 0.06)" }}
+            >
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: primaryColor }} />
+                <span className="font-semibold truncate text-[9px]" style={{ color: footerHeadingColor }}>
+                  Free Express Delivery
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: primaryColor }} />
+                <span className="font-semibold truncate text-[9px]" style={{ color: footerHeadingColor }}>
+                  2-Year Warranty
+                </span>
+              </div>
+            </div>
+
+            {/* Brand and mini copyright */}
+            <div className="flex items-center justify-between">
+              <span className="font-black text-[10px] tracking-tight" style={{ color: footerHeadingColor }}>
+                {brandName || "AETHER"}
+              </span>
+              <span className="text-[9px] opacity-75">
+                © 2026 Storefront
+              </span>
+            </div>
+          </div>
 
         </div>
 

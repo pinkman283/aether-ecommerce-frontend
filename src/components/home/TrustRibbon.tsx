@@ -15,32 +15,32 @@ export function TrustRibbon() {
       title: theme.trust_ribbon_title_1 || "Fast Express Delivery",
       subtitle: theme.trust_ribbon_desc_1 || "Dispatched within 24-48 hours",
       badge: "Express",
-      colorClass: "text-cyan-400",
-      glowClass: "from-cyan-500/20 to-cyan-500/5",
+      colorClass: "text-[#005826] dark:text-cyan-400",
+      glowClass: "from-emerald-500/10 to-transparent",
     },
     {
       icon: Banknote,
       title: theme.trust_ribbon_title_2 || "Cash on Delivery (COD)",
       subtitle: theme.trust_ribbon_desc_2 || "Pay safely upon product arrival",
       badge: "Safe COD",
-      colorClass: "text-emerald-400",
-      glowClass: "from-emerald-500/20 to-emerald-500/5",
+      colorClass: "text-emerald-600 dark:text-emerald-400",
+      glowClass: "from-emerald-500/10 to-transparent",
     },
     {
       icon: ShieldCheck,
       title: theme.trust_ribbon_title_3 || "100% Genuine & Authentic",
       subtitle: theme.trust_ribbon_desc_3 || "Official manufacturer warranty coverage",
       badge: "Verified",
-      colorClass: "text-indigo-400",
-      glowClass: "from-indigo-500/20 to-indigo-500/5",
+      colorClass: "text-[#005826] dark:text-indigo-400",
+      glowClass: "from-emerald-500/10 to-transparent",
     },
     {
       icon: RotateCcw,
       title: theme.trust_ribbon_title_4 || "7-Day Easy Replacement",
       subtitle: theme.trust_ribbon_desc_4 || "Hassle-free returns & replacement policy",
       badge: "Guaranteed",
-      colorClass: "text-pink-400",
-      glowClass: "from-pink-500/20 to-pink-500/5",
+      colorClass: "text-rose-600 dark:text-pink-400",
+      glowClass: "from-rose-500/10 to-transparent",
     },
   ];
 
@@ -56,7 +56,7 @@ export function TrustRibbon() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.08, duration: 0.4 }}
-              className="relative group p-3.5 sm:p-4 rounded-xl theme-card border border-white/10 overflow-hidden flex items-center gap-3.5 transition-all duration-300 hover:border-white/20 hover:scale-[1.02] shadow-sm"
+              className="relative group p-3.5 sm:p-4 rounded-xl theme-card border border-gray-200 dark:border-white/10 overflow-hidden flex items-center gap-3.5 transition-all duration-300 hover:border-[#005826]/30 dark:hover:border-white/20 hover:scale-[1.01] shadow-xs"
             >
               {/* Subtle gradient background glow on hover */}
               <div

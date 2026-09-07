@@ -4,23 +4,37 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   Settings, 
+  Truck, 
+  GitCommit, 
+  Search, 
+  Smartphone, 
+  Bell, 
+  Cpu, 
+  Puzzle, 
   Palette, 
   Store, 
-  LayoutTemplate
+  LayoutTemplate 
 } from "lucide-react";
 
 export function SettingsNavTabs() {
   const pathname = usePathname();
 
   const tabs = [
-    { label: "General", href: "/admin/settings", icon: Settings },
+    { label: "General & Store", href: "/admin/settings", icon: Settings },
+    { label: "Shipping Zones", href: "/admin/settings/shipping", icon: Truck },
+    { label: "Order Pipeline", href: "/admin/settings/statuses", icon: GitCommit },
+    { label: "SEO & Search", href: "/admin/settings/seo", icon: Search },
+    { label: "PWA Studio", href: "/admin/settings/pwa", icon: Smartphone },
+    { label: "Notification Templates", href: "/admin/settings/notifications", icon: Bell },
+    { label: "System & Cache", href: "/admin/settings/system", icon: Cpu },
+    { label: "Integrations Hub", href: "/admin/integrations", icon: Puzzle },
     { label: "Appearance", href: "/admin/settings/appearance", icon: Palette },
     { label: "Branding", href: "/admin/settings/branding", icon: Store },
-    { label: "Storefront & Hero", href: "/admin/settings/storefront", icon: LayoutTemplate },
+    { label: "Hero Banner", href: "/admin/settings/storefront", icon: LayoutTemplate },
   ];
 
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-white/10 no-scrollbar">
+    <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-white/10 no-scrollbar">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = 

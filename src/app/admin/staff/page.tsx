@@ -40,6 +40,7 @@ import { SuspensionModal, SuspensionPayload } from "@/components/admin/Suspensio
 import { ImageUploadAvatar } from "@/components/ui/ImageUploadAvatar";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 export default function AdminStaffPage() {
@@ -678,133 +679,182 @@ export default function AdminStaffPage() {
         </table>
       </ScrollableTableCard>
 
-      {/* View Staff Profile & Permissions Modal */}
-      {viewingStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setViewingStaff(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+      {/* View Staff Profile & Permissions Drawer */}
+      <Sheet open={!!viewingStaff} onOpenChange={(open) => { if (!open) setViewingStaff(null); }}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:w-[480px] md:w-[540px] sm:!max-w-[540px] max-w-full bg-[#0b0e17] border-l border-white/[0.08] p-0 flex flex-col justify-between shadow-2xl text-slate-100 overflow-hidden"
+        >
+          {viewingStaff && (
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Compact Header: h-12 */}
+              <div className="h-12 px-6 border-b border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2 min-w-0 pr-3">
+                  <SheetTitle className="text-xs font-semibold text-white tracking-wide shrink-0">
+                    Personnel Profile
+                  </SheetTitle>
+                  <span className="text-slate-600 text-xs shrink-0">·</span>
+                  <span className="text-xs text-slate-400 truncate max-w-[180px]">
+                    {viewingStaff.name}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingStaff(null)}
+                  className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-          <div className="relative w-full max-w-lg rounded-3xl bg-[#0c0e15] border border-cyan-500/30 shadow-2xl p-6 sm:p-8 z-10 space-y-4 text-xs max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <img
-                  src={viewingStaff.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"}
-                  alt={viewingStaff.name}
-                  className="w-12 h-12 rounded-2xl object-cover ring-2 ring-amber-400/40 shrink-0"
-                />
-                <div>
-                  <h3 className="text-base font-black text-white">{viewingStaff.name}</h3>
-                  <span className="text-[11px] text-slate-400">{viewingStaff.email}</span>
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 text-xs">
+                {/* Profile Card */}
+                <div className="p-4 rounded-lg bg-white/[0.02] border border-white/5 flex items-center gap-3.5">
+                  <img
+                    src={viewingStaff.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"}
+                    alt={viewingStaff.name}
+                    className="w-11 h-11 rounded-lg object-cover ring-1 ring-white/10 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-white truncate">{viewingStaff.name}</h3>
+                    <p className="text-xs text-slate-400 truncate">{viewingStaff.email}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-[11px] font-medium uppercase shrink-0 ${
+                    viewingStaff.status === "active"
+                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                      : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                  }`}>
+                    {viewingStaff.status || "Active"}
+                  </span>
+                </div>
+
+                {viewingStaff.role === "super_admin" && (
+                  <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-purple-400 shrink-0" />
+                    <span><b>Super Administrator:</b> Master authority account with immutable clearance across all modules.</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+                    <span className="text-[10px] font-medium text-slate-400 block uppercase tracking-wider">
+                      Role Clearance
+                    </span>
+                    <span className="text-xs font-semibold uppercase text-slate-200 flex items-center gap-1.5">
+                      {viewingStaff.role === "super_admin" && <Crown className="w-3.5 h-3.5 text-purple-400" />}
+                      {viewingStaff.role === "super_admin" ? "Super Admin" : viewingStaff.role}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+                    <span className="text-[10px] font-medium text-slate-400 block uppercase tracking-wider">
+                      Active Permissions
+                    </span>
+                    <span className="text-xs font-semibold text-slate-200 block">
+                      {viewingStaff.role === "super_admin" ? "All Privileges (Master)" : `${viewingStaff.permissions?.length || 0} permissions`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Permissions Matrix Inspection */}
+                <div className="space-y-2 pt-1">
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">
+                    Module Permission Matrix
+                  </span>
+                  
+                  <div className="space-y-2.5">
+                    {ADMIN_PERMISSION_MODULES.map((module) => (
+                      <div key={module.name} className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-2">
+                        <span className="text-xs font-semibold text-slate-200 block">
+                          {module.name}
+                        </span>
+                        <div className="space-y-1.5">
+                          {module.permissions.map((p) => {
+                            const hasPerm = viewingStaff.role === "super_admin" || viewingStaff.role === "admin" || (viewingStaff.permissions && viewingStaff.permissions.includes(p.id));
+                            return (
+                              <div key={p.id} className="flex items-center justify-between text-xs">
+                                <span className="text-slate-300">{p.name}</span>
+                                {hasPerm ? (
+                                  <span className="text-emerald-400 font-medium flex items-center gap-1 text-[11px]">
+                                    <CheckCircle2 className="w-3 h-3" /> Enabled
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-500 flex items-center gap-1 text-[11px]">
+                                    <XCircle className="w-3 h-3" /> Restricted
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <button onClick={() => setViewingStaff(null)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {viewingStaff.role === "super_admin" && (
-              <div className="p-3.5 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs flex items-center gap-2.5 shadow-sm">
-                <Crown className="w-4 h-4 text-purple-400 shrink-0" />
-                <span><b>Untouchable Master Authority:</b> This Super Administrator account holds immutable clearance. It cannot be demoted, modified, suspended, or deleted by other administrators.</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Assigned System Role</span>
-                <span className="text-xs font-black uppercase text-amber-400 flex items-center gap-1">
-                  {viewingStaff.role === "super_admin" && <Crown className="w-3.5 h-3.5 text-purple-400" />}
-                  {viewingStaff.role === "super_admin" ? "Super Admin" : viewingStaff.role}
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Account Status</span>
-                <span className="text-xs font-black uppercase text-emerald-400 block">{viewingStaff.status || "active"}</span>
-              </div>
-            </div>
-
-            {/* Granular Permissions Inspection */}
-            <div className="space-y-3 pt-2">
-              <span className="text-[11px] font-black text-slate-200 uppercase tracking-wider block">
-                Dynamic Permission Matrix ({viewingStaff.permissions?.length || 0} active)
-              </span>
-              
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                {ADMIN_PERMISSION_MODULES.map((module) => (
-                  <div key={module.name} className="p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
-                    <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider block">
-                      {module.name}
-                    </span>
-                    <div className="space-y-1.5">
-                      {module.permissions.map((p) => {
-                        const hasPerm = viewingStaff.role === "super_admin" || viewingStaff.role === "admin" || (viewingStaff.permissions && viewingStaff.permissions.includes(p.id));
-                        return (
-                          <div key={p.id} className="flex items-center justify-between text-[11px]">
-                            <span className="text-slate-300">{p.name}</span>
-                            {hasPerm ? (
-                              <span className="text-emerald-400 font-bold flex items-center gap-1 text-[10px]">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Enabled
-                              </span>
-                            ) : (
-                              <span className="text-slate-600 flex items-center gap-1 text-[10px]">
-                                <XCircle className="w-3.5 h-3.5" /> Restricted
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center pt-3 border-t border-white/10">
-              <Link
-                href={`/admin/audit-logs?search=${viewingStaff.name}`}
-                className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition-all"
-              >
-                <ScrollText className="w-3.5 h-3.5 text-purple-400" />
-                <span>Audit Logs History</span>
-              </Link>
-
-              {(! (viewingStaff.role === "super_admin" && !isSuperAdmin)) && (
-                <button
-                  onClick={() => {
-                    const s = viewingStaff;
-                    setViewingStaff(null);
-                    handleOpenEdit(s);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase transition-all shadow-md"
+              {/* Compact Footer: h-12 */}
+              <div className="h-12 px-6 border-t border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+                <Link
+                  href={`/admin/audit-logs?search=${viewingStaff.name}`}
+                  className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
                 >
-                  Modify Permissions
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+                  <ScrollText className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Audit Logs</span>
+                </Link>
 
-      {/* Create / Edit Staff Modal with Dynamic Granular Permission Matrix */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-2xl rounded-3xl bg-[#0c0e15] border border-amber-500/30 shadow-2xl p-6 sm:p-8 z-10 space-y-4 text-xs max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
-                  Staff Administration & RBAC
-                </span>
-                <h3 className="text-base font-black text-white">
-                  {editingStaff ? `Modify Personnel: ${editingStaff.name}` : "Provision New Operations Personnel"}
-                </h3>
+                {(! (viewingStaff.role === "super_admin" && !isSuperAdmin)) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const s = viewingStaff;
+                      setViewingStaff(null);
+                      handleOpenEdit(s);
+                    }}
+                    className="h-8 px-4 rounded-lg bg-white hover:bg-slate-200 text-slate-950 font-semibold text-xs transition cursor-pointer shadow-sm"
+                  >
+                    Modify Personnel
+                  </button>
+                )}
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Create / Edit Staff Slide-over Drawer */}
+      <Sheet open={isModalOpen} onOpenChange={(open) => { if (!open) setIsModalOpen(false); }}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:w-[500px] md:w-[560px] sm:!max-w-[560px] max-w-full bg-[#0b0e17] border-l border-white/[0.08] p-0 flex flex-col justify-between shadow-2xl text-slate-100 overflow-hidden"
+        >
+          <form onSubmit={handleSaveStaff} className="flex flex-col h-full overflow-hidden">
+            {/* Compact Header: h-12 */}
+            <div className="h-12 px-6 border-b border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 min-w-0 pr-3">
+                <SheetTitle className="text-xs font-semibold text-white tracking-wide shrink-0">
+                  {editingStaff ? "Modify Personnel" : "Provision Personnel"}
+                </SheetTitle>
+                <span className="text-slate-600 text-xs shrink-0">·</span>
+                <span className="text-xs text-slate-400 truncate">
+                  {editingStaff ? editingStaff.name : "Staff Administration & RBAC"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveStaff} className="space-y-4">
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 text-xs">
               <ImageUploadAvatar
                 value={avatar}
                 onChange={(val) => setAvatar(val)}
@@ -814,8 +864,8 @@ export default function AdminStaffPage() {
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">
                     First Name <span className="text-rose-400">*</span>
                   </label>
                   <input
@@ -824,52 +874,52 @@ export default function AdminStaffPage() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="e.g. Rachel"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-white/20 focus:outline-none transition"
                   />
                 </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                    Second / Last Name
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">
+                    Last Name
                   </label>
                   <input
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="e.g. Sterling"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-white/20 focus:outline-none transition"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Official Email</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">Official Email <span className="text-rose-400">*</span></label>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="rachel@ecommerce.test"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-400"
+                    placeholder="rachel@store.test"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-white/20 focus:outline-none transition"
                   />
                 </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                    Password {editingStaff && "(Leave blank to keep current)"}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">
+                    Password {editingStaff && "(Leave blank to keep)"}
                   </label>
                   <PasswordInput
                     required={!editingStaff}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    inputClassName="bg-white/5 border border-white/10 rounded-xl py-2 text-white focus:outline-none focus:border-amber-400"
+                    inputClassName="h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white focus:border-white/20 focus:outline-none transition"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">
                     System Role {!isSuperAdmin && "(Locked)"}
                   </label>
                   <AdminDropdown
@@ -882,7 +932,7 @@ export default function AdminStaffPage() {
                       setRole(val);
                     }}
                     className="w-full"
-                    buttonClassName="w-full py-2"
+                    buttonClassName="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white"
                     options={
                       isSuperAdmin
                         ? [
@@ -899,18 +949,18 @@ export default function AdminStaffPage() {
                   />
                   {!isSuperAdmin && (
                     <span className="text-[10px] text-amber-400/80 mt-1 block">
-                      Only Super Administrators have clearance to promote or demote roles.
+                      Super Administrator clearance required to change roles.
                     </span>
                   )}
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Account Status</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">Account Status</label>
                   <AdminDropdown
                     value={status}
                     onChange={(val) => setStatus(val)}
                     className="w-full"
-                    buttonClassName="w-full py-2"
+                    buttonClassName="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white"
                     options={[
                       { value: "active", label: "Active" },
                       { value: "suspended", label: "Suspended" },
@@ -924,11 +974,11 @@ export default function AdminStaffPage() {
                 <div className="space-y-3 pt-3 border-t border-white/10">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <span className="text-[11px] font-black uppercase text-slate-200 block">
-                        Dynamic Access Control Matrix ({permissions.length} selected)
+                      <span className="text-xs font-semibold text-slate-200 block">
+                        Access Control Matrix ({permissions.length} active)
                       </span>
-                      <span className="text-[10px] text-slate-400">
-                        Select individual permissions or apply quick role presets.
+                      <span className="text-[11px] text-slate-400">
+                        Configure granular feature permissions or apply quick presets.
                       </span>
                     </div>
 
@@ -937,35 +987,35 @@ export default function AdminStaffPage() {
                       <button
                         type="button"
                         onClick={() => applyPreset("all")}
-                        className="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/20"
+                        className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-200 text-[10px] font-medium border border-white/10 cursor-pointer"
                       >
                         All
                       </button>
                       <button
                         type="button"
                         onClick={() => applyPreset("operations")}
-                        className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-semibold border border-white/10"
+                        className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-medium border border-white/10 cursor-pointer"
                       >
                         Ops Manager
                       </button>
                       <button
                         type="button"
                         onClick={() => applyPreset("warehouse")}
-                        className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-semibold border border-white/10"
+                        className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-medium border border-white/10 cursor-pointer"
                       >
                         Warehouse
                       </button>
                       <button
                         type="button"
                         onClick={() => applyPreset("support")}
-                        className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-semibold border border-white/10"
+                        className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-medium border border-white/10 cursor-pointer"
                       >
                         Support
                       </button>
                       <button
                         type="button"
                         onClick={() => applyPreset("none")}
-                        className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-[10px] font-semibold border border-rose-500/20"
+                        className="px-2 py-0.5 rounded bg-white/5 hover:bg-rose-500/20 text-rose-300 text-[10px] font-medium border border-white/10 cursor-pointer"
                       >
                         Clear
                       </button>
@@ -973,20 +1023,19 @@ export default function AdminStaffPage() {
                   </div>
 
                   {/* Modules Accordion Cards */}
-                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
                     {ADMIN_PERMISSION_MODULES.map((module) => {
                       const modulePermIds = module.permissions.map((p) => p.id);
                       const allSelected = modulePermIds.every((id) => permissions.includes(id));
-                      const someSelected = modulePermIds.some((id) => permissions.includes(id));
 
                       return (
                         <div
                           key={module.name}
-                          className="p-3.5 rounded-2xl bg-[#0e121e] border border-white/10 space-y-2.5"
+                          className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-2"
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-[11px] font-black text-amber-400 uppercase tracking-wider block">
+                              <span className="text-xs font-semibold text-slate-200 block">
                                 {module.name}
                               </span>
                               <span className="text-[10px] text-slate-400">{module.description}</span>
@@ -994,7 +1043,7 @@ export default function AdminStaffPage() {
                             <button
                               type="button"
                               onClick={() => toggleModulePermissions(module)}
-                              className="text-[10px] font-bold text-slate-400 hover:text-amber-300 transition-colors"
+                              className="text-[10px] font-medium text-slate-400 hover:text-white transition cursor-pointer"
                             >
                               {allSelected ? "Deselect All" : "Select All"}
                             </button>
@@ -1006,20 +1055,20 @@ export default function AdminStaffPage() {
                               return (
                                 <label
                                   key={p.id}
-                                  className={`p-2.5 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-all ${
+                                  className={`p-2 rounded-lg border flex items-start gap-2 cursor-pointer transition ${
                                     isChecked
-                                      ? "bg-amber-500/10 border-amber-500/30 text-white shadow-sm"
-                                      : "bg-white/[0.02] border-white/5 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                                      ? "bg-white/10 border-white/20 text-white shadow-xs"
+                                      : "bg-white/[0.01] border-white/5 text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
                                   }`}
                                 >
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={() => togglePermission(p.id)}
-                                    className="mt-0.5 rounded accent-amber-500 bg-white/10"
+                                    className="mt-0.5 rounded accent-white bg-white/10"
                                   />
                                   <div>
-                                    <span className="font-bold text-xs block leading-none">{p.name}</span>
+                                    <span className="font-medium text-xs block leading-none">{p.name}</span>
                                     <span className="text-[10px] text-slate-400 mt-1 block leading-tight">
                                       {p.description}
                                     </span>
@@ -1034,37 +1083,34 @@ export default function AdminStaffPage() {
                   </div>
                 </div>
               ) : (
-                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+                <div className="p-3.5 rounded-lg bg-white/[0.02] border border-white/5 text-xs text-slate-300 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 shrink-0 text-amber-400" />
-                  <span>The <b>{role.toUpperCase()}</b> role automatically inherits full operational permissions across all modules.</span>
+                  <span>The <b>{role.toUpperCase()}</b> role automatically inherits complete privileges across all modules.</span>
                 </div>
               )}
+            </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || (editingStaff ? !isEditDirty : false)}
-                  className={`px-6 py-2.5 rounded-xl font-black uppercase tracking-wide transition-all shadow-md ${
-                    editingStaff && !isEditDirty
-                      ? "bg-white/10 text-slate-500 cursor-not-allowed border border-white/5"
-                      : "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                  }`}
-                  title={editingStaff && !isEditDirty ? "No changes made to personnel profile or permissions" : undefined}
-                >
-                  {saving ? "Saving..." : editingStaff ? "Save Permissions" : "Create Personnel"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            {/* Compact Footer: h-12 */}
+            <div className="h-12 px-6 border-t border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-xs text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving || (editingStaff ? !isEditDirty : false)}
+                className="h-8 px-4 rounded-lg bg-white hover:bg-slate-200 text-slate-950 font-semibold text-xs transition cursor-pointer disabled:opacity-50 shadow-sm"
+                title={editingStaff && !isEditDirty ? "No changes made to personnel profile or permissions" : undefined}
+              >
+                {saving ? "Saving..." : editingStaff ? "Save Permissions" : "Create Personnel"}
+              </button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
 
       {/* Suspension Modal for Staff */}
       {suspendingStaff && (

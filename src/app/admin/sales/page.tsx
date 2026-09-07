@@ -35,6 +35,13 @@ import { adminApi } from "@/lib/adminApi";
 import { Order, SalesInvoice, SalesSummary } from "@/types";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  AdminPageHeader,
+  AdminStatStrip,
+  AdminStatusBadge,
+  AdminPagination,
+  AdminEmptyState,
+} from "@/components/admin/ui";
 
 export default function AdminSalesPage() {
   const [sales, setSales] = useState<Order[]>([]);
@@ -183,100 +190,67 @@ export default function AdminSalesPage() {
   return (
     <div className="space-y-6 pb-16">
       
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0d0f18] p-5 rounded-3xl border border-white/10 shadow-xl">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-md">
-            <BadgeDollarSign className="w-6 h-6" />
+      {/* Admin Page Header */}
+      <AdminPageHeader
+        title="Commercial Sales & Invoices"
+        description="Unified multi-channel sales ledger across POS retail registers and online storefront checkouts."
+        badge={`${summary.total_transactions} txns`}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchSales}
+              disabled={loading}
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/[0.08] text-xs font-semibold text-slate-300 hover:text-white transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-amber-400" : ""}`} />
+              Refresh
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/[0.08] text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              Export CSV
+            </button>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Commercial Sales History & Invoices</h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Unified multi-channel sales ledger across POS retail registers and online storefront checkouts.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={fetchSales}
-            disabled={loading}
-            className="px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition flex items-center gap-2 cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-amber-400" : ""}`} />
-            Refresh
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="px-4 py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 flex items-center gap-2 transition cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
-            Export CSV
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* KPI Sales Performance Ribbon */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Gross Sales */}
-        <div className="bg-[#0e121e] p-4 sm:p-5 rounded-3xl border border-white/10 shadow-xl space-y-1.5 relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
-            <span>Total Sales Revenue</span>
-            <BadgeDollarSign className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">
-            {formatPrice(summary.total_sales)}
-          </div>
-          <div className="text-[11px] text-slate-500">
-            {summary.total_transactions} processed transactions
-          </div>
-        </div>
-
-        {/* In-Store POS Retail Share */}
-        <div className="bg-[#0e121e] p-4 sm:p-5 rounded-3xl border border-white/10 shadow-xl space-y-1.5 relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
-            <span>In-Store POS Sales</span>
-            <Calculator className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
-            {formatPrice(summary.pos_sales)}
-          </div>
-          <div className="text-[11px] text-slate-500">
-            {summary.total_sales > 0 ? Math.round((summary.pos_sales / summary.total_sales) * 100) : 0}% of gross revenue
-          </div>
-        </div>
-
-        {/* Online Storefront Share */}
-        <div className="bg-[#0e121e] p-4 sm:p-5 rounded-3xl border border-white/10 shadow-xl space-y-1.5 relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
-            <span>Online eCommerce Sales</span>
-            <ShoppingBag className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-indigo-300 font-mono">
-            {formatPrice(summary.online_sales)}
-          </div>
-          <div className="text-[11px] text-slate-500">
-            {summary.total_sales > 0 ? Math.round((summary.online_sales / summary.total_sales) * 100) : 0}% of gross revenue
-          </div>
-        </div>
-
-        {/* Average Invoice Ticket */}
-        <div className="bg-[#0e121e] p-4 sm:p-5 rounded-3xl border border-white/10 shadow-xl space-y-1.5 relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
-            <span>Average Ticket (AOV)</span>
-            <Receipt className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-cyan-300 font-mono">
-            {formatPrice(summary.average_invoice_value)}
-          </div>
-          <div className="text-[11px] text-slate-500">
-            Tax collected: {formatPrice(summary.total_tax_collected)}
-          </div>
-        </div>
-      </div>
+      <AdminStatStrip
+        stats={[
+          {
+            label: "Total Sales Revenue",
+            value: formatPrice(summary.total_sales),
+            change: `${summary.total_transactions} txns`,
+            icon: BadgeDollarSign,
+            helper: "Processed gross volume",
+          },
+          {
+            label: "In-Store POS Sales",
+            value: formatPrice(summary.pos_sales),
+            change: `${summary.total_sales > 0 ? Math.round((summary.pos_sales / summary.total_sales) * 100) : 0}%`,
+            icon: Calculator,
+            helper: "Physical retail registers",
+          },
+          {
+            label: "Online Storefront",
+            value: formatPrice(summary.online_sales),
+            change: `${summary.total_sales > 0 ? Math.round((summary.online_sales / summary.total_sales) * 100) : 0}%`,
+            icon: ShoppingBag,
+            helper: "eCommerce checkouts",
+          },
+          {
+            label: "Average Ticket (AOV)",
+            value: formatPrice(summary.average_invoice_value),
+            icon: Receipt,
+            helper: `Tax: ${formatPrice(summary.total_tax_collected)}`,
+          },
+        ]}
+      />
 
       {/* Filter Toolbar */}
-      <div className="bg-[#0e121e] p-4 sm:p-5 rounded-3xl border border-white/10 shadow-xl space-y-4">
+      <div className="bg-[#0f121b] p-4 rounded-xl border border-white/[0.08] space-y-3">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           
           {/* Channel Tabs */}
@@ -290,9 +264,9 @@ export default function AdminSalesPage() {
               <button
                 key={tab.id}
                 onClick={() => { setSourceFilter(tab.id); setPage(1); }}
-                className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   sourceFilter === tab.id
-                    ? "bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20"
+                    ? "bg-amber-400 text-slate-950 font-bold shadow-sm"
                     : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
                 }`}
               >
@@ -310,11 +284,11 @@ export default function AdminSalesPage() {
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Search invoice #, customer, phone..."
-                className="w-full bg-[#151824] border border-white/10 focus:border-amber-400 rounded-2xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition"
+                className="w-full bg-[#161a26] border border-white/[0.08] focus:border-amber-400/50 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none transition"
               />
             </div>
 
-            {/* Payment Status Rounded Popover */}
+            {/* Payment Status Popover */}
             <div className="relative">
               <button
                 type="button"
@@ -322,13 +296,13 @@ export default function AdminSalesPage() {
                   setOpenPaymentStatusFilter(!openPaymentStatusFilter);
                   setOpenPaymentMethodFilter(false);
                 }}
-                className="bg-[#151824] hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl px-3.5 py-2 text-xs font-bold text-slate-200 flex items-center justify-between gap-2 transition cursor-pointer shadow-md"
+                className="bg-[#161a26] hover:bg-[#1c2232] border border-white/[0.08] hover:border-white/20 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-200 flex items-center justify-between gap-2 transition cursor-pointer"
               >
                 <span>
                   {paymentStatusFilter === "all" && "All Statuses"}
-                  {paymentStatusFilter === "paid" && "🟢 Paid"}
-                  {paymentStatusFilter === "pending" && "🟡 Pending"}
-                  {paymentStatusFilter === "refunded" && "🔴 Refunded"}
+                  {paymentStatusFilter === "paid" && "Paid"}
+                  {paymentStatusFilter === "pending" && "Pending"}
+                  {paymentStatusFilter === "refunded" && "Refunded"}
                 </span>
                 <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${openPaymentStatusFilter ? "rotate-180 text-amber-400" : ""}`} />
               </button>
@@ -336,12 +310,12 @@ export default function AdminSalesPage() {
               {openPaymentStatusFilter && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setOpenPaymentStatusFilter(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-[#0e121e]/95 backdrop-blur-xl border border-white/15 shadow-2xl p-1.5 z-40 space-y-1 animate-in fade-in zoom-in-95">
+                  <div className="absolute right-0 top-full mt-1.5 w-48 rounded-xl bg-[#0f121b] border border-white/[0.1] shadow-xl p-1.5 z-40 space-y-1">
                     {[
-                      { id: "all", label: "All Payment Statuses", icon: "⚪" },
-                      { id: "paid", label: "Paid", icon: "🟢" },
-                      { id: "pending", label: "Pending", icon: "🟡" },
-                      { id: "refunded", label: "Refunded", icon: "🔴" },
+                      { id: "all", label: "All Payment Statuses" },
+                      { id: "paid", label: "Paid" },
+                      { id: "pending", label: "Pending" },
+                      { id: "refunded", label: "Refunded" },
                     ].map(st => (
                       <button
                         key={st.id}
@@ -351,16 +325,13 @@ export default function AdminSalesPage() {
                           setPage(1);
                           setOpenPaymentStatusFilter(false);
                         }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition cursor-pointer ${
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition cursor-pointer ${
                           paymentStatusFilter === st.id
-                            ? "bg-amber-400/15 text-amber-300 border border-amber-400/30"
-                            : "text-slate-300 hover:bg-white/10 hover:text-white"
+                            ? "bg-amber-400/10 text-amber-300 font-semibold"
+                            : "text-slate-300 hover:bg-white/5 hover:text-white"
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span>{st.icon}</span>
-                          <span>{st.label}</span>
-                        </div>
+                        <span>{st.label}</span>
                         {paymentStatusFilter === st.id && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
                       </button>
                     ))}
@@ -369,7 +340,7 @@ export default function AdminSalesPage() {
               )}
             </div>
 
-            {/* Payment Method Rounded Popover */}
+            {/* Payment Method Popover */}
             <div className="relative">
               <button
                 type="button"
@@ -377,7 +348,7 @@ export default function AdminSalesPage() {
                   setOpenPaymentMethodFilter(!openPaymentMethodFilter);
                   setOpenPaymentStatusFilter(false);
                 }}
-                className="bg-[#151824] hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl px-3.5 py-2 text-xs font-bold text-slate-200 flex items-center justify-between gap-2 transition cursor-pointer shadow-md"
+                className="bg-[#161a26] hover:bg-[#1c2232] border border-white/[0.08] hover:border-white/20 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-200 flex items-center justify-between gap-2 transition cursor-pointer"
               >
                 <span>
                   {paymentMethodFilter === "all" && "All Tender Methods"}
@@ -392,7 +363,7 @@ export default function AdminSalesPage() {
               {openPaymentMethodFilter && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setOpenPaymentMethodFilter(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl bg-[#0e121e]/95 backdrop-blur-xl border border-white/15 shadow-2xl p-1.5 z-40 space-y-1 animate-in fade-in zoom-in-95">
+                  <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl bg-[#0f121b] border border-white/[0.1] shadow-xl p-1.5 z-40 space-y-1">
                     {[
                       { id: "all", label: "All Tender Methods" },
                       { id: "cash", label: "Cash" },
@@ -408,10 +379,10 @@ export default function AdminSalesPage() {
                           setPage(1);
                           setOpenPaymentMethodFilter(false);
                         }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition cursor-pointer ${
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition cursor-pointer ${
                           paymentMethodFilter === m.id
-                            ? "bg-amber-400/15 text-amber-300 border border-amber-400/30"
-                            : "text-slate-300 hover:bg-white/10 hover:text-white"
+                            ? "bg-amber-400/10 text-amber-300 font-semibold"
+                            : "text-slate-300 hover:bg-white/5 hover:text-white"
                         }`}
                       >
                         <span>{m.label}</span>
@@ -427,7 +398,7 @@ export default function AdminSalesPage() {
       </div>
 
       {/* Sales Transactions & Invoices Table */}
-      <div className="rounded-3xl bg-[#0e121e] border border-white/10 shadow-2xl overflow-hidden">
+      <div className="rounded-xl bg-[#0f121b] border border-white/[0.08] shadow-sm overflow-hidden">
         <div 
           ref={tableContainerRef}
           onMouseDown={handleMouseDown}
@@ -437,20 +408,20 @@ export default function AdminSalesPage() {
           className={`overflow-x-auto select-none ${isDragging ? "cursor-grabbing" : "cursor-grab"} custom-horizontal-scrollbar pb-3`}
         >
           <table className="w-full text-left text-xs text-slate-300 min-w-[1050px]">
-            <thead className="bg-white/[0.02] border-b border-white/10 uppercase font-bold text-[10px] tracking-wider text-slate-400">
+            <thead className="bg-white/[0.02] border-b border-white/[0.06] uppercase font-semibold text-[10px] tracking-wider text-slate-400">
               <tr>
-                <th className="py-3.5 px-4 min-w-[140px] whitespace-nowrap">Invoice / Order #</th>
-                <th className="py-3.5 px-4 min-w-[150px] whitespace-nowrap">Channel</th>
-                <th className="py-3.5 px-4 min-w-[240px] whitespace-nowrap">Customer / Cashier</th>
-                <th className="py-3.5 px-4 min-w-[160px] whitespace-nowrap">Line Items</th>
-                <th className="py-3.5 px-4 min-w-[140px] whitespace-nowrap">Tender & Status</th>
-                <th className="py-3.5 px-4 min-w-[130px] whitespace-nowrap">Net Amount</th>
-                <th className="py-3.5 px-4 min-w-[140px] whitespace-nowrap">Date & Time</th>
-                <th className="py-3.5 px-4 min-w-[130px] whitespace-nowrap text-right">Actions</th>
+                <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">Invoice / Order #</th>
+                <th className="py-3 px-4 min-w-[150px] whitespace-nowrap">Channel</th>
+                <th className="py-3 px-4 min-w-[240px] whitespace-nowrap">Customer / Cashier</th>
+                <th className="py-3 px-4 min-w-[160px] whitespace-nowrap">Line Items</th>
+                <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">Tender & Status</th>
+                <th className="py-3 px-4 min-w-[130px] whitespace-nowrap">Net Amount</th>
+                <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">Date & Time</th>
+                <th className="py-3 px-4 min-w-[130px] whitespace-nowrap text-right">Actions</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-slate-500">
@@ -460,22 +431,23 @@ export default function AdminSalesPage() {
                 </tr>
               ) : sales.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-500">
-                    <BadgeDollarSign className="w-10 h-10 mx-auto mb-3 opacity-30 text-amber-400" />
-                    <p className="font-bold text-slate-400">No sales transactions found</p>
-                    <p className="text-[11px] text-slate-600 mt-1">Sales will populate automatically from in-store POS checkouts and web orders.</p>
+                  <td colSpan={8} className="p-0">
+                    <AdminEmptyState
+                      icon={BadgeDollarSign}
+                      title="No sales transactions found"
+                      description="Sales will populate automatically from in-store POS checkouts and web orders."
+                    />
                   </td>
                 </tr>
               ) : (
                 sales.map(order => {
                   const itemsCount = order.items?.reduce((acc, it) => acc + it.quantity, 0) || order.items?.length || 0;
-                  const invoiceNumber = `INV-${order.order_number}`;
 
                   return (
                     <tr key={order.id} className="hover:bg-white/[0.02] transition">
                       
                       {/* Invoice & Order Number */}
-                      <td className="py-4 px-4 whitespace-nowrap min-w-[150px]">
+                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[150px]">
                         <button
                           onClick={() => openInvoiceModal(order.id)}
                           className="text-left group cursor-pointer"
@@ -490,7 +462,7 @@ export default function AdminSalesPage() {
                       </td>
 
                       {/* Source Channel Badge */}
-                      <td className="py-4 px-4 whitespace-nowrap min-w-[150px]">
+                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[150px]">
                         {getSourceBadge(order.order_source)}
                         {order.pos_register_session?.pos_register && (
                           <div className="text-[10px] text-slate-400 font-mono mt-0.5">
@@ -500,13 +472,13 @@ export default function AdminSalesPage() {
                       </td>
 
                       {/* Customer & Cashier Info */}
-                      <td className="py-4 px-4 whitespace-nowrap min-w-[240px]">
+                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[240px]">
                         <div className="space-y-0.5">
-                          <span className="font-bold text-white block">{order.customer_name}</span>
+                          <span className="font-semibold text-white block">{order.customer_name}</span>
                           <div className="text-[11px] text-slate-400 flex items-center gap-2">
                             {order.customer_phone && <span className="font-mono">{order.customer_phone}</span>}
                             {order.cashier_user && (
-                              <span className="text-[10px] text-amber-300/80 bg-amber-500/10 px-1.5 py-0.2 rounded font-mono">
+                              <span className="text-[10px] text-amber-300/80 bg-amber-500/10 px-1.5 py-0.5 rounded font-mono">
                                 Cashier: {order.cashier_user.name}
                               </span>
                             )}
@@ -515,13 +487,13 @@ export default function AdminSalesPage() {
                       </td>
 
                       {/* Line Items Preview */}
-                      <td className="py-4 px-4 whitespace-nowrap min-w-[160px]">
-                        <div className="space-y-1">
-                          <span className="text-xs font-bold text-slate-200 block">
+                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[160px]">
+                        <div className="space-y-0.5">
+                          <span className="text-xs font-medium text-slate-200 block">
                             {itemsCount} {itemsCount === 1 ? "unit" : "units"}
                           </span>
                           {order.items && order.items.length > 0 && (
-                            <span className="text-[10px] text-slate-400 line-clamp-1 max-w-[180px] block">
+                            <span className="text-[11px] text-slate-400 line-clamp-1 max-w-[180px] block">
                               {order.items[0]?.product_name}
                               {order.items.length > 1 && ` +${order.items.length - 1} more`}
                             </span>
@@ -530,20 +502,20 @@ export default function AdminSalesPage() {
                       </td>
 
                       {/* Payment Tender & Status */}
-                      <td className="py-4 px-4 whitespace-nowrap min-w-[140px]">
+                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[140px]">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            {getPaymentStatusBadge(order.payment_status)}
+                          <div>
+                            <AdminStatusBadge status={order.payment_status} size="sm" />
                           </div>
-                          <span className="text-[10px] uppercase font-bold text-slate-400 block font-mono">
+                          <span className="text-[10px] uppercase font-semibold text-slate-400 block font-mono">
                             {order.payment_method?.replace("_", " ") || "CASH"}
                           </span>
                         </div>
                       </td>
 
                       {/* Net Amount */}
-                      <td className="py-4 px-4 whitespace-nowrap min-w-[130px]">
-                        <span className="font-mono font-black text-emerald-400 text-sm block">
+                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[130px]">
+                        <span className="font-mono font-bold text-emerald-400 text-sm block">
                           {formatPrice(order.total_amount)}
                         </span>
                         {parseFloat(order.tax_amount as any) > 0 && (
@@ -554,16 +526,16 @@ export default function AdminSalesPage() {
                       </td>
 
                       {/* Date & Timestamp */}
-                      <td className="py-4 px-4 text-slate-300 text-xs whitespace-nowrap min-w-[140px] font-mono">
+                      <td className="py-3.5 px-4 text-slate-300 text-xs whitespace-nowrap min-w-[140px] font-mono">
                         {formatDate(order.created_at)}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-4 text-right whitespace-nowrap min-w-[130px]">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[130px]">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => openInvoiceModal(order.id)}
-                            className="px-2.5 py-1.5 rounded-2xl bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
                             title="View Formal Commercial Invoice"
                           >
                             <Receipt className="w-3.5 h-3.5" />
@@ -581,24 +553,14 @@ export default function AdminSalesPage() {
 
         {/* Pagination Footer */}
         {totalPages > 1 && (
-          <div className="p-4 bg-[#151824] border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
-            <span>Page {page} of {totalPages}</span>
-            <div className="flex gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Previous
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Next
-              </button>
-            </div>
+          <div className="p-3.5 bg-white/[0.01] border-t border-white/[0.06]">
+            <AdminPagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={summary.total_transactions}
+              itemsPerPage={15}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>
@@ -608,25 +570,25 @@ export default function AdminSalesPage() {
       {/* ========================================================================= */}
       {(selectedInvoice || loadingInvoice) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-3xl rounded-3xl bg-[#0e121e] border border-white/15 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="w-full max-w-3xl rounded-2xl bg-[#0f121b] border border-white/[0.1] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             
             {/* Modal Controls Bar (Non-printed) */}
-            <div className="p-4 bg-[#151824] border-b border-white/10 flex items-center justify-between print:hidden">
+            <div className="p-3.5 bg-[#161a26] border-b border-white/[0.08] flex items-center justify-between print:hidden">
               <div className="flex items-center gap-2 text-amber-400">
-                <Receipt className="w-5 h-5" />
-                <span className="text-sm font-bold text-white">Commercial Invoice & Receipt</span>
+                <Receipt className="w-4 h-4" />
+                <span className="text-xs font-bold text-white">Commercial Invoice & Receipt</span>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={handlePrint}
-                  className="px-3.5 py-1.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-400/20 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" /> Print / Save PDF
                 </button>
                 <button
                   onClick={() => setSelectedInvoice(null)}
-                  className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition cursor-pointer"
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -634,7 +596,7 @@ export default function AdminSalesPage() {
             </div>
 
             {/* Printable Invoice Document Body */}
-            <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-xs text-slate-300 bg-[#090b12] print:bg-white print:text-black print:p-0">
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-xs text-slate-300 bg-[#090b10] print:bg-white print:text-black print:p-0">
               {loadingInvoice || !selectedInvoice ? (
                 <div className="py-20 text-center text-slate-500">
                   <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />

@@ -20,7 +20,10 @@ import {
   CheckCircle2,
   Lock,
   KeyRound,
-  X
+  X,
+  Gift,
+  Wallet,
+  ArrowRight
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api } from "@/lib/api";
@@ -29,8 +32,10 @@ import { formatPrice, formatDate } from "@/lib/utils";
 import { ImageUploadAvatar } from "@/components/ui/ImageUploadAvatar";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { toast } from "sonner";
+import { useAppTheme } from "@/components/providers/ThemeProvider";
 
 export default function CustomerDashboardPage() {
+  const { theme } = useAppTheme();
   const { user, isAuthenticated, logout, openAuthModal, updateUser } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState({ total_orders: 1, total_spent: 375.32 });
@@ -195,7 +200,7 @@ export default function CustomerDashboardPage() {
         </div>
         <h2 className="text-2xl font-black text-white">Sign In Required</h2>
         <p className="text-xs text-slate-400">
-          Sign in to your AETHER account to review past hardware orders, track shipments, and manage saved addresses.
+          Sign in to your {theme.store_brand_name || "AETHER"} account to review past hardware orders, track shipments, and manage saved addresses.
         </p>
         <button
           onClick={() => openAuthModal("login")}
@@ -264,7 +269,7 @@ export default function CustomerDashboardPage() {
 
                 <div className="flex items-center justify-center sm:justify-start gap-2 text-[11px] text-slate-500 pt-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Verified AETHER Hardware Member</span>
+                  <span>Verified {theme.store_brand_name || "AETHER"} Hardware Member</span>
                 </div>
               </div>
             </div>
@@ -623,6 +628,53 @@ export default function CustomerDashboardPage() {
             <p className="text-xs text-slate-400">Studio Platinum Warranty</p>
           </div>
         </div>
+      </div>
+
+      {/* Rewards & Store Credit Wallets */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <Link
+          href="/dashboard/coupons"
+          className="p-6 rounded-3xl bg-gradient-to-br from-[#121626] to-[#0c0e18] border border-amber-500/20 hover:border-amber-500/40 transition-all p-5 flex items-center justify-between group shadow-xl"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+              <Gift className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white group-hover:text-amber-400 transition-colors">
+                My Coupons & Vouchers
+              </h3>
+              <p className="text-xs text-slate-400">
+                Claim discount vouchers, check claim timers, and copy promo codes
+              </p>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-amber-500/20 transition-all">
+            <ArrowRight className="w-4 h-4" />
+          </div>
+        </Link>
+
+        <Link
+          href="/dashboard/store-credit"
+          className="p-6 rounded-3xl bg-gradient-to-br from-[#101726] to-[#0a0f1a] border border-cyan-500/20 hover:border-cyan-500/40 transition-all p-5 flex items-center justify-between group shadow-xl"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
+              <Wallet className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white group-hover:text-cyan-400 transition-colors">
+                Store Credit Wallet
+              </h3>
+              <p className="text-xs text-slate-400">
+                View available store balance, refund credits, and transaction ledger
+              </p>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-cyan-500/20 transition-all">
+            <ArrowRight className="w-4 h-4" />
+          </div>
+        </Link>
       </div>
 
       {/* Order History */}

@@ -7,9 +7,11 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { api } from "@/lib/api";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { toast } from "sonner";
+import { useAppTheme } from "@/components/providers/ThemeProvider";
 
 export function AuthModal() {
   const { isAuthModalOpen, authModalTab, closeAuthModal, openAuthModal, setAuth } = useAuthStore();
+  const { theme } = useAppTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -135,7 +137,7 @@ export function AuthModal() {
                 {authModalTab === "login"
                   ? "Access your hardware orders, saved gear, and delivery addresses."
                   : authModalTab === "register"
-                  ? "Join AETHER for member-exclusive pricing and express fulfillment."
+                  ? `Join ${theme.store_brand_name || "AETHER"} for member-exclusive pricing and express fulfillment.`
                   : "Enter your registered email to receive secure recovery instructions."}
               </p>
             </div>

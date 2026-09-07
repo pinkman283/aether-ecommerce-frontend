@@ -26,13 +26,16 @@ import {
   UserPlus,
   Check,
   Info,
-  ChevronDown
+  ChevronDown,
+  Wallet,
+  Gift
 } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { formatPrice } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { PromotionClaim } from "@/types";
 import { toast } from "sonner";
 
 export default function CheckoutPage() {
@@ -46,6 +49,10 @@ export default function CheckoutPage() {
     appliedCoupon,
     applyCoupon,
     removeCoupon,
+    promotionEvaluation,
+    setPromotionEvaluation,
+    useStoreCredit,
+    setUseStoreCredit,
     getSubtotal,
     getDiscount,
   } = useCartStore();
@@ -73,12 +80,17 @@ export default function CheckoutPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
 
+  // Customer Loyalty & Store Credit
+  const [storeCreditBalance, setStoreCreditBalance] = useState<number>(0);
+  const [claimedCoupons, setClaimedCoupons] = useState<PromotionClaim[]>([]);
+  const [showClaimedPicker, setShowClaimedPicker] = useState(false);
+
   // Submission & Lead State
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [leadId, setLeadId] = useState<number | null>(null);
 
-  // Sync logged in user details
+  // Sync logged in user details & wallet
   useEffect(() => {
     if (user) {
       if (user.name && !customerName) setCustomerName(user.name);
@@ -87,9 +99,29 @@ export default function CheckoutPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    async function loadCustomerPromos() {
+      try {
+        const [creditRes, couponsRes] = await Promise.all([
+          api.getMyStoreCredit().catch(() => ({ balance: 0 })),
+          api.getMyCoupons().catch(() => ({ claimed: [] })),
+        ]);
+        if (creditRes && typeof (creditRes as any).balance === "number") {
+          setStoreCreditBalance(Number((creditRes as any).balance || 0));
+        }
+        if ((couponsRes as any)?.claimed) {
+          setClaimedCoupons((couponsRes as any).claimed.filter((c: any) => c.status === "claimed"));
+        }
+      } catch (e) {
+        // silent
+      }
+    }
+    loadCustomerPromos();
+  }, [isAuthenticated]);
+
   // Pricing calculations
   const subtotal = getSubtotal();
-  const discount = getDiscount();
 
   const insideDhakaRate = theme.shipping_inside_dhaka_rate ?? 60;
   const outsideDhakaRate = theme.shipping_outside_dhaka_rate ?? 120;
@@ -97,9 +129,56 @@ export default function CheckoutPage() {
 
   const baseShippingRate = shippingArea === "inside_dhaka" ? insideDhakaRate : outsideDhakaRate;
   const isFreeShipping = subtotal >= freeShippingThreshold;
-  const effectiveShipping = isFreeShipping ? 0 : baseShippingRate;
+  const defaultEffectiveShipping = isFreeShipping ? 0 : baseShippingRate;
 
-  const total = Math.max(0, subtotal - discount) + effectiveShipping;
+  // Authoritative promotion evaluation
+  useEffect(() => {
+    if (items.length === 0) return;
+
+    let isMounted = true;
+    const runEvaluation = async () => {
+      try {
+        const payload = {
+          items: items.map((i) => ({
+            product_id: i.product.id,
+            quantity: i.quantity,
+            price: Number(i.product.price) + (i.variant ? Number(i.variant.price_modifier) : 0),
+            category_id: (i.product as any).category_id,
+          })),
+          code: appliedCoupon?.code || undefined,
+          payment_method: paymentMethod,
+          shipping_method: shippingArea,
+          use_store_credit: useStoreCredit,
+        };
+        const res = await api.evaluatePromotions(payload);
+        if (isMounted && res.valid) {
+          setPromotionEvaluation(res);
+          if (res.customer_store_credit_balance !== undefined) {
+            setStoreCreditBalance(Number(res.customer_store_credit_balance));
+          }
+        }
+      } catch (e) {
+        // fallback
+      }
+    };
+    runEvaluation();
+    return () => {
+      isMounted = false;
+    };
+  }, [items, appliedCoupon?.code, paymentMethod, shippingArea, useStoreCredit, setPromotionEvaluation]);
+
+  // Derived pricing with PromotionEngine
+  const effectiveShipping = promotionEvaluation?.valid && typeof promotionEvaluation.shipping_amount === "number"
+    ? promotionEvaluation.shipping_amount
+    : defaultEffectiveShipping;
+
+  const totalDiscount = promotionEvaluation?.valid
+    ? promotionEvaluation.total_discount
+    : getDiscount();
+
+  const intermediateTotal = Math.max(0, subtotal - totalDiscount) + effectiveShipping;
+  const storeCreditDeduction = useStoreCredit ? Math.min(storeCreditBalance, intermediateTotal) : 0;
+  const total = Math.max(0, intermediateTotal - storeCreditDeduction);
 
   // Phone input handler enforcing digits & 11 max chars
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,16 +195,75 @@ export default function CheckoutPage() {
     setCouponError(null);
 
     try {
-      const result = await api.validateCoupon(couponInput.trim(), subtotal);
+      const payload = {
+        items: items.map((i) => ({
+          product_id: i.product.id,
+          quantity: i.quantity,
+          price: Number(i.product.price) + (i.variant ? Number(i.variant.price_modifier) : 0),
+          category_id: (i.product as any).category_id,
+        })),
+        code: couponInput.trim(),
+        payment_method: paymentMethod,
+        shipping_method: shippingArea,
+        use_store_credit: useStoreCredit,
+      };
+      const result = await api.evaluatePromotions(payload);
       if (result.valid) {
-        applyCoupon(result);
+        setPromotionEvaluation(result);
+        applyCoupon({
+          valid: true,
+          code: couponInput.trim().toUpperCase(),
+          discount_type: (result.applied_promotions?.[0]?.discount_type as any) || "fixed",
+          value: result.total_discount,
+          discount_amount: result.total_discount,
+          message: result.message || "Promo code applied!",
+        });
         setCouponInput("");
-        toast.success(`Promo code "${result.code}" applied!`);
+        toast.success(`Promo code applied! Saved ${formatPrice(result.total_discount)}`);
       } else {
-        setCouponError(result.message || "Invalid promo code.");
+        setCouponError(result.error_message || "Invalid or ineligible promo code.");
       }
     } catch (err: any) {
       setCouponError(err.response?.data?.message || "Failed to validate promo code.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleApplyClaimedCode = async (code: string) => {
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const payload = {
+        items: items.map((i) => ({
+          product_id: i.product.id,
+          quantity: i.quantity,
+          price: Number(i.product.price) + (i.variant ? Number(i.variant.price_modifier) : 0),
+          category_id: (i.product as any).category_id,
+        })),
+        code: code,
+        payment_method: paymentMethod,
+        shipping_method: shippingArea,
+        use_store_credit: useStoreCredit,
+      };
+      const result = await api.evaluatePromotions(payload);
+      if (result.valid) {
+        setPromotionEvaluation(result);
+        applyCoupon({
+          valid: true,
+          code: code,
+          discount_type: (result.applied_promotions?.[0]?.discount_type as any) || "fixed",
+          value: result.total_discount,
+          discount_amount: result.total_discount,
+          message: result.message || "Claimed coupon applied!",
+        });
+        setShowClaimedPicker(false);
+        toast.success(`Claimed voucher applied! Saved ${formatPrice(result.total_discount)}`);
+      } else {
+        setCouponError(result.error_message || "Unable to apply this coupon to current cart.");
+      }
+    } catch (err: any) {
+      setCouponError(err.response?.data?.message || "Failed to apply claimed coupon.");
     } finally {
       setCouponLoading(false);
     }
@@ -221,6 +359,7 @@ export default function CheckoutPage() {
         },
         payment_method: paymentMethod,
         coupon_code: appliedCoupon?.code,
+        use_store_credit: useStoreCredit,
         notes: orderNotes.trim() || undefined,
         items: items.map((item) => ({
           product_id: item.product.id,
@@ -712,7 +851,7 @@ export default function CheckoutPage() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                     <span className="font-bold text-emerald-600 dark:text-emerald-300">{appliedCoupon.code}</span>
-                    <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80">(-{formatPrice(discount)})</span>
+                    <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80">(-{formatPrice(totalDiscount)})</span>
                   </div>
                   <button
                     type="button"
@@ -723,7 +862,7 @@ export default function CheckoutPage() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -744,10 +883,74 @@ export default function CheckoutPage() {
                       {couponLoading ? "..." : "Apply"}
                     </button>
                   </div>
+
+                  {/* Pick from Claimed Coupons */}
+                  {claimedCoupons.length > 0 && (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setShowClaimedPicker(!showClaimedPicker)}
+                        className="text-[11px] font-bold text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Gift className="w-3.5 h-3.5" />
+                        Select from My Claimed Vouchers ({claimedCoupons.length})
+                      </button>
+
+                      {showClaimedPicker && (
+                        <div className="mt-2 space-y-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/10">
+                          {claimedCoupons.map((c) => (
+                            <div
+                              key={c.id}
+                              onClick={() => handleApplyClaimedCode(c.claimed_code)}
+                              className="flex items-center justify-between p-2 rounded-lg bg-black/40 hover:bg-amber-500/10 border border-white/5 hover:border-amber-500/30 cursor-pointer transition-colors text-xs"
+                            >
+                              <div>
+                                <span className="font-bold text-white block">{c.promotion?.name}</span>
+                                <span className="font-mono text-[10px] text-amber-300">{c.claimed_code}</span>
+                              </div>
+                              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                                Apply
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {couponError && (
                     <p className="text-[11px] text-rose-500 flex items-center gap-1 pt-1">
                       <AlertCircle className="w-3 h-3" /> {couponError}
                     </p>
+                  )}
+                </div>
+              )}
+
+              {/* Store Credit Toggle Card */}
+              {storeCreditBalance > 0 && (
+                <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-2">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-cyan-400" />
+                      <div>
+                        <span className="text-xs font-bold text-white block">Use Store Credit</span>
+                        <span className="text-[11px] text-cyan-300">Available: ৳{storeCreditBalance.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={useStoreCredit}
+                      onChange={(e) => setUseStoreCredit(e.target.checked)}
+                      className="w-4 h-4 rounded border-cyan-500/50 bg-black/40 text-cyan-500 focus:ring-0 cursor-pointer"
+                    />
+                  </label>
+                  {useStoreCredit && (
+                    <div className="text-[11px] text-slate-300 pt-1.5 border-t border-cyan-500/20 flex justify-between">
+                      <span>Store Credit Applied:</span>
+                      <span className="font-mono font-bold text-cyan-400">
+                        -৳{storeCreditDeduction.toLocaleString()}
+                      </span>
+                    </div>
                   )}
                 </div>
               )}
@@ -767,6 +970,28 @@ export default function CheckoutPage() {
                   </span>
                 </div>
 
+                {/* Itemized Applied Promotions */}
+                {promotionEvaluation?.applied_promotions && promotionEvaluation.applied_promotions.length > 0 ? (
+                  <div className="space-y-1 py-1 border-t border-dashed border-white/10">
+                    {promotionEvaluation.applied_promotions.map((p, idx) => (
+                      <div key={idx} className="flex justify-between text-[11px] text-amber-300">
+                        <span className="flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-amber-400" />
+                          {p.promotion_name} {p.code ? `(${p.code})` : ""}
+                        </span>
+                        <span className="font-mono font-bold">
+                          {p.discount_amount > 0 ? `-${formatPrice(p.discount_amount)}` : "Applied"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : totalDiscount > 0 ? (
+                  <div className="flex justify-between text-emerald-500 font-bold font-mono">
+                    <span>Discount</span>
+                    <span>-{formatPrice(totalDiscount)}</span>
+                  </div>
+                ) : null}
+
                 <div 
                   className="flex justify-between"
                   style={{ color: "var(--theme-text-body, #64748b)" }}
@@ -784,10 +1009,10 @@ export default function CheckoutPage() {
                   </span>
                 </div>
 
-                {discount > 0 && (
-                  <div className="flex justify-between text-emerald-500 font-bold font-mono">
-                    <span>Discount</span>
-                    <span>-{formatPrice(discount)}</span>
+                {useStoreCredit && storeCreditDeduction > 0 && (
+                  <div className="flex justify-between text-cyan-400 font-bold font-mono">
+                    <span>Store Credit Used</span>
+                    <span>-{formatPrice(storeCreditDeduction)}</span>
                   </div>
                 )}
 

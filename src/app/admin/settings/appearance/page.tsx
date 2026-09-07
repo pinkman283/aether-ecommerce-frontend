@@ -283,6 +283,29 @@ const BUILTIN_PRESETS: ThemePreset[] = [
   // WHITE / LIGHT PRESETS (8+)
   // ========================
   {
+    id: "lulu-emerald-white",
+    name: "LuLu Hypermarket Minimalist Emerald & White",
+    category: "light",
+    tagline: "Signature LuLu deep forest green & vibrant emerald on ultra-clean pure white canvas",
+    primary: "#005826",
+    secondary: "#2da54b",
+    bg: "#ffffff",
+    card: "#ffffff",
+    border: "#e5e7eb",
+    heading: "#0f172a",
+    body: "#475569",
+    btnPrimaryBg: "#005826",
+    btnPrimaryText: "#ffffff",
+    btnSecondaryBg: "#f3f4f6",
+    btnSecondaryText: "#0f172a",
+    tabActiveBg: "#005826",
+    tabActiveText: "#ffffff",
+    hoverBg: "rgba(0, 88, 38, 0.08)",
+    hoverText: "#005826",
+    radius: "rounded-xl",
+    gradientClass: "from-emerald-700 to-green-500",
+  },
+  {
     id: "pure-snow-white",
     name: "Pure Snow & Minimalist White",
     category: "light",
@@ -526,6 +549,8 @@ export default function AdminAppearancePage() {
   const [hoverBg, setHoverBg] = useState(DEFAULT_THEME_SETTINGS.theme_hover_bg || "rgba(6, 182, 212, 0.15)");
   const [hoverText, setHoverText] = useState(DEFAULT_THEME_SETTINGS.theme_hover_text || "#06b6d4");
   const [radius, setRadius] = useState<string>(DEFAULT_THEME_SETTINGS.theme_radius || "rounded-lg");
+  const [footerBgColor, setFooterBgColor] = useState(DEFAULT_THEME_SETTINGS.theme_footer_bg_color || "#1f242e");
+  const [footerTextColor, setFooterTextColor] = useState(DEFAULT_THEME_SETTINGS.theme_footer_text_color || "#94a3b8");
 
   // Advanced Color Token accordion
   const [showAdvancedColors, setShowAdvancedColors] = useState(false);
@@ -580,6 +605,8 @@ export default function AdminAppearancePage() {
         if (s.theme_hover_bg) setHoverBg(s.theme_hover_bg);
         if (s.theme_hover_text) setHoverText(s.theme_hover_text);
         if (s.theme_radius) setRadius(s.theme_radius);
+        if (s.theme_footer_bg_color) setFooterBgColor(s.theme_footer_bg_color);
+        if (s.theme_footer_text_color) setFooterTextColor(s.theme_footer_text_color);
 
         if (s.custom_themes && Array.isArray(s.custom_themes)) {
           setCustomThemes(s.custom_themes);
@@ -625,6 +652,8 @@ export default function AdminAppearancePage() {
         setHoverBg(initialSettings.theme_hover_bg || DEFAULT_THEME_SETTINGS.theme_hover_bg || "rgba(6, 182, 212, 0.15)");
         setHoverText(initialSettings.theme_hover_text || DEFAULT_THEME_SETTINGS.theme_hover_text || "#06b6d4");
         setRadius(initialSettings.theme_radius || DEFAULT_THEME_SETTINGS.theme_radius || "rounded-lg");
+        setFooterBgColor(initialSettings.theme_footer_bg_color || DEFAULT_THEME_SETTINGS.theme_footer_bg_color || "#1f242e");
+        setFooterTextColor(initialSettings.theme_footer_text_color || DEFAULT_THEME_SETTINGS.theme_footer_text_color || "#94a3b8");
       }
       if (editingThemeId === preset.id) {
         setEditingThemeId(null);
@@ -654,6 +683,8 @@ export default function AdminAppearancePage() {
       setHoverBg(initialSettings.theme_hover_bg || preset.hoverBg || "rgba(6, 182, 212, 0.15)");
       setHoverText(initialSettings.theme_hover_text || preset.hoverText || preset.primary);
       setRadius(initialSettings.theme_radius || preset.radius || "rounded-lg");
+      setFooterBgColor(initialSettings.theme_footer_bg_color || DEFAULT_THEME_SETTINGS.theme_footer_bg_color || "#1f242e");
+      setFooterTextColor(initialSettings.theme_footer_text_color || DEFAULT_THEME_SETTINGS.theme_footer_text_color || "#94a3b8");
       return;
     }
 
@@ -804,6 +835,12 @@ export default function AdminAppearancePage() {
     const initRadius = norm(initialSettings.theme_radius || DEFAULT_THEME_SETTINGS.theme_radius);
     const currRadius = norm(radius);
 
+    const initFooterBg = norm(initialSettings.theme_footer_bg_color || DEFAULT_THEME_SETTINGS.theme_footer_bg_color || "#1f242e");
+    const currFooterBg = norm(footerBgColor);
+
+    const initFooterText = norm(initialSettings.theme_footer_text_color || DEFAULT_THEME_SETTINGS.theme_footer_text_color || "#94a3b8");
+    const currFooterText = norm(footerTextColor);
+
     const initDefaultPreset = norm(initialSettings.theme_default_preset || "cyan-indigo");
     const currDefaultPreset = norm(defaultThemeId);
 
@@ -828,6 +865,8 @@ export default function AdminAppearancePage() {
       currHoverBg !== initHoverBg ||
       currHoverText !== initHoverText ||
       currRadius !== initRadius ||
+      currFooterBg !== initFooterBg ||
+      currFooterText !== initFooterText ||
       currDefaultPreset !== initDefaultPreset ||
       currCustomThemes !== initCustomThemes
     );
@@ -850,6 +889,8 @@ export default function AdminAppearancePage() {
     hoverBg,
     hoverText,
     radius,
+    footerBgColor,
+    footerTextColor,
     defaultThemeId,
     customThemes,
   ]);
@@ -880,6 +921,8 @@ export default function AdminAppearancePage() {
       theme_hover_bg: hoverBg,
       theme_hover_text: hoverText,
       theme_radius: radius,
+      theme_footer_bg_color: footerBgColor,
+      theme_footer_text_color: footerTextColor,
       theme_default_preset: defaultThemeId,
       custom_themes: customThemes,
     };
@@ -1368,6 +1411,216 @@ export default function AdminAppearancePage() {
                 )}
               </div>
 
+              {/* Footer Surface & Color Studio */}
+              <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-white/5">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Footer Surface & Color Studio</h3>
+                      <p className="text-[11px] text-slate-400">
+                        Customize the storefront footer tone, reassurance ribbon, and typography contrast.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="self-start sm:self-auto px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 text-[10px] font-semibold border border-cyan-500/20 whitespace-nowrap">
+                    Reassurance & Trust
+                  </span>
+                </div>
+
+                {/* 1-Click Curated Presets */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-300 block">Curated Ash & Surface Presets</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                    {[
+                      { name: "Slate Ash", bg: "#1f242e", text: "#94a3b8", desc: "Soothing Ash" },
+                      { name: "Deep Charcoal", bg: "#161922", text: "#94a3b8", desc: "Midnight Ash" },
+                      { name: "Cool Slate", bg: "#1e293b", text: "#cbd5e1", desc: "Slate Grey" },
+                      { name: "Warm Ash", bg: "#262a33", text: "#a1a1aa", desc: "Studio Warm" },
+                      { name: "Crisp White", bg: "#ffffff", text: "#475569", desc: "Clean Light" },
+                      { name: "Pure Obsidian", bg: "#07080c", text: "#94a3b8", desc: "Deep Black" },
+                    ].map((preset) => {
+                      const isSelected = footerBgColor.toLowerCase() === preset.bg.toLowerCase();
+                      return (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          onClick={() => {
+                            setFooterBgColor(preset.bg);
+                            setFooterTextColor(preset.text);
+                          }}
+                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 relative ${
+                            isSelected
+                              ? "bg-cyan-500/10 border-cyan-400 text-white shadow-sm"
+                              : "bg-white/5 border-white/10 hover:border-white/20 text-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className="w-4 h-4 rounded-full border border-white/30 shadow-inner shrink-0"
+                              style={{ backgroundColor: preset.bg }}
+                            />
+                            {isSelected && (
+                              <span className="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[9px] font-bold">
+                                ✓
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-bold block leading-tight truncate">{preset.name}</span>
+                            <span className="text-[9px] text-slate-400 block truncate">{preset.desc}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom Color Pickers */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  {/* Background Color */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-300">Footer Background Surface</label>
+                      <span className="text-[10px] text-slate-400 font-mono">{footerBgColor}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={footerBgColor.startsWith("#") ? footerBgColor : "#1f242e"}
+                        onChange={(e) => setFooterBgColor(e.target.value)}
+                        className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                      />
+                      <input
+                        type="text"
+                        value={footerBgColor}
+                        onChange={(e) => setFooterBgColor(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Supports soothing ash (#1f242e), deep darks, or custom brand palettes.
+                    </p>
+                  </div>
+
+                  {/* Text Color */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-300">Footer Text & Links Color</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const isLight = getHexLuminance(footerBgColor) > 0.45;
+                          setFooterTextColor(isLight ? "#475569" : "#94a3b8");
+                        }}
+                        className="text-[10px] text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                      >
+                        Auto Contrast
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={footerTextColor.startsWith("#") ? footerTextColor : "#94a3b8"}
+                        onChange={(e) => setFooterTextColor(e.target.value)}
+                        className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                      />
+                      <input
+                        type="text"
+                        value={footerTextColor}
+                        onChange={(e) => setFooterTextColor(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Sets headings, links, and body contrast inside the footer container.
+                    </p>
+                  </div>
+                </div>
+
+                {/* In-Card Mini Live Preview */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-300">Live Surface Preview</label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[10px] text-slate-400">Real-Time Sync</span>
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const isLight = getHexLuminance(footerBgColor) > 0.45;
+                    const previewHeading = isLight ? "#0f172a" : "#ffffff";
+                    const previewBorder = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.08)";
+                    const previewRibbon = isLight ? "rgba(0, 0, 0, 0.03)" : "rgba(255, 255, 255, 0.02)";
+                    const previewInputBg = isLight ? "#ffffff" : "rgba(255, 255, 255, 0.05)";
+                    const previewInputBorder = isLight ? "#cbd5e1" : "rgba(255, 255, 255, 0.12)";
+
+                    return (
+                      <div
+                        className="p-4 rounded-xl border transition-colors space-y-3"
+                        style={{
+                          backgroundColor: footerBgColor,
+                          borderColor: previewBorder,
+                          color: footerTextColor,
+                        }}
+                      >
+                        {/* Guarantees row mockup */}
+                        <div
+                          className="p-2 rounded-lg border flex flex-wrap items-center justify-between gap-2 text-[10px]"
+                          style={{
+                            backgroundColor: previewRibbon,
+                            borderColor: previewBorder,
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: primaryColor }} />
+                            <span className="font-bold" style={{ color: previewHeading }}>Free Express Shipping</span>
+                            <span className="opacity-75">Inside & outside Dhaka</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: primaryColor }} />
+                            <span className="font-bold" style={{ color: previewHeading }}>2-Year Studio Warranty</span>
+                            <span className="opacity-75">100% genuine hardware</span>
+                          </div>
+                        </div>
+
+                        {/* Brand & Newsletter row mockup */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                          <div>
+                            <span className="font-black text-sm block tracking-tight" style={{ color: previewHeading }}>
+                              {initialSettings?.store_brand_name || "AETHER"}
+                            </span>
+                            <span className="text-[10px] opacity-75">
+                              Next-gen acoustics, mechanical peripherals & studio hardware.
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <div
+                              className="px-2.5 py-1 rounded-lg border text-[10px] opacity-80"
+                              style={{
+                                backgroundColor: previewInputBg,
+                                borderColor: previewInputBorder,
+                                color: footerTextColor,
+                              }}
+                            >
+                              newsletter@example.com
+                            </div>
+                            <span
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white shadow-sm"
+                              style={{ backgroundColor: primaryColor }}
+                            >
+                              Join
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
               {/* Corner Radius & Geometry */}
               <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
                 <div className="flex items-center gap-2 pb-2.5 border-b border-white/5">
@@ -1417,6 +1670,8 @@ export default function AdminAppearancePage() {
               textBodyColor={textBodyColor}
               btnPrimaryBg={btnPrimaryBg}
               btnPrimaryText={btnPrimaryText}
+              footerBgColor={footerBgColor}
+              footerTextColor={footerTextColor}
               radius={radius}
             />
           </div>

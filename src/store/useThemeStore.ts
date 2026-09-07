@@ -20,6 +20,8 @@ export interface ThemeSettings {
   theme_hover_text?: string;
   theme_nav_btn_bg?: string;
   theme_nav_btn_color?: string;
+  theme_footer_bg_color?: string;
+  theme_footer_text_color?: string;
   theme_radius: "rounded-none" | "rounded-md" | "rounded-lg" | "rounded-xl" | "rounded-2xl" | string;
   announcement_enabled: boolean;
   announcement_text: string;
@@ -66,41 +68,43 @@ export interface ThemeSettings {
 }
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
-  theme_primary_color: "#06b6d4",
-  theme_secondary_color: "#6366f1",
-  theme_accent_gradient: "cyan-indigo",
-  theme_bg_color: "#090a0f",
-  theme_card_bg_color: "#0c101d",
-  theme_card_border_color: "rgba(255, 255, 255, 0.1)",
-  theme_text_heading_color: "#ffffff",
-  theme_text_body_color: "#94a3b8",
-  theme_btn_primary_bg: "#06b6d4",
+  theme_primary_color: "#005826",
+  theme_secondary_color: "#2da54b",
+  theme_accent_gradient: "emerald-teal",
+  theme_bg_color: "#ffffff",
+  theme_card_bg_color: "#ffffff",
+  theme_card_border_color: "#e5e7eb",
+  theme_text_heading_color: "#0f172a",
+  theme_text_body_color: "#475569",
+  theme_btn_primary_bg: "#005826",
   theme_btn_primary_text: "#ffffff",
-  theme_btn_secondary_bg: "rgba(255, 255, 255, 0.05)",
-  theme_btn_secondary_text: "#ffffff",
-  theme_tab_active_bg: "#06b6d4",
+  theme_btn_secondary_bg: "#f3f4f6",
+  theme_btn_secondary_text: "#0f172a",
+  theme_tab_active_bg: "#005826",
   theme_tab_active_text: "#ffffff",
-  theme_hover_bg: "rgba(6, 182, 212, 0.15)",
-  theme_hover_text: "#06b6d4",
-  theme_nav_btn_bg: "#0c101d",
-  theme_nav_btn_color: "#ffffff",
-  theme_radius: "rounded-lg",
+  theme_hover_bg: "rgba(0, 88, 38, 0.08)",
+  theme_hover_text: "#005826",
+  theme_nav_btn_bg: "#ffffff",
+  theme_nav_btn_color: "#0f172a",
+  theme_footer_bg_color: "#0f172a",
+  theme_footer_text_color: "#94a3b8",
+  theme_radius: "rounded-xl",
   announcement_enabled: true,
-  announcement_text: "Free Express Shipping on orders over $100 • Code: WELCOME20 (-20%)",
-  announcement_badge: "Studio Dispatch: Global Shipping Active",
-  store_brand_name: "AETHER",
-  store_brand_tagline: "Studio & Lab",
+  announcement_text: "Free Express Courier on orders over ৳2,000 • Code: AETHER10 (-10%)",
+  announcement_badge: "Fast Dispatch: Daily Courier Active",
+  store_brand_name: "INHALIQ",
+  store_brand_tagline: "ELEVATE EVERY INHALE",
   store_brand_logo: "",
-  hero_headline_line1: "Uncompromising",
-  hero_headline_line2_gradient: "Industrial Audio",
-  hero_headline_line3: "& Tech Ecosystem.",
-  hero_subheading: "Engineered with aerospace-grade titanium, custom beryllium drivers, and tactile mechanical acoustics for creators who refuse mediocrity.",
+  hero_headline_line1: "Curated Precision",
+  hero_headline_line2_gradient: "Hardware & Audio",
+  hero_headline_line3: "& Everyday Carry.",
+  hero_subheading: "Engineered with aerospace-grade titanium, custom mechanical acoustics, and tactile everyday carry for creators who refuse mediocrity.",
   hero_badge_text: "2026 Studio Flagship Release",
-  split_reveal_enabled: true,
+  split_reveal_enabled: false,
   split_reveal_image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=2000&q=85",
   split_reveal_logo: "",
-  split_reveal_title: "AETHER",
-  split_reveal_subtitle: "PRECISION ACOUSTICS & HARDWARE",
+  split_reveal_title: "INHALIQ",
+  split_reveal_subtitle: "ELEVATE EVERY INHALE",
   split_reveal_duration: 2.2,
   split_reveal_mode: "every_time",
   split_reveal_dim: 0.45,
@@ -191,6 +195,12 @@ export function applyThemeToDOM(theme: ThemeSettings) {
   if (isAdmin) {
     document.body.classList.add("admin-body");
     document.body.classList.remove("theme-light-mode");
+    const root = document.documentElement;
+    root.classList.remove("theme-light-mode");
+    root.style.removeProperty("--theme-text-heading");
+    root.style.removeProperty("--theme-text-body");
+    root.style.removeProperty("--theme-text-main");
+    root.style.removeProperty("--theme-text-sub");
     return;
   }
 
@@ -245,6 +255,32 @@ export function applyThemeToDOM(theme: ThemeSettings) {
   root.style.setProperty("--theme-hover-text", theme.theme_hover_text || theme.theme_primary_color);
   root.style.setProperty("--theme-hover-accent", theme.theme_hover_text || theme.theme_primary_color);
 
+  // Footer Surface & Typography Tokens
+  const footerBg = theme.theme_footer_bg_color || "#1f242e";
+  const isFooterLight = getHexLuminance(footerBg) > 0.45;
+  const footerText = theme.theme_footer_text_color || (isFooterLight ? "#475569" : "#94a3b8");
+  const footerBorder = isFooterLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.08)";
+  const footerHeading = isFooterLight ? "#0f172a" : "#ffffff";
+  const footerRibbonBg = isFooterLight ? "rgba(0, 0, 0, 0.02)" : "rgba(255, 255, 255, 0.02)";
+  const footerInputBg = isFooterLight ? "#ffffff" : "rgba(255, 255, 255, 0.05)";
+  const footerInputBorder = isFooterLight ? "#cbd5e1" : "rgba(255, 255, 255, 0.12)";
+  const footerInputText = isFooterLight ? "#0f172a" : "#ffffff";
+  const footerSocialBg = isFooterLight ? "#ffffff" : "rgba(255, 255, 255, 0.05)";
+  const footerSocialBorder = isFooterLight ? "#e2e8f0" : "rgba(255, 255, 255, 0.1)";
+  const footerLogoBg = isFooterLight ? "#f8fafc" : "#0d1017";
+
+  root.style.setProperty("--theme-footer-bg", footerBg);
+  root.style.setProperty("--theme-footer-text", footerText);
+  root.style.setProperty("--theme-footer-border", footerBorder);
+  root.style.setProperty("--theme-footer-heading", footerHeading);
+  root.style.setProperty("--theme-footer-ribbon-bg", footerRibbonBg);
+  root.style.setProperty("--theme-footer-input-bg", footerInputBg);
+  root.style.setProperty("--theme-footer-input-border", footerInputBorder);
+  root.style.setProperty("--theme-footer-input-text", footerInputText);
+  root.style.setProperty("--theme-footer-social-bg", footerSocialBg);
+  root.style.setProperty("--theme-footer-social-border", footerSocialBorder);
+  root.style.setProperty("--theme-footer-logo-inner-bg", footerLogoBg);
+
   // Dynamic Radius tokens
   const radiusConfig = RADIUS_MAP[theme.theme_radius] || RADIUS_MAP["rounded-lg"];
   root.style.setProperty("--radius", radiusConfig.root);
@@ -268,14 +304,37 @@ const API_BASE_URL = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api")
   : (process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api");
 
+export function initThemeFromCache(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const cached = localStorage.getItem("aether_active_theme_cache");
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const restored = { ...DEFAULT_THEME_SETTINGS, ...parsed };
+      useThemeStore.setState({
+        theme: restored,
+        isLoaded: true,
+      });
+      applyThemeToDOM(restored);
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
 export const useThemeStore = create<ThemeState>((set, get) => ({
   theme: DEFAULT_THEME_SETTINGS,
   isLoaded: false,
 
   setTheme: (partialTheme) => {
     const updated = { ...get().theme, ...partialTheme };
-    set({ theme: updated });
+    set({ theme: updated, isLoaded: true });
     applyThemeToDOM(updated);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("aether_active_theme_cache", JSON.stringify(updated));
+      } catch (e) {}
+    }
   },
 
   fetchTheme: async () => {
@@ -287,9 +346,14 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         const loadedTheme = { ...DEFAULT_THEME_SETTINGS, ...res.data };
         set({ theme: loadedTheme, isLoaded: true });
         applyThemeToDOM(loadedTheme);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("aether_active_theme_cache", JSON.stringify(loadedTheme));
+          } catch (e) {}
+        }
       }
     } catch (err) {
-      console.warn("Using default theme (backend unreachable):", err);
+      console.warn("Using default/cached theme (backend unreachable):", err);
       applyThemeToDOM(get().theme);
       set({ isLoaded: true });
     }

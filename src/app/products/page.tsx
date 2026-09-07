@@ -20,10 +20,12 @@ import { api } from "@/lib/api";
 import { Category, Product } from "@/types";
 import { ProductCard } from "@/components/product/ProductCard";
 import { formatPrice } from "@/lib/utils";
+import { useAppTheme } from "@/components/providers/ThemeProvider";
 
 function ProductCatalogContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { theme } = useAppTheme();
 
   const currentCategory = searchParams.get("category") || "";
   const currentSearch = searchParams.get("search") || "";
@@ -134,7 +136,7 @@ function ProductCatalogContent() {
       {/* Page Header */}
       <div className="mb-8 space-y-2">
         <span className="text-xs font-black uppercase tracking-widest text-indigo-400">
-          AETHER Hardware Archive
+          {theme.store_brand_name || "AETHER"} Hardware Archive
         </span>
         <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
           {selectedCategory
@@ -305,8 +307,8 @@ function ProductCatalogContent() {
                 ].map((r) => (
                   <button
                     key={r.label}
-                    onClick={() => setMinRating(r.val as any)}
-                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between ${
+                    onClick={() => setMinRating(minRating === r.val ? "" : (r.val as any))}
+                    className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
                       minRating === r.val
                         ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
                         : "text-slate-300 hover:bg-white/5"

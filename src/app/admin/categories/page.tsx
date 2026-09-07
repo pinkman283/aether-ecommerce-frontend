@@ -15,13 +15,16 @@ import {
   Check,
   X,
   RotateCcw,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { Category } from "@/types";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -260,21 +263,20 @@ export default function AdminCategoriesPage() {
         <table className="w-full text-left text-xs text-slate-300 min-w-[700px]">
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
-              <th className="p-3.5 w-10 text-center">
-                <input
-                  type="checkbox"
+              <th className="py-3.5 pl-6 pr-3 w-14 text-left">
+                <AdminCheckbox
                   checked={filteredCategories.length > 0 && selectedIds.length === filteredCategories.length}
+                  indeterminate={selectedIds.length > 0 && selectedIds.length < filteredCategories.length}
                   onChange={handleToggleSelectAll}
-                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
                   title="Select all categories"
                 />
               </th>
-              <th className="p-3.5">Category</th>
-              <th className="p-3.5">Slug</th>
-              <th className="p-3.5">Badge</th>
-              <th className="p-3.5">Products Linked</th>
-              <th className="p-3.5">Order</th>
-              <th className="p-3.5 text-center min-w-[160px]">Actions</th>
+              <th className="p-3.5 text-left w-[28%] min-w-[220px]">Category</th>
+              <th className="p-3.5 text-left w-[18%] min-w-[150px]">Slug</th>
+              <th className="p-3.5 text-left w-[14%] min-w-[120px]">Badge</th>
+              <th className="p-3.5 text-left w-[16%] min-w-[130px]">Products Linked</th>
+              <th className="p-3.5 text-left w-[10%] min-w-[80px]">Order</th>
+              <th className="p-3.5 text-center min-w-[140px]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -302,43 +304,44 @@ export default function AdminCategoriesPage() {
                         : "hover:bg-white/[0.02]"
                     }`}
                   >
-                    <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
+                    <td className="py-3.5 pl-6 pr-3 text-left" onClick={(e) => e.stopPropagation()}>
+                      <AdminCheckbox
                         checked={isSelected}
                         onChange={() => handleToggleSelectRow(c.id)}
-                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                        title={`Select ${c.name}`}
                       />
                     </td>
-                    <td className="p-3.5 flex items-center gap-3 font-bold text-white">
-                    {c.image && (
-                      <img
-                        src={c.image}
-                        alt={c.name}
-                        className="w-10 h-10 rounded-xl object-cover bg-slate-900 border border-white/10 shrink-0"
-                      />
-                    )}
-                    <div>
-                      <span className="text-white font-bold block">{c.name}</span>
-                      <span className="text-[10px] text-slate-400 font-normal line-clamp-1">{c.description}</span>
-                    </div>
-                  </td>
-                  <td className="p-3.5 font-mono text-cyan-400 text-[11px] whitespace-nowrap">{c.slug}</td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    {c.badge ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                        {c.badge}
+                    <td className="p-3.5 text-left">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {c.image && (
+                          <img
+                            src={c.image}
+                            alt={c.name}
+                            className="w-9 h-9 rounded-lg object-cover bg-slate-900 border border-white/10 shrink-0"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <span className="text-white font-bold block truncate">{c.name}</span>
+                          <span className="text-[10px] text-slate-400 font-normal line-clamp-1">{c.description}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3.5 text-left font-mono text-cyan-400 text-[11px] whitespace-nowrap">{c.slug}</td>
+                    <td className="p-3.5 text-left whitespace-nowrap">
+                      {c.badge ? (
+                        <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          {c.badge}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600">—</span>
+                      )}
+                    </td>
+                    <td className="p-3.5 text-left whitespace-nowrap">
+                      <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 border border-white/10 text-white">
+                        {c.products_count ?? 0} products
                       </span>
-                    ) : (
-                      <span className="text-slate-600">—</span>
-                    )}
-                  </td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 border border-white/10 text-white">
-                      {c.products_count ?? 0} products
-                    </span>
-                  </td>
-                  <td className="p-3.5 font-mono text-slate-400 whitespace-nowrap">{c.display_order ?? 0}</td>
+                    </td>
+                    <td className="p-3.5 text-left font-mono text-slate-400 whitespace-nowrap">{c.display_order ?? 0}</td>
                   
                   {/* ICON-ONLY ACTION SYSTEM (UP TO 4 PER ROW) */}
                   <td className="p-3.5 text-center whitespace-nowrap">
@@ -374,170 +377,230 @@ export default function AdminCategoriesPage() {
         </table>
       </ScrollableTableCard>
 
-      {/* View Category Modal */}
-      {viewingCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setViewingCategory(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-lg rounded-3xl bg-[#0e121e] border border-cyan-500/30 shadow-2xl p-6 sm:p-8 z-10 space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400 block">
-                  Taxonomy Details
-                </span>
-                <h3 className="text-lg font-black text-white">{viewingCategory.name}</h3>
+      {/* View Category Slide-Over Drawer */}
+      <Sheet open={!!viewingCategory} onOpenChange={(open) => { if (!open) setViewingCategory(null); }}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:w-[480px] md:w-[520px] sm:!max-w-[520px] max-w-full bg-[#0b0e17] border-l border-white/[0.08] p-0 flex flex-col justify-between shadow-2xl text-slate-100 overflow-hidden"
+        >
+          {viewingCategory && (
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Compact Header: h-12 */}
+              <div className="h-12 px-6 border-b border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2 min-w-0 pr-3">
+                  <SheetTitle className="text-xs font-semibold text-white tracking-wide shrink-0">
+                    Category Details
+                  </SheetTitle>
+                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 rounded shrink-0">
+                    #{viewingCategory.id}
+                  </span>
+                  <span className="text-slate-600 text-xs shrink-0">·</span>
+                  <span className="text-xs text-slate-400 truncate max-w-[200px]">
+                    {viewingCategory.name}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingCategory(null)}
+                  className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button onClick={() => setViewingCategory(null)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {viewingCategory.image && (
-              <img
-                src={viewingCategory.image}
-                alt={viewingCategory.name}
-                className="w-full h-40 rounded-2xl object-cover bg-slate-900 border border-white/10"
-              />
-            )}
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 text-xs">
+                {viewingCategory.image && (
+                  <img
+                    src={viewingCategory.image}
+                    alt={viewingCategory.name}
+                    className="w-full h-44 rounded-xl object-cover bg-slate-900 border border-white/10"
+                  />
+                )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Slug Identifier</span>
-                <p className="text-cyan-400 font-mono font-bold">{viewingCategory.slug}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Slug</span>
+                    <p className="text-cyan-400 font-mono font-medium">{viewingCategory.slug}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Products</span>
+                    <p className="text-white font-medium">{viewingCategory.products_count ?? 0} items</p>
+                  </div>
+                </div>
+
+                {viewingCategory.description && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Description</span>
+                    <p className="text-slate-300 leading-relaxed text-xs">{viewingCategory.description}</p>
+                  </div>
+                )}
               </div>
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Linked Products</span>
-                <p className="text-white font-bold">{viewingCategory.products_count ?? 0} hardware items</p>
+
+              {/* Compact Footer: h-12 */}
+              <div className="h-12 px-6 border-t border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+                <Link
+                  href={`/products?category=${viewingCategory.slug}`}
+                  target="_blank"
+                  className="text-xs font-medium text-slate-400 hover:text-white flex items-center gap-1.5 transition"
+                >
+                  <span>Storefront</span>
+                  <ExternalLink className="w-3 h-3 text-cyan-400" />
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const c = viewingCategory;
+                    setViewingCategory(null);
+                    handleOpenEdit(c);
+                  }}
+                  className="h-8 px-4 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Edit Category</span>
+                </button>
               </div>
             </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
-            <p className="text-slate-300 leading-relaxed text-[11px]">{viewingCategory.description || "No description provided."}</p>
-
-            <div className="flex justify-between items-center pt-3 border-t border-white/10">
-              <Link
-                href={`/products?category=${viewingCategory.slug}`}
-                target="_blank"
-                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition-all"
-              >
-                <span>View on Storefront</span>
-                <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-              </Link>
-
-              <button
-                onClick={() => {
-                  setViewingCategory(null);
-                  handleOpenEdit(viewingCategory);
-                }}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wide transition-all shadow-md"
-              >
-                Edit Category
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-lg rounded-3xl bg-[#0e121e] border border-white/15 shadow-2xl p-6 sm:p-8 z-10 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="text-lg font-black text-white">
-                {editingCategory ? `Edit Category: ${editingCategory.name}` : "Create New Category"}
-              </h3>
+      {/* Create / Edit Category Slide-over Drawer */}
+      <Sheet open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:w-[540px] md:w-[580px] sm:!max-w-[580px] max-w-full bg-[#0b0e17] border-l border-white/[0.08] p-0 flex flex-col justify-between shadow-2xl text-slate-100 overflow-hidden"
+        >
+          <form onSubmit={handleSaveCategory} className="flex flex-col h-full overflow-hidden">
+            {/* Compact Header: h-12 */}
+            <div className="h-12 px-6 border-b border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 min-w-0 pr-3">
+                <SheetTitle className="text-xs font-semibold text-white tracking-wide shrink-0">
+                  {editingCategory ? "Edit Category" : "New Category"}
+                </SheetTitle>
+                {editingCategory && (
+                  <>
+                    <span className="text-[10px] font-mono text-slate-400 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0">
+                      #{editingCategory.id}
+                    </span>
+                    <span className="text-slate-600 text-xs shrink-0">·</span>
+                    <span className="text-xs text-slate-400 truncate max-w-[220px]">
+                      {editingCategory.name}
+                    </span>
+                  </>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
                 title="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveCategory} className="space-y-4 text-xs">
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Category Name</label>
+            {/* Scrollable un-boxed form canvas */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300">Category Name <span className="text-rose-400">*</span></label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Smart Living & Acoustics"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-amber-400/50 focus:outline-none transition"
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Description</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300">Description</label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-amber-400 resize-none"
+                  placeholder="Category overview, specifications, and scope..."
+                  className="w-full rounded-lg border border-white/10 bg-[#131722] p-3 text-xs text-white placeholder:text-slate-500 focus:border-amber-400/50 focus:outline-none transition resize-none"
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Cover Image URL</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300">Cover Image URL</label>
                 <input
                   type="url"
                   value={image}
                   onChange={(e) => setImage(e.target.value)}
                   placeholder="https://images.unsplash.com/..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-amber-400/50 focus:outline-none transition"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Badge Tag</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">Badge Tag</label>
                   <input
                     type="text"
                     value={badge}
                     onChange={(e) => setBadge(e.target.value)}
                     placeholder="e.g. Flagship"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-amber-400/50 focus:outline-none transition"
                   />
                 </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Display Order</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">Display Order</label>
                   <input
                     type="number"
                     value={displayOrder}
                     onChange={(e) => setDisplayOrder(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-amber-400/50 focus:outline-none transition"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || (editingCategory ? !isEditDirty : false)}
-                  className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wide transition-all shadow-md ${
-                    editingCategory && !isEditDirty
-                      ? "bg-white/10 text-slate-500 cursor-not-allowed border border-white/5"
-                      : "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                  }`}
-                  title={editingCategory && !isEditDirty ? "No changes made to category details" : undefined}
-                >
-                  {saving ? "Saving..." : editingCategory ? "Update Category" : "Create Category"}
-                </button>
+              <div className="pt-2">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300 text-xs font-medium">
+                  <input
+                    type="checkbox"
+                    checked={isFeatured}
+                    onChange={(e) => setIsFeatured(e.target.checked)}
+                    className="rounded bg-white/5 border-white/20 text-amber-400 accent-amber-400 w-4 h-4 cursor-pointer"
+                  />
+                  <span>Featured Category</span>
+                </label>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+
+            {/* Compact Footer: h-12 */}
+            <div className="h-12 px-6 border-t border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-xs font-medium text-slate-400 hover:text-white transition px-1 py-1 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving || (editingCategory ? !isEditDirty : false)}
+                className={`h-8 px-4 rounded-lg text-xs font-semibold transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-sm ${
+                  editingCategory && !isEditDirty
+                    ? "bg-white/10 text-slate-500 cursor-not-allowed border border-white/5"
+                    : "bg-amber-400 hover:bg-amber-300 text-slate-950"
+                }`}
+                title={editingCategory && !isEditDirty ? "No changes made to category details" : undefined}
+              >
+                {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                <span>{saving ? "Saving..." : editingCategory ? "Save Changes" : "Create Category"}</span>
+              </button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
 
       {/* Delete Confirmation Modal */}
       {deletingCategory && (

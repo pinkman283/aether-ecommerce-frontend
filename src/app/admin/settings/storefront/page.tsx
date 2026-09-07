@@ -8,7 +8,8 @@ import {
   Radio, 
   Split, 
   Upload, 
-  Loader2
+  Loader2,
+  Trash2
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { useThemeStore, DEFAULT_THEME_SETTINGS } from "@/store/useThemeStore";
@@ -36,6 +37,7 @@ export default function AdminStorefrontPage() {
   // Split-Reveal Splash Intro Animation State
   const [splitRevealEnabled, setSplitRevealEnabled] = useState(DEFAULT_THEME_SETTINGS.split_reveal_enabled);
   const [splitRevealImage, setSplitRevealImage] = useState(DEFAULT_THEME_SETTINGS.split_reveal_image);
+  const [splitRevealLogo, setSplitRevealLogo] = useState("");
   const [splitRevealTitle, setSplitRevealTitle] = useState(DEFAULT_THEME_SETTINGS.split_reveal_title);
   const [splitRevealSubtitle, setSplitRevealSubtitle] = useState(DEFAULT_THEME_SETTINGS.split_reveal_subtitle);
   const [splitRevealDuration, setSplitRevealDuration] = useState(DEFAULT_THEME_SETTINGS.split_reveal_duration);
@@ -45,6 +47,7 @@ export default function AdminStorefrontPage() {
 
   const [initialSettings, setInitialSettings] = useState<any>(null);
   const splitFileInputRef = useRef<HTMLInputElement>(null);
+  const splitLogoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function loadStorefrontSettings() {
@@ -65,7 +68,13 @@ export default function AdminStorefrontPage() {
 
         if (s.split_reveal_enabled !== undefined) setSplitRevealEnabled(Boolean(s.split_reveal_enabled));
         if (s.split_reveal_image) setSplitRevealImage(s.split_reveal_image);
-        if (s.split_reveal_title) setSplitRevealTitle(s.split_reveal_title);
+        if (s.split_reveal_logo) setSplitRevealLogo(s.split_reveal_logo);
+        if (s.split_reveal_title !== undefined) {
+          const resolvedTitle = (s.split_reveal_title && s.split_reveal_title !== "AETHER")
+            ? s.split_reveal_title
+            : (s.store_brand_name || s.split_reveal_title || DEFAULT_THEME_SETTINGS.split_reveal_title);
+          setSplitRevealTitle(resolvedTitle);
+        }
         if (s.split_reveal_subtitle) setSplitRevealSubtitle(s.split_reveal_subtitle);
         if (s.split_reveal_duration) setSplitRevealDuration(Number(s.split_reveal_duration));
         if (s.split_reveal_mode) setSplitRevealMode(s.split_reveal_mode);
@@ -93,9 +102,41 @@ export default function AdminStorefrontPage() {
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       setSplitRevealImage(dataUrl);
-      toast.success("Split reveal wallpaper uploaded!");
+      if (splitFileInputRef.current) splitFileInputRef.current.value = "";
+      toast.success("New split reveal wallpaper uploaded! Previous image replaced.");
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleRemoveSplitImage = () => {
+    setSplitRevealImage("");
+    if (splitFileInputRef.current) splitFileInputRef.current.value = "";
+    toast.info("Split reveal wallpaper removed.");
+  };
+
+  const handleSplitLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Logo file must be less than 2MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setSplitRevealLogo(dataUrl);
+      if (splitLogoInputRef.current) splitLogoInputRef.current.value = "";
+      toast.success("New split reveal logo uploaded! Previous logo replaced.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveSplitLogo = () => {
+    setSplitRevealLogo("");
+    if (splitLogoInputRef.current) splitLogoInputRef.current.value = "";
+    toast.info("Split reveal logo removed.");
   };
 
   const isDirty = useMemo(() => {
@@ -112,6 +153,7 @@ export default function AdminStorefrontPage() {
       norm(heroBadgeText) !== norm(initialSettings.hero_badge_text || DEFAULT_THEME_SETTINGS.hero_badge_text) ||
       Boolean(splitRevealEnabled) !== Boolean(initialSettings.split_reveal_enabled) ||
       norm(splitRevealImage) !== norm(initialSettings.split_reveal_image || DEFAULT_THEME_SETTINGS.split_reveal_image) ||
+      norm(splitRevealLogo) !== norm(initialSettings.split_reveal_logo || "") ||
       norm(splitRevealTitle) !== norm(initialSettings.split_reveal_title || DEFAULT_THEME_SETTINGS.split_reveal_title) ||
       norm(splitRevealSubtitle) !== norm(initialSettings.split_reveal_subtitle || DEFAULT_THEME_SETTINGS.split_reveal_subtitle) ||
       Number(splitRevealDuration) !== Number(initialSettings.split_reveal_duration || DEFAULT_THEME_SETTINGS.split_reveal_duration) ||
@@ -131,6 +173,7 @@ export default function AdminStorefrontPage() {
     heroBadgeText,
     splitRevealEnabled,
     splitRevealImage,
+    splitRevealLogo,
     splitRevealTitle,
     splitRevealSubtitle,
     splitRevealDuration,
@@ -151,6 +194,7 @@ export default function AdminStorefrontPage() {
     setHeroBadgeText(initialSettings.hero_badge_text || DEFAULT_THEME_SETTINGS.hero_badge_text);
     setSplitRevealEnabled(initialSettings.split_reveal_enabled ?? DEFAULT_THEME_SETTINGS.split_reveal_enabled);
     setSplitRevealImage(initialSettings.split_reveal_image || DEFAULT_THEME_SETTINGS.split_reveal_image);
+    setSplitRevealLogo(initialSettings.split_reveal_logo || "");
     setSplitRevealTitle(initialSettings.split_reveal_title || DEFAULT_THEME_SETTINGS.split_reveal_title);
     setSplitRevealSubtitle(initialSettings.split_reveal_subtitle || DEFAULT_THEME_SETTINGS.split_reveal_subtitle);
     setSplitRevealDuration(initialSettings.split_reveal_duration || DEFAULT_THEME_SETTINGS.split_reveal_duration);
@@ -178,6 +222,7 @@ export default function AdminStorefrontPage() {
       hero_badge_text: heroBadgeText,
       split_reveal_enabled: splitRevealEnabled,
       split_reveal_image: splitRevealImage,
+      split_reveal_logo: splitRevealLogo,
       split_reveal_title: splitRevealTitle,
       split_reveal_subtitle: splitRevealSubtitle,
       split_reveal_duration: splitRevealDuration,
@@ -399,7 +444,7 @@ export default function AdminStorefrontPage() {
                 </div>
               </div>
 
-              {/* Wallpaper Upload & URL */}
+              {/* Wallpaper Upload & Manager */}
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-slate-300 block">Splash Wallpaper Image</label>
                 <input
@@ -409,22 +454,95 @@ export default function AdminStorefrontPage() {
                   accept="image/*"
                   className="hidden"
                 />
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => splitFileInputRef.current?.click()}
-                    className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload</span>
-                  </button>
-                  <input
-                    type="text"
-                    value={splitRevealImage}
-                    onChange={(e) => setSplitRevealImage(e.target.value)}
-                    placeholder="https://..."
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                  />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  {splitRevealImage && (
+                    <div className="w-20 h-12 rounded-lg border border-white/15 overflow-hidden bg-black/50 shrink-0 relative group">
+                      <img
+                        src={splitRevealImage}
+                        alt="Split Reveal Wallpaper Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={() => splitFileInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload</span>
+                    </button>
+                    {splitRevealImage && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveSplitImage}
+                        className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+                        title="Delete current wallpaper image"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    )}
+                    <input
+                      type="text"
+                      value={splitRevealImage}
+                      onChange={(e) => setSplitRevealImage(e.target.value)}
+                      placeholder="https://..."
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Split Screen Brand Logo Manager */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-300 block">Split-Reveal Custom Logo (Optional)</label>
+                <input
+                  type="file"
+                  ref={splitLogoInputRef}
+                  onChange={handleSplitLogoUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  {splitRevealLogo && (
+                    <div className="w-12 h-12 rounded-lg border border-white/15 overflow-hidden bg-black/50 shrink-0 p-1 flex items-center justify-center">
+                      <img
+                        src={splitRevealLogo}
+                        alt="Split Reveal Logo Preview"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={() => splitLogoInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload Logo</span>
+                    </button>
+                    {splitRevealLogo && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveSplitLogo}
+                        className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+                        title="Delete current split screen logo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Logo</span>
+                      </button>
+                    )}
+                    <input
+                      type="text"
+                      value={splitRevealLogo}
+                      onChange={(e) => setSplitRevealLogo(e.target.value)}
+                      placeholder="Leave empty to use main store brand logo or monogram"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
                 </div>
               </div>
 

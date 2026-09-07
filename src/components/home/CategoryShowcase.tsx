@@ -22,8 +22,9 @@ import {
   CarouselPrevious,
   type CarouselApi
 } from "@/components/ui/carousel";
-import { Category, Product } from "@/types";
+import { Banner, Category, Product } from "@/types";
 import { api } from "@/lib/api";
+import { BottomBannerCarousel } from "./BottomBannerCarousel";
 
 const ICON_MAP: Record<string, any> = {
   "audio-acoustics": Headphones,
@@ -40,6 +41,7 @@ interface CategorySectionData {
 
 interface CategoryShowcaseProps {
   categories?: Category[];
+  bottomBanners?: Banner[];
 }
 
 type FilterTab = "featured" | "new" | "bestsellers";
@@ -236,7 +238,7 @@ function SingleCategoryRow({ section }: { section: CategorySectionData }) {
   );
 }
 
-export function CategoryShowcase({ categories = [] }: CategoryShowcaseProps) {
+export function CategoryShowcase({ categories = [], bottomBanners = [] }: CategoryShowcaseProps) {
   const [sections, setSections] = useState<CategorySectionData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -312,11 +314,31 @@ export function CategoryShowcase({ categories = [] }: CategoryShowcaseProps) {
     );
   }
 
+  const hasSmartLiving = sections.some(
+    (s) =>
+      s.category.slug === "smart-living-lighting" ||
+      s.category.slug.includes("smart-living") ||
+      s.category.name.toLowerCase().includes("smart living")
+  );
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-      {sections.map((section) => (
-        <SingleCategoryRow key={section.category.id} section={section} />
-      ))}
+      {sections.map((section, idx) => {
+        const isTarget =
+          section.category.slug === "smart-living-lighting" ||
+          section.category.slug.includes("smart-living") ||
+          section.category.name.toLowerCase().includes("smart living") ||
+          (!hasSmartLiving && idx === Math.min(3, sections.length - 1));
+
+        return (
+          <div key={section.category.id} className="space-y-16">
+            {isTarget && (
+              <BottomBannerCarousel banners={bottomBanners} />
+            )}
+            <SingleCategoryRow section={section} />
+          </div>
+        );
+      })}
     </div>
   );
 }

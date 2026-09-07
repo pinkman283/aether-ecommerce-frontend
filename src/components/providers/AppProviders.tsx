@@ -15,8 +15,15 @@ import { Toaster } from "sonner";
 import { FloatingWhatsApp } from "@/components/shared/FloatingWhatsApp";
 import { BackToTop } from "@/components/shared/BackToTop";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
+import { ThemeSettings } from "@/store/useThemeStore";
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
+export function AppProviders({
+  children,
+  initialTheme,
+}: {
+  children: React.ReactNode;
+  initialTheme?: ThemeSettings;
+}) {
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -29,7 +36,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   if (isAdminRoute) {
     return (
-      <ThemeProvider>
+      <ThemeProvider initialTheme={initialTheme}>
         {children}
         {mounted && (
           <Toaster
@@ -49,9 +56,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ThemeProvider>
+    <ThemeProvider initialTheme={initialTheme}>
       {/* Horizontal Split Reveal Intro Animation */}
-      <SplitReveal />
+      <SplitReveal initialTheme={initialTheme} />
 
       <Navbar onOpenSearch={() => setSearchOpen(true)} />
       

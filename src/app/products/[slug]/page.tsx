@@ -160,7 +160,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             {/* Top Brand & Category Tag */}
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <span className="text-xs font-black uppercase tracking-widest text-indigo-400">
-                {product.brand || "AETHER Studio"}
+                {product.brand || `${theme.store_brand_name || "AETHER"} Studio`}
               </span>
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-amber-400">
                 <Star className="w-3.5 h-3.5 fill-amber-400" />
@@ -392,7 +392,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             </div>
             <div className="flex justify-between p-3">
               <span className="text-slate-400">Brand</span>
-              <span className="text-white font-bold">{product.brand || "AETHER"}</span>
+              <span className="text-white font-bold">{product.brand || theme.store_brand_name || "AETHER"}</span>
             </div>
             {product.specifications &&
               Object.entries(product.specifications).map(([key, val]) => (
@@ -478,7 +478,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             sku: product.sku || `AETH-${product.id}`,
             brand: {
               "@type": "Brand",
-              name: product.brand || "AETHER",
+              name: product.brand || theme.store_brand_name || "AETHER",
             },
             offers: {
               "@type": "Offer",

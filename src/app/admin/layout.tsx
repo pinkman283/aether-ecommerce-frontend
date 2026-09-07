@@ -36,11 +36,31 @@ import {
   Building2,
   SlidersHorizontal,
   Command,
-  Store
+  Store,
+  Landmark,
+  BookOpen,
+  FileSpreadsheet,
+  Wallet,
+  ListTree,
+  Megaphone,
+  Puzzle,
+  BarChart3,
+  Percent,
+  Ticket,
+  Gift,
+  Zap,
+  Award,
+  CreditCard,
+  History,
+  Sparkles,
 } from "lucide-react";
 import { useAdminAuthStore } from "@/store/useAdminAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { adminApi } from "@/lib/adminApi";
+import { SidebarNavGroup, SidebarNavLink, NavChildItem } from "@/components/admin/SidebarNavGroup";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { CursorScrollProvider } from "@/components/admin/CursorScrollProvider";
+
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -144,53 +164,185 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return Boolean(adminUser?.permissions?.includes(permission));
   };
 
-  const navSections = [
+  interface NavGroupItem {
+    kind: "group";
+    label: string;
+    icon: any;
+    badge?: string | number;
+    items: NavChildItem[];
+  }
+
+  interface NavSingleItem {
+    kind: "single";
+    label: string;
+    href: string;
+    icon: any;
+    permission?: string;
+    badge?: string | number;
+  }
+
+  type NavItem = NavGroupItem | NavSingleItem;
+
+  interface NavSection {
+    title: string;
+    items: NavItem[];
+  }
+
+  const navSections: NavSection[] = [
     {
       title: "Overview",
       items: [
-        { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-        { label: "POS Terminal", href: "/admin/pos", icon: Receipt, permission: "orders.create" },
+        { kind: "single", label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+        { kind: "single", label: "POS Terminal", href: "/admin/pos", icon: Receipt, permission: "orders.create" },
       ],
     },
     {
-      title: "Catalog & Stock",
+      title: "Operations",
       items: [
-        { label: "Products", href: "/admin/products", icon: Boxes, permission: "products.view" },
-        { label: "Categories", href: "/admin/categories", icon: FolderTree, permission: "categories.view" },
-        { label: "Brands", href: "/admin/brands", icon: Building2, permission: "products.view" },
-        { label: "Inventory & Stock", href: "/admin/inventory", icon: Layers, permission: "products.view" },
-        { label: "FIFO Ledger", href: "/admin/inventory-valuation", icon: Calculator, permission: "procurement.fifo" },
-        { label: "Vendors", href: "/admin/vendors", icon: Truck, permission: "procurement.vendors" },
-        { label: "Purchase Orders", href: "/admin/purchase-orders", icon: FileText, permission: "procurement.orders" },
-        { label: "Goods Receiving", href: "/admin/goods-receipts", icon: PackageCheck, permission: "procurement.receive" },
+        {
+          kind: "group",
+          label: "Products",
+          icon: Boxes,
+          items: [
+            { label: "Products", href: "/admin/products", icon: Boxes, permission: "products.view" },
+            { label: "Categories", href: "/admin/categories", icon: FolderTree, permission: "categories.view" },
+            { label: "Brands", href: "/admin/brands", icon: Building2, permission: "products.view" },
+            { label: "Color Swatches", href: "/admin/products/colors", icon: Palette, permission: "products.view" },
+            { label: "Inventory & Stock", href: "/admin/inventory", icon: Layers, permission: "products.view" },
+            { label: "FIFO Ledger", href: "/admin/inventory-valuation", icon: Calculator, permission: "procurement.fifo" },
+          ],
+        },
+        {
+          kind: "group",
+          label: "Purchasing",
+          icon: Truck,
+          items: [
+            { label: "Vendors", href: "/admin/vendors", icon: Truck, permission: "procurement.vendors" },
+            { label: "Purchase Orders", href: "/admin/purchase-orders", icon: FileText, permission: "procurement.orders" },
+            { label: "Goods Receiving", href: "/admin/goods-receipts", icon: PackageCheck, permission: "procurement.receive" },
+          ],
+        },
+        {
+          kind: "group",
+          label: "Sales & CRM",
+          icon: ShoppingBag,
+          items: [
+            { label: "Orders", href: "/admin/orders", icon: ShoppingBag, permission: "orders.view" },
+            { label: "Sales & Invoices", href: "/admin/sales", icon: BadgeDollarSign, permission: "orders.view" },
+            { label: "Leads & Abandoned", href: "/admin/leads", icon: Magnet, permission: "leads.view" },
+            { label: "Customers", href: "/admin/customers", icon: Users, permission: "customers.view" },
+            { label: "Coupons", href: "/admin/coupons", icon: Tag, permission: "coupons.view" },
+            { label: "Reviews", href: "/admin/reviews", icon: Star, permission: "reviews.view" },
+            { label: "Banners & Ads", href: "/admin/banners", icon: Megaphone, permission: "theme.manage" },
+          ],
+        },
       ],
     },
     {
-      title: "Sales & CRM",
+      title: "Promotions & Discounts",
       items: [
-        { label: "Orders", href: "/admin/orders", icon: ShoppingBag, permission: "orders.view" },
-        { label: "Sales & Invoices", href: "/admin/sales", icon: BadgeDollarSign, permission: "orders.view" },
-        { label: "Leads & Abandoned", href: "/admin/leads", icon: Magnet, permission: "leads.view" },
-        { label: "Customers", href: "/admin/customers", icon: Users, permission: "customers.view" },
-        { label: "Coupons", href: "/admin/coupons", icon: Tag, permission: "coupons.view" },
-        { label: "Reviews", href: "/admin/reviews", icon: Star, permission: "reviews.view" },
+        {
+          kind: "group",
+          label: "Promotions & Discounts",
+          icon: Percent,
+          items: [
+            { label: "All Promotions", href: "/admin/promotions", icon: Percent, permission: "coupons.view" },
+            { label: "Discount Codes", href: "/admin/promotions/codes", icon: Ticket, permission: "coupons.view" },
+            { label: "Claimable Coupons", href: "/admin/promotions/claimable", icon: Gift, permission: "coupons.view" },
+            { label: "Automatic Discounts", href: "/admin/promotions/automatic", icon: Zap, permission: "coupons.view" },
+            { label: "Customer Rewards", href: "/admin/promotions/rewards", icon: Award, permission: "coupons.view" },
+            { label: "Store Credit", href: "/admin/promotions/store-credit", icon: CreditCard, permission: "coupons.view" },
+            { label: "Redemptions", href: "/admin/promotions/redemptions", icon: History, permission: "coupons.view" },
+            { label: "Analytics", href: "/admin/promotions/analytics", icon: BarChart3, permission: "analytics.view" },
+          ],
+        },
       ],
     },
     {
-      title: "Financials",
+      title: "Content & Storefront",
       items: [
-        { label: "P&L Financial Engine", href: "/admin/finance", icon: TrendingUp, permission: "finance.view" },
-        { label: "Operating Expenses", href: "/admin/expenses", icon: Coins, permission: "expenses.view" },
+        {
+          kind: "group",
+          label: "Blog & Editorial",
+          icon: BookOpen,
+          items: [
+            { label: "Blog Dashboard", href: "/admin/blog", icon: LayoutDashboard },
+            { label: "Articles", href: "/admin/blog/posts", icon: FileText },
+            { label: "Categories", href: "/admin/blog/categories", icon: FolderTree },
+            { label: "Tags", href: "/admin/blog/tags", icon: Tag },
+            { label: "Comments", href: "/admin/blog/comments", icon: Star },
+          ],
+        },
+        {
+          kind: "group",
+          label: "Online Store CMS",
+          icon: Store,
+          items: [
+            { label: "Homepage Banners", href: "/admin/banners", icon: Sparkles, permission: "theme.manage" },
+            { label: "CMS Pages", href: "/admin/online-store/pages", icon: FileText },
+            { label: "Footer Builder", href: "/admin/online-store/footer", icon: Layers },
+            { label: "Social Links", href: "/admin/online-store/social", icon: ExternalLink },
+          ],
+        },
       ],
     },
     {
-      title: "Administration & Settings",
+      title: "Finances",
       items: [
-        { label: "Settings", href: "/admin/settings", icon: Settings, permission: "settings.manage" },
-        { label: "Staff & RBAC", href: "/admin/staff", icon: UserCog, permission: "staff.view" },
-        { label: "Blocked IPs", href: "/admin/blocked-ips", icon: ShieldAlert, permission: "security.ip_block" },
-        { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText, permission: "audit_logs.view" },
-        { label: "My Profile", href: "/admin/profile", icon: ShieldCheck },
+        {
+          kind: "group",
+          label: "Financials & Accounting",
+          icon: Landmark,
+          items: [
+            { label: "Accounting Hub", href: "/admin/accounting", icon: Landmark, permission: "accounting.view" },
+            { label: "Customer Dues (A/R)", href: "/admin/accounting/receivables", icon: Users, permission: "accounting.view" },
+            { label: "Supplier Dues (A/P)", href: "/admin/accounting/payables", icon: Truck, permission: "accounting.view" },
+            { label: "General Ledger", href: "/admin/accounting/ledger", icon: BookOpen, permission: "accounting.view" },
+            { label: "Financial Reports", href: "/admin/accounting/reports", icon: FileSpreadsheet, permission: "accounting.view" },
+            { label: "Bank & Cash", href: "/admin/accounting/banking", icon: Wallet, permission: "accounting.view" },
+            { label: "Chart of Accounts", href: "/admin/accounting/accounts", icon: ListTree, permission: "accounting.view" },
+            { label: "P&L Financial Engine", href: "/admin/finance", icon: TrendingUp, permission: "finance.view" },
+            { label: "Operating Expenses", href: "/admin/expenses", icon: Coins, permission: "expenses.view" },
+          ],
+        },
+        {
+          kind: "group",
+          label: "Analytics & Intelligence",
+          icon: BarChart3,
+          items: [
+            { label: "14-Report Center", href: "/admin/reports", icon: BarChart3, permission: "analytics.view" },
+            { label: "Financial Reports", href: "/admin/accounting/reports", icon: FileSpreadsheet, permission: "accounting.view" },
+          ],
+        },
+      ],
+    },
+    {
+      title: "Settings & System",
+      items: [
+        {
+          kind: "group",
+          label: "Settings",
+          icon: Settings,
+          items: [
+            { label: "Settings Hub", href: "/admin/settings", icon: Settings, permission: "settings.manage" },
+            { label: "Integrations Hub", href: "/admin/integrations", icon: Puzzle, permission: "settings.manage" },
+            { label: "Theme Studio", href: "/admin/theme", icon: Palette, permission: "theme.manage" },
+            { label: "Appearance", href: "/admin/settings/appearance", icon: Palette, permission: "theme.manage" },
+            { label: "Branding & Logo", href: "/admin/settings/branding", icon: Store, permission: "theme.manage" },
+            { label: "Storefront & Hero", href: "/admin/settings/storefront", icon: LayoutDashboard, permission: "theme.manage" },
+          ],
+        },
+        {
+          kind: "group",
+          label: "Administration",
+          icon: UserCog,
+          items: [
+            { label: "Staff & RBAC", href: "/admin/staff", icon: UserCog, permission: "staff.view" },
+            { label: "Blocked IPs", href: "/admin/blocked-ips", icon: ShieldAlert, permission: "security.ip_block" },
+            { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText, permission: "audit_logs.view" },
+            { label: "My Profile", href: "/admin/profile", icon: ShieldCheck },
+          ],
+        },
       ],
     },
   ];
@@ -206,15 +358,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Additional sub-pages for breadcrumb and command palette indexing
   const additionalSubPages = [
+    { label: "Shipping Zones", href: "/admin/settings/shipping", icon: Truck, section: "Settings", permission: "settings.manage" },
+    { label: "Order Pipeline", href: "/admin/settings/statuses", icon: SlidersHorizontal, section: "Settings", permission: "settings.manage" },
+    { label: "SEO & Search", href: "/admin/settings/seo", icon: Search, section: "Settings", permission: "settings.manage" },
+    { label: "PWA Studio", href: "/admin/settings/pwa", icon: LayoutDashboard, section: "Settings", permission: "settings.manage" },
+    { label: "Notification Templates", href: "/admin/settings/notifications", icon: FileText, section: "Settings", permission: "settings.manage" },
+    { label: "System & Cache", href: "/admin/settings/system", icon: Settings, section: "Settings", permission: "settings.manage" },
+    { label: "Integrations Hub", href: "/admin/integrations", icon: Puzzle, section: "Settings", permission: "settings.manage" },
     { label: "Theme & Appearance", href: "/admin/settings/appearance", icon: Palette, section: "Settings", permission: "theme.manage" },
     { label: "Branding & Logo", href: "/admin/settings/branding", icon: Store, section: "Settings", permission: "theme.manage" },
     { label: "Storefront & Hero", href: "/admin/settings/storefront", icon: LayoutDashboard, section: "Settings", permission: "theme.manage" },
     { label: "Theme & UI Studio", href: "/admin/theme", icon: Palette, section: "Settings", permission: "theme.manage" },
+    { label: "Promotion Builder", href: "/admin/promotions/new", icon: Percent, section: "Promotions & Discounts", permission: "coupons.manage" },
   ];
 
   // Breadcrumb current item detection
   const allNavAndSubItems = [
-    ...navSections.flatMap((s) => s.items.map((item) => ({ ...item, section: s.title }))),
+    ...navSections.flatMap((s) =>
+      s.items.flatMap((item) => {
+        if (item.kind === "single") {
+          return [{ label: item.label, href: item.href, icon: item.icon, section: s.title, permission: item.permission }];
+        }
+        return item.items.map((sub) => ({ ...sub, section: item.label }));
+      })
+    ),
     ...additionalSubPages,
   ];
 
@@ -234,8 +401,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       
       {/* Sidebar Desktop */}
       <aside 
-        className={`hidden lg:flex flex-col justify-between bg-[#0b0e17] border-r border-white/10 shrink-0 h-full transition-[width] duration-250 ease-in-out will-change-[width] overflow-hidden z-20 ${
-          sidebarCollapsed ? "w-[64px]" : "w-60"
+        className={`hidden lg:flex flex-col justify-between bg-[#090b10] border-r border-white/[0.06] shrink-0 h-full transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[width] overflow-hidden z-20 ${
+          sidebarCollapsed ? "w-[68px]" : "w-64"
         }`}
       >
         <div className="p-3 flex flex-col h-full overflow-x-hidden overflow-y-auto no-scrollbar">
@@ -243,11 +410,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Admin Brand Header */}
           <div className="flex items-center gap-2.5 pb-3 border-b border-white/10 mb-3 w-full shrink-0">
             {companyBrandLogo ? (
-              <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center p-1 shrink-0 overflow-hidden">
-                <img src={companyBrandLogo} alt={companyBrandName} className="max-h-full max-w-full object-contain" />
+              <div 
+                className="w-8 h-8 rounded-full border border-cyan-400/40 bg-white/5 p-0.5 flex items-center justify-center shrink-0 overflow-hidden shadow-sm"
+                suppressHydrationWarning
+              >
+                <img
+                  src={companyBrandLogo}
+                  alt={companyBrandName}
+                  className="w-full h-full object-contain rounded-full"
+                  suppressHydrationWarning
+                />
               </div>
             ) : (
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 flex items-center justify-center shadow-xs shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/40 flex items-center justify-center shadow-xs shrink-0">
                 <span className="font-black text-amber-400 text-sm font-mono">
                   {companyBrandName.charAt(0)}
                 </span>
@@ -255,8 +430,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
             
             <div 
-              className={`overflow-hidden transition-all duration-200 whitespace-nowrap ${
-                sidebarCollapsed ? "w-0 opacity-0 max-w-0 pointer-events-none -translate-x-2" : "w-auto opacity-100 max-w-[170px] translate-x-0"
+              className={`overflow-hidden transition-opacity duration-200 whitespace-nowrap ${
+                sidebarCollapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100 max-w-[170px]"
               }`}
             >
               <span className="font-bold text-xs text-white tracking-tight block truncate uppercase">
@@ -269,60 +444,55 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           {/* Navigation Links */}
-          <nav className="space-y-4 flex-1 w-full overflow-x-hidden">
+          <nav className="space-y-3 flex-1 w-full overflow-x-hidden">
             {navSections.map((section) => {
-              const visibleItems = section.items.filter((item) => hasItemAccess(item.permission));
-              if (visibleItems.length === 0) return null;
+              const visibleSectionItems = section.items.filter((item) => {
+                if (item.kind === "single") {
+                  return hasItemAccess(item.permission);
+                }
+                return item.items.some((child) => hasItemAccess(child.permission));
+              });
+
+              if (visibleSectionItems.length === 0) return null;
 
               return (
-                <div key={section.title} className="space-y-0.5">
+                <div key={section.title} className="space-y-1">
                   {/* Category Header */}
-                  <div 
-                    className={`overflow-hidden transition-all duration-200 whitespace-nowrap ${
-                      sidebarCollapsed ? "max-h-0 opacity-0 mb-0" : "max-h-5 opacity-100 mb-1"
-                    }`}
-                  >
-                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-500 px-2 block whitespace-nowrap">
-                      {section.title}
-                    </span>
-                  </div>
+                  {!sidebarCollapsed && (
+                    <div className="animate-in fade-in duration-150 mb-1">
+                      <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-500 px-3 block whitespace-nowrap">
+                        {section.title}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="space-y-0.5">
-                    {visibleItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+                    {visibleSectionItems.map((item) => {
+                      if (item.kind === "single") {
+                        return (
+                          <SidebarNavLink
+                            key={item.href}
+                            label={item.label}
+                            href={item.href}
+                            icon={item.icon}
+                            badge={item.badge}
+                            sidebarCollapsed={sidebarCollapsed}
+                            pathname={pathname}
+                          />
+                        );
+                      }
+
                       return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className={`flex items-center rounded-lg text-xs font-medium transition-colors group relative overflow-hidden whitespace-nowrap ${
-                            sidebarCollapsed
-                              ? "justify-center p-2.5 my-0.5"
-                              : "gap-2.5 px-2.5 py-1.5"
-                          } ${
-                            isActive
-                              ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold shadow-xs"
-                              : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
-                          }`}
-                          title={sidebarCollapsed ? `${item.label} (${section.title})` : undefined}
-                        >
-                          <Icon className={`w-3.5 h-3.5 shrink-0 transition-transform duration-150 ${isActive ? "text-amber-400" : "text-slate-400 group-hover:text-slate-200"}`} />
-                          
-                          <span 
-                            className={`transition-all duration-200 whitespace-nowrap overflow-hidden ${
-                              sidebarCollapsed ? "w-0 opacity-0 max-w-0 -translate-x-2" : "w-auto opacity-100 max-w-[160px] translate-x-0"
-                            }`}
-                          >
-                            {item.label}
-                          </span>
-                          
-                          {/* Slim Rail Tooltip */}
-                          {sidebarCollapsed && (
-                            <div className="absolute left-full ml-2 px-2.5 py-1 rounded bg-slate-900 border border-white/15 text-[11px] font-bold text-white shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
-                              {item.label}
-                            </div>
-                          )}
-                        </Link>
+                        <SidebarNavGroup
+                          key={item.label}
+                          label={item.label}
+                          icon={item.icon}
+                          badge={item.badge}
+                          items={item.items}
+                          sidebarCollapsed={sidebarCollapsed}
+                          pathname={pathname}
+                          hasItemAccess={hasItemAccess}
+                        />
                       );
                     })}
                   </div>
@@ -347,8 +517,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               />
               
               <div 
-                className={`overflow-hidden transition-all duration-200 whitespace-nowrap ${
-                  sidebarCollapsed ? "w-0 opacity-0 max-w-0 pointer-events-none -translate-x-2" : "w-auto opacity-100 max-w-[120px] translate-x-0"
+                className={`overflow-hidden transition-opacity duration-200 whitespace-nowrap ${
+                  sidebarCollapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100 max-w-[120px]"
                 }`}
               >
                 <span className="text-[11px] font-bold text-white block truncate group-hover:text-amber-300 transition-colors">
@@ -377,13 +547,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         
         {/* Top Header */}
-        <header className="h-14 shrink-0 border-b border-white/10 bg-[#080b12]/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-30">
+        <header className="h-14 shrink-0 border-b border-white/[0.06] bg-[#090b10]/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-30">
           
           {/* Left: Sidebar Toggle + Breadcrumb */}
           <div className="flex items-center gap-2.5">
             <button
               onClick={toggleSidebar}
-              className="hidden lg:flex items-center justify-center p-1.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white cursor-pointer transition-all hover:border-amber-400/30"
+              className="hidden lg:flex items-center justify-center p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-300 hover:text-white cursor-pointer transition-colors"
               title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <Menu className="w-3.5 h-3.5 text-slate-300" />
@@ -392,7 +562,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Mobile menu toggle */}
             <button
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
-              className="lg:hidden p-1.5 rounded-md bg-white/5 text-slate-300 hover:text-white cursor-pointer"
+              className="lg:hidden p-1.5 rounded-lg bg-white/[0.04] text-slate-300 hover:text-white cursor-pointer"
             >
               {mobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
@@ -402,7 +572,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="hidden sm:flex items-center gap-1.5 text-xs">
                 <span className="text-slate-500 font-medium">{currentNavItem.section}</span>
                 <ChevronRight className="w-3 h-3 text-slate-600" />
-                <span className="font-bold text-slate-200">{currentNavItem.label}</span>
+                <span className="font-semibold text-slate-200">{currentNavItem.label}</span>
               </div>
             )}
           </div>
@@ -410,13 +580,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Center: Command Palette Trigger */}
           <button
             onClick={() => setCommandOpen(true)}
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-slate-200 text-xs transition-all cursor-pointer w-60 justify-between shadow-xs"
+            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-400 hover:text-slate-200 text-xs transition-colors cursor-pointer w-60 justify-between shadow-xs"
           >
             <div className="flex items-center gap-1.5">
               <Search className="w-3.5 h-3.5 text-slate-400" />
               <span className="text-[11px]">Quick navigation...</span>
             </div>
-            <kbd className="px-1.5 py-0.5 rounded bg-black/40 border border-white/15 text-[9.5px] font-mono text-slate-300">
+            <kbd className="px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-[9.5px] font-mono text-slate-300">
               Ctrl+K
             </kbd>
           </button>
@@ -426,7 +596,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               href="/"
               target="_blank"
-              className="px-2.5 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-slate-300 hover:text-white border border-white/10 transition-all flex items-center gap-1"
+              className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[11px] font-semibold text-slate-300 hover:text-white border border-white/[0.08] transition-colors flex items-center gap-1.5"
               title="Open customer storefront in new tab"
             >
               <span>Live Store</span>
@@ -435,7 +605,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <Link
               href="/admin/theme"
-              className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-all"
+              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] transition-colors"
               title="Theme Studio"
             >
               <Palette className="w-3.5 h-3.5 text-amber-400" />
@@ -443,7 +613,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <Link
               href="/admin/settings"
-              className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-all"
+              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] transition-colors"
               title="Settings"
             >
               <Settings className="w-3.5 h-3.5 text-slate-300" />
@@ -452,65 +622,121 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Scrollable Viewport */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#07090e]">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#090b10]">
+          <CursorScrollProvider />
           {children}
         </main>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileNavOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div 
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setMobileNavOpen(false)} 
-          />
-          <div className="relative w-64 max-w-[80vw] bg-[#0b0e17] border-r border-white/10 h-full flex flex-col p-4 z-10 overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
-              <span className="font-bold text-xs text-white uppercase">{companyBrandName} Admin</span>
-              <button 
-                onClick={() => setMobileNavOpen(false)}
-                className="p-1 text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <nav className="space-y-4 flex-1">
-              {navSections.map((section) => (
-                <div key={section.title} className="space-y-1">
-                  <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-500 px-2 block">
-                    {section.title}
-                  </span>
-                  {section.items.filter((i) => hasItemAccess(i.permission)).map((item) => {
-                    const Icon = item.icon;
-                    const isActive = pathname === item.href;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setMobileNavOpen(false)}
-                        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium ${
-                          isActive ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        <span>{item.label}</span>
-                      </Link>
-                    );
-                  })}
+      {/* Mobile Left Navigation Drawer */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent
+          side="left"
+          className="w-72 max-w-[85vw] bg-[#090b10] border-r border-white/[0.08] p-0 flex flex-col justify-between"
+          showCloseButton={false}
+        >
+          {/* Minimal Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2.5">
+              {companyBrandLogo ? (
+                <div 
+                  className="w-7 h-7 rounded-full border border-cyan-400/40 bg-white/5 p-0.5 flex items-center justify-center shrink-0 overflow-hidden"
+                  suppressHydrationWarning
+                >
+                  <img
+                    src={companyBrandLogo}
+                    alt={companyBrandName}
+                    className="w-full h-full object-contain rounded-full"
+                    suppressHydrationWarning
+                  />
                 </div>
-              ))}
-            </nav>
-
-            <button
-              onClick={handleLogout}
-              className="mt-4 pt-3 border-t border-white/10 flex items-center gap-2 text-xs font-semibold text-rose-400 hover:text-rose-300"
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+                  <span className="font-black text-amber-400 text-xs font-mono">
+                    {companyBrandName.charAt(0)}
+                  </span>
+                </div>
+              )}
+              <SheetTitle className="text-xs font-bold text-white uppercase tracking-wider">
+                {companyBrandName} Admin
+              </SheetTitle>
+            </div>
+            <button 
+              type="button"
+              onClick={() => setMobileNavOpen(false)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
             >
-              <LogOut className="w-3.5 h-3.5" /> Sign Out
+              <X className="w-4 h-4" />
             </button>
           </div>
-        </div>
-      )}
+
+          {/* Navigation Links */}
+          <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3.5 no-scrollbar">
+            {navSections.map((section) => {
+              const visibleSectionItems = section.items.filter((item) => {
+                if (item.kind === "single") {
+                  return hasItemAccess(item.permission);
+                }
+                return item.items.some((child) => hasItemAccess(child.permission));
+              });
+
+              if (visibleSectionItems.length === 0) return null;
+
+              return (
+                <div key={section.title} className="space-y-1">
+                  <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-500 px-3 block">
+                    {section.title}
+                  </span>
+                  <div className="space-y-0.5">
+                    {visibleSectionItems.map((item) => {
+                      if (item.kind === "single") {
+                        return (
+                          <SidebarNavLink
+                            key={item.href}
+                            label={item.label}
+                            href={item.href}
+                            icon={item.icon}
+                            badge={item.badge}
+                            sidebarCollapsed={false}
+                            pathname={pathname}
+                            onNavigate={() => setMobileNavOpen(false)}
+                          />
+                        );
+                      }
+
+                      return (
+                        <SidebarNavGroup
+                          key={item.label}
+                          label={item.label}
+                          icon={item.icon}
+                          badge={item.badge}
+                          items={item.items}
+                          sidebarCollapsed={false}
+                          pathname={pathname}
+                          hasItemAccess={hasItemAccess}
+                          onNavigate={() => setMobileNavOpen(false)}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer Sign Out */}
+          <div className="p-3 border-t border-white/[0.06] bg-[#07090e]">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Global Quick Command Palette Modal (Ctrl + K) */}
       {commandOpen && (
@@ -545,7 +771,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       className="flex items-center justify-between px-3 py-2 rounded-lg text-xs hover:bg-white/10 text-slate-200 hover:text-white transition-colors"
                     >
                       <div className="flex items-center gap-2.5">
-                        <Icon className="w-3.5 h-3.5 text-amber-400" />
+                        {Icon && <Icon className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
                         <span className="font-semibold">{item.label}</span>
                       </div>
                       <span className="text-[10px] text-slate-500 uppercase">{item.section}</span>

@@ -1,11 +1,13 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { CartItem, CouponValidation, Product, ProductVariant } from "@/types";
+import { CartItem, CouponValidation, Product, ProductVariant, PromotionEvaluationResult } from "@/types";
 
 interface CartState {
   items: CartItem[];
   isCartOpen: boolean;
   appliedCoupon: CouponValidation | null;
+  promotionEvaluation: PromotionEvaluationResult | null;
+  useStoreCredit: boolean;
   
   // Actions
   openCart: () => void;
@@ -17,6 +19,8 @@ interface CartState {
   clearCart: () => void;
   applyCoupon: (coupon: CouponValidation) => void;
   removeCoupon: () => void;
+  setPromotionEvaluation: (evalResult: PromotionEvaluationResult | null) => void;
+  setUseStoreCredit: (val: boolean) => void;
   
   // Computed getters
   getSubtotal: () => number;
@@ -33,6 +37,8 @@ export const useCartStore = create<CartState>()(
       items: [],
       isCartOpen: false,
       appliedCoupon: null,
+      promotionEvaluation: null,
+      useStoreCredit: false,
 
       openCart: () => set({ isCartOpen: true }),
       closeCart: () => set({ isCartOpen: false }),
@@ -90,10 +96,12 @@ export const useCartStore = create<CartState>()(
         }));
       },
 
-      clearCart: () => set({ items: [], appliedCoupon: null }),
+      clearCart: () => set({ items: [], appliedCoupon: null, promotionEvaluation: null }),
 
       applyCoupon: (coupon: CouponValidation) => set({ appliedCoupon: coupon }),
-      removeCoupon: () => set({ appliedCoupon: null }),
+      removeCoupon: () => set({ appliedCoupon: null, promotionEvaluation: null }),
+      setPromotionEvaluation: (evalResult: PromotionEvaluationResult | null) => set({ promotionEvaluation: evalResult }),
+      setUseStoreCredit: (val: boolean) => set({ useStoreCredit: val }),
 
       getSubtotal: () => {
         const { items } = get();
@@ -104,13 +112,19 @@ export const useCartStore = create<CartState>()(
       },
 
       getDiscount: () => {
-        const { appliedCoupon } = get();
-        const subtotal = get().getSubtotal();
+        const { promotionEvaluation, appliedCoupon } = get();
+        if (promotionEvaluation?.valid) {
+          return Number(promotionEvaluation.total_discount || 0);
+        }
         if (!appliedCoupon || !appliedCoupon.valid) return 0;
         return appliedCoupon.discount_amount ?? 0;
       },
 
       getShipping: () => {
+        const { promotionEvaluation } = get();
+        if (promotionEvaluation?.valid && typeof promotionEvaluation.shipping_amount === "number") {
+          return Number(promotionEvaluation.shipping_amount);
+        }
         const subtotal = get().getSubtotal();
         if (subtotal === 0) return 0;
         return subtotal >= 100 ? 0 : 15;
@@ -121,6 +135,10 @@ export const useCartStore = create<CartState>()(
       },
 
       getTotal: () => {
+        const { promotionEvaluation } = get();
+        if (promotionEvaluation?.valid && typeof promotionEvaluation.grand_total === "number") {
+          return Number(promotionEvaluation.grand_total);
+        }
         const subtotal = get().getSubtotal();
         const discount = get().getDiscount();
         const shipping = get().getShipping();

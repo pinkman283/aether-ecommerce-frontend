@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, Truck, RotateCcw, Headphones, Sparkles, ArrowRight, Globe, Send, Share2, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Truck, RotateCcw, Headphones, ArrowRight, Globe, Send, Share2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useThemeStore } from "@/store/useThemeStore";
+import { useAppTheme } from "@/components/providers/ThemeProvider";
 
 export function Footer() {
-  const { theme } = useThemeStore();
+  const { theme } = useAppTheme();
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
@@ -18,14 +19,17 @@ export function Footer() {
       return;
     }
     setSubscribed(true);
-    toast.success("Subscribed to AETHER studio drops and product releases!");
+    toast.success(`Subscribed to ${theme.store_brand_name || "AETHER"} studio drops and product releases!`);
     setEmail("");
   };
 
   return (
-    <footer className="border-t border-white/10 bg-[#07080c] text-slate-400 text-sm mt-24">
+    <footer
+      suppressHydrationWarning
+      className="theme-footer border-t text-sm mt-24 transition-colors duration-200"
+    >
       {/* Guarantees Ribbon */}
-      <div className="border-b border-white/5 bg-white/[0.02]">
+      <div className="theme-footer-guarantees border-b transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <Link href="/shipping-policy" className="flex items-center gap-4 group">
@@ -33,8 +37,12 @@ export function Footer() {
                 <Truck className="w-6 h-6 text-indigo-400" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-sm group-hover:text-cyan-400 transition-colors">Free Express Shipping</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Complimentary delivery inside & outside Dhaka.</p>
+                <h4 className="theme-footer-card-title font-bold text-sm group-hover:text-cyan-400 transition-colors">
+                  Free Express Shipping
+                </h4>
+                <p className="theme-footer-card-desc text-xs mt-0.5">
+                  Complimentary delivery inside & outside Dhaka.
+                </p>
               </div>
             </Link>
 
@@ -43,8 +51,12 @@ export function Footer() {
                 <ShieldCheck className="w-6 h-6 text-cyan-400" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-sm group-hover:text-cyan-400 transition-colors">2-Year Studio Warranty</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Comprehensive hardware protection & zero-cost repair.</p>
+                <h4 className="theme-footer-card-title font-bold text-sm group-hover:text-cyan-400 transition-colors">
+                  2-Year Studio Warranty
+                </h4>
+                <p className="theme-footer-card-desc text-xs mt-0.5">
+                  Comprehensive hardware protection & zero-cost repair.
+                </p>
               </div>
             </Link>
 
@@ -53,8 +65,12 @@ export function Footer() {
                 <RotateCcw className="w-6 h-6 text-purple-400" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-sm group-hover:text-cyan-400 transition-colors">30-Day Risk-Free Trial</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Hassle-free evaluation with prepaid RMA labels.</p>
+                <h4 className="theme-footer-card-title font-bold text-sm group-hover:text-cyan-400 transition-colors">
+                  30-Day Risk-Free Trial
+                </h4>
+                <p className="theme-footer-card-desc text-xs mt-0.5">
+                  Hassle-free evaluation with prepaid RMA labels.
+                </p>
               </div>
             </Link>
 
@@ -63,8 +79,12 @@ export function Footer() {
                 <Headphones className="w-6 h-6 text-pink-400" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-sm group-hover:text-cyan-400 transition-colors">24/7 Audio Support</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Direct access to sound engineers & hardware specialists.</p>
+                <h4 className="theme-footer-card-title font-bold text-sm group-hover:text-cyan-400 transition-colors">
+                  24/7 Audio Support
+                </h4>
+                <p className="theme-footer-card-desc text-xs mt-0.5">
+                  Direct access to sound engineers & hardware specialists.
+                </p>
               </div>
             </Link>
           </div>
@@ -72,35 +92,45 @@ export function Footer() {
       </div>
 
       {/* Main Footer Links */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="theme-footer-main max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
           {/* Brand Col */}
           <div className="lg:col-span-2 space-y-4">
-            <Link href="/" className="flex items-center gap-2.5 inline-flex group">
+            <Link href="/" suppressHydrationWarning className="flex items-center gap-3 inline-flex group select-none">
               {theme.store_brand_logo ? (
-                <img
-                  src={theme.store_brand_logo}
-                  alt={theme.store_brand_name || "Company Logo"}
-                  className="max-h-9 w-auto object-contain rounded-lg transition-transform duration-300 group-hover:scale-105"
-                />
+                <div 
+                  className="relative w-12 h-12 sm:w-13 sm:h-13 rounded-full p-1 border-2 border-cyan-400/30 bg-white/[0.04] shadow-[0_0_15px_rgba(6,182,212,0.2)] flex items-center justify-center shrink-0 group-hover:border-cyan-400 group-hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] group-hover:scale-105 transition-all duration-300"
+                  suppressHydrationWarning
+                >
+                  <img
+                    src={theme.store_brand_logo}
+                    alt={theme.store_brand_name || "Company Logo"}
+                    className="w-full h-full object-contain rounded-full filter drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]"
+                    suppressHydrationWarning
+                  />
+                </div>
               ) : (
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-500 p-0.5 shadow-md">
-                  <div className="w-full h-full bg-[#0d1017] rounded-[10px] flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full border-2 border-cyan-400/30 bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-500 p-0.5 shadow-md group-hover:scale-105 transition-transform duration-300">
+                  <div className="theme-footer-logo-inner w-full h-full rounded-full flex items-center justify-center transition-colors">
                     <span className="font-extrabold text-base text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
                       {theme.store_brand_name?.charAt(0) || "Æ"}
                     </span>
                   </div>
                 </div>
               )}
-              <span className="font-black text-xl tracking-tight text-white">{theme.store_brand_name || "AETHER"}</span>
+              <span className="theme-footer-brand-title font-black text-xl tracking-tight transition-colors">
+                {theme.store_brand_name || "AETHER"}
+              </span>
             </Link>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
+            <p className="theme-footer-desc text-xs leading-relaxed max-w-sm">
               Crafting state-of-the-art acoustics, mechanical peripherals, and modular everyday carry for innovators, sound designers, and technical creators worldwide.
             </p>
 
             {/* Newsletter */}
             <div className="pt-2">
-              <span className="text-xs font-semibold text-white block mb-2">Subscribe to early product drops:</span>
+              <span className="theme-footer-newsletter-title text-xs font-semibold block mb-2">
+                Subscribe to early product drops:
+              </span>
               {subscribed ? (
                 <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2 max-w-sm">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -114,11 +144,11 @@ export function Footer() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address..."
-                    className="bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 flex-1"
+                    className="theme-footer-input border rounded-xl px-3.5 py-2 text-xs placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 flex-1 transition-colors"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30 flex items-center gap-1 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30 flex items-center gap-1 cursor-pointer shrink-0"
                   >
                     Join <ArrowRight className="w-3.5 h-3.5" />
                   </button>
@@ -129,8 +159,10 @@ export function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-4">Hardware</h4>
-            <ul className="space-y-2.5 text-xs">
+            <h4 className="theme-footer-col-title font-bold text-xs uppercase tracking-wider mb-4">
+              Hardware
+            </h4>
+            <ul className="theme-footer-col-links space-y-2.5 text-xs">
               <li><Link href="/products?category=audio-acoustics" className="hover:text-cyan-400 transition-colors">Flagship Audio</Link></li>
               <li><Link href="/products?category=keyboards-desks" className="hover:text-cyan-400 transition-colors">Mechanical Keyboards</Link></li>
               <li><Link href="/products?category=everyday-carry" className="hover:text-cyan-400 transition-colors">Modular EDC Packs</Link></li>
@@ -140,8 +172,10 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-4">Customer Care</h4>
-            <ul className="space-y-2.5 text-xs">
+            <h4 className="theme-footer-col-title font-bold text-xs uppercase tracking-wider mb-4">
+              Customer Care
+            </h4>
+            <ul className="theme-footer-col-links space-y-2.5 text-xs">
               <li><Link href="/track" className="hover:text-cyan-400 transition-colors">Order Tracking</Link></li>
               <li><Link href="/dashboard" className="hover:text-cyan-400 transition-colors">Customer Account</Link></li>
               <li><Link href="/dashboard/addresses" className="hover:text-cyan-400 transition-colors">Shipping Addresses</Link></li>
@@ -153,33 +187,44 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-4">Company & Hub</h4>
-            <ul className="space-y-2.5 text-xs mb-4">
-              <li><Link href="/about" className="hover:text-cyan-400 transition-colors">About AETHER Studio</Link></li>
+            <h4 className="theme-footer-col-title font-bold text-xs uppercase tracking-wider mb-4">
+              Company & Hub
+            </h4>
+            <ul className="theme-footer-col-links space-y-2.5 text-xs mb-4">
+              <li><Link href="/about" className="hover:text-cyan-400 transition-colors">About {theme.store_brand_name || "AETHER"}</Link></li>
               <li><Link href="/privacy" className="hover:text-cyan-400 transition-colors">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:text-cyan-400 transition-colors">Terms of Service</Link></li>
               <li><Link href="/admin/login" className="text-amber-400/80 hover:text-amber-300 font-semibold transition-colors flex items-center gap-1">Admin Portal →</Link></li>
             </ul>
             <div className="flex gap-3 mb-3">
-              <a href="#" className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-400/50 flex items-center justify-center text-slate-300 hover:text-white transition-all">
+              <a
+                href="#"
+                className="theme-footer-social-btn w-8 h-8 rounded-xl border flex items-center justify-center transition-all"
+              >
                 <Globe className="w-4 h-4" />
               </a>
-              <a href="#" className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-400/50 flex items-center justify-center text-slate-300 hover:text-white transition-all">
+              <a
+                href="#"
+                className="theme-footer-social-btn w-8 h-8 rounded-xl border flex items-center justify-center transition-all"
+              >
                 <Send className="w-4 h-4" />
               </a>
-              <a href="#" className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-400/50 flex items-center justify-center text-slate-300 hover:text-white transition-all">
+              <a
+                href="#"
+                className="theme-footer-social-btn w-8 h-8 rounded-xl border flex items-center justify-center transition-all"
+              >
                 <Share2 className="w-4 h-4" />
               </a>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="theme-footer-locations text-[11px]">
               Dhaka • San Francisco • Tokyo • Berlin
             </p>
           </div>
         </div>
 
         {/* Bottom copyright */}
-        <div className="border-t border-white/5 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© 2026 AETHER Technologies, Inc. All rights reserved.</p>
+        <div className="theme-footer-bottom border-t mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <p>© 2026 {theme.store_brand_name || "AETHER"} Technologies, Inc. All rights reserved.</p>
           <div className="flex flex-wrap gap-4 sm:gap-6">
             <Link href="/privacy" className="hover:text-slate-400">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-slate-400">Terms of Service</Link>

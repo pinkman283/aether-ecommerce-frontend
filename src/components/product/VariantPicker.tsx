@@ -7,7 +7,7 @@ import { Check, Sparkles, AlertCircle } from "lucide-react";
 interface VariantPickerProps {
   variants?: ProductVariant[];
   selectedVariant?: ProductVariant | null;
-  onSelectVariant: (variant: ProductVariant) => void;
+  onSelectVariant: (variant: ProductVariant | null) => void;
   hasError?: boolean;
 }
 
@@ -70,7 +70,7 @@ export function VariantPicker({
               key={v.id}
               type="button"
               disabled={isOutOfStock}
-              onClick={() => onSelectVariant(v)}
+              onClick={() => onSelectVariant(isSelected ? null : v)}
               className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                 isSelected
                   ? "bg-indigo-600/20 border-cyan-400 text-cyan-300 shadow-md shadow-cyan-400/15 ring-2 ring-cyan-400/30"

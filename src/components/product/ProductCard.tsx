@@ -75,7 +75,7 @@ export function ProductCard({ product }: ProductCardProps) {
     >
       <div>
         {/* Image Container with Badges */}
-        <div className="relative aspect-square w-full rounded-lg overflow-hidden theme-img-bg bg-slate-950 mb-2.5 border border-white/5">
+        <div className="relative aspect-square w-full rounded-lg overflow-hidden theme-img-bg bg-gray-50 dark:bg-slate-950 mb-2.5 border border-gray-100 dark:border-white/5">
           <Link href={`/products/${product.slug}`}>
             <img
               src={img}
@@ -99,15 +99,15 @@ export function ProductCard({ product }: ProductCardProps) {
           {!isOutOfStock && (
             <div className="absolute top-2 left-2 flex flex-col gap-1 z-10 pointer-events-none">
               {discountPercent > 0 && (
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8.5px] font-black bg-rose-600 text-white shadow-md">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8.5px] font-black bg-rose-600 text-white shadow-xs">
                   -{discountPercent}%
                 </span>
               )}
               {product.is_new_arrival && (
                 <span
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shadow-sm"
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shadow-xs"
                   style={{
-                    backgroundColor: "var(--theme-primary, #06b6d4)",
+                    backgroundColor: "var(--theme-primary, #005826)",
                     color: "var(--theme-btn-primary-text, #ffffff)",
                   }}
                 >
@@ -116,8 +116,8 @@ export function ProductCard({ product }: ProductCardProps) {
               )}
               {product.is_best_seller && (
                 <span
-                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider text-white shadow-sm"
-                  style={{ backgroundColor: "var(--theme-secondary, #6366f1)" }}
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider text-white shadow-xs"
+                  style={{ backgroundColor: "var(--theme-secondary, #2da54b)" }}
                 >
                   Best Seller
                 </span>
@@ -130,8 +130,8 @@ export function ProductCard({ product }: ProductCardProps) {
             onClick={handleToggleWishlist}
             className={`absolute top-2 right-2 p-1.5 rounded-lg backdrop-blur-md border transition-all z-10 cursor-pointer ${
               inWishlist
-                ? "bg-pink-600 border-pink-500 text-white shadow-md shadow-pink-500/30"
-                : "bg-black/50 border-white/10 text-white/80 hover:text-pink-400 hover:border-pink-500/40 hover:bg-black/80"
+                ? "bg-rose-600 border-rose-500 text-white shadow-xs"
+                : "bg-white/85 dark:bg-black/50 border-gray-200 dark:border-white/10 text-slate-600 dark:text-white/80 hover:text-rose-500 hover:border-rose-400 shadow-xs"
             }`}
             title={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
           >

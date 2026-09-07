@@ -38,9 +38,13 @@ import { adminApi } from "@/lib/adminApi";
 import { Order, Product } from "@/types";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
+import { AdminPageHeader, AdminStatusBadge, AdminEmptyState, FilterDrawer } from "@/components/admin/ui";
+
 import { toast } from "sonner";
+
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -458,25 +462,29 @@ export default function AdminOrdersPage() {
   });
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Orders Management</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Manage customer fulfillment, tracking, payments and security</p>
-        </div>
-
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Create Order
-        </button>
-      </div>
+    <div className="space-y-4 max-w-7xl mx-auto">
+      {/* Unified Header */}
+      <AdminPageHeader
+        title="Orders"
+        description="Customer orders, fulfillment status, and payment tracking"
+        badge={`${filteredOrders.length} orders`}
+        breadcrumbs={[
+          { label: "Sales & CRM" },
+          { label: "Orders" },
+        ]}
+        action={
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" /> Create Order
+          </button>
+        }
+      />
 
       {/* Filter & Search Bar */}
-      <div className="p-3 rounded-xl bg-[#0b0e17] border border-white/10 space-y-2.5">
+      <div className="p-2.5 rounded-xl bg-[#0f121b] border border-white/[0.08] space-y-2.5">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-2.5">
           <form onSubmit={handleSearch} className="relative w-full lg:w-72">
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -485,9 +493,10 @@ export default function AdminOrdersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by order #, customer, email..."
-              className="w-full bg-white/5 border border-white/10 rounded-lg pl-8.5 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg pl-8.5 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
             />
           </form>
+
 
           <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
             <AdminDropdown
@@ -517,13 +526,18 @@ export default function AdminOrdersPage() {
 
             <button
               type="button"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                showAdvancedFilters ? "bg-amber-500/10 text-amber-300 border-amber-500/30" : "bg-white/5 text-slate-400 hover:text-white border-white/10"
+              onClick={() => setShowAdvancedFilters(true)}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                dateFrom || dateTo || minTotal || maxTotal
+                  ? "bg-amber-400/20 text-amber-300 border-amber-400/40"
+                  : "bg-white/5 text-slate-400 hover:text-white border-white/10"
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
               <span>Filters</span>
+              {(dateFrom || dateTo || minTotal || maxTotal) && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              )}
             </button>
 
             <button
@@ -537,49 +551,105 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* Advanced Filters Expandable Bar */}
-        {showAdvancedFilters && (
-          <div className="pt-2.5 border-t border-white/5 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        {/* Minimal Right Slide-Over Filter Drawer */}
+        <FilterDrawer
+          open={showAdvancedFilters}
+          onOpenChange={setShowAdvancedFilters}
+          title="Filter Orders"
+          onApply={() => setShowAdvancedFilters(false)}
+          onReset={handleResetFilters}
+          applyLabel="Done"
+          resetLabel="Reset"
+          accentColor="amber"
+        >
+          <div className="space-y-5">
+            {/* Quick Date Presets */}
             <div>
-              <label className="text-[10px] text-slate-400 block mb-0.5">Date From</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs"
-              />
+              <span className="text-[11px] font-medium text-slate-400 block mb-2">
+                Presets
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const end = new Date().toISOString().split("T")[0];
+                    const start = new Date();
+                    start.setDate(start.getDate() - 7);
+                    setDateFrom(start.toISOString().split("T")[0]);
+                    setDateTo(end);
+                  }}
+                  className="px-2.5 py-1 rounded-md text-xs text-slate-300 bg-white/[0.04] hover:bg-white/[0.08] hover:text-white border border-white/[0.06] transition cursor-pointer"
+                >
+                  7 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const end = new Date().toISOString().split("T")[0];
+                    const start = new Date();
+                    start.setDate(start.getDate() - 30);
+                    setDateFrom(start.toISOString().split("T")[0]);
+                    setDateTo(end);
+                  }}
+                  className="px-2.5 py-1 rounded-md text-xs text-slate-300 bg-white/[0.04] hover:bg-white/[0.08] hover:text-white border border-white/[0.06] transition cursor-pointer"
+                >
+                  30 Days
+                </button>
+              </div>
             </div>
-            <div>
-              <label className="text-[10px] text-slate-400 block mb-0.5">Date To</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs"
-              />
+
+            {/* Date Boundaries */}
+            <div className="space-y-3 pt-3 border-t border-white/[0.06]">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Date From</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white focus:border-amber-400/50 focus:outline-none transition [color-scheme:dark]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Date To</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white focus:border-amber-400/50 focus:outline-none transition [color-scheme:dark]"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-[10px] text-slate-400 block mb-0.5">Min Amount ($)</label>
-              <input
-                type="number"
-                value={minTotal}
-                onChange={(e) => setMinTotal(e.target.value)}
-                placeholder="0"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 block mb-0.5">Max Amount ($)</label>
-              <input
-                type="number"
-                value={maxTotal}
-                onChange={(e) => setMaxTotal(e.target.value)}
-                placeholder="10000"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
-              />
+
+            {/* Price Thresholds */}
+            <div className="space-y-3 pt-3 border-t border-white/[0.06]">
+              <span className="text-[11px] font-medium text-slate-400 block mb-1">
+                Order Value ($)
+              </span>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Min</label>
+                  <input
+                    type="number"
+                    value={minTotal}
+                    onChange={(e) => setMinTotal(e.target.value)}
+                    placeholder="0"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white font-mono focus:border-amber-400/50 focus:outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Max</label>
+                  <input
+                    type="number"
+                    value={maxTotal}
+                    onChange={(e) => setMaxTotal(e.target.value)}
+                    placeholder="10000"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white font-mono focus:border-amber-400/50 focus:outline-none transition"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        </FilterDrawer>
       </div>
 
       {/* Bulk Action Bar */}
@@ -593,41 +663,43 @@ export default function AdminOrdersPage() {
       />
 
       {/* Orders Table Card */}
-      <div className="rounded-xl bg-[#0b0e17] border border-white/10 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-semibold uppercase text-[9.5px] tracking-wider">
+      <ScrollableTableCard className="bg-[#0f121b] border-white/[0.08]">
+        <table className="w-full text-left text-xs text-slate-300 min-w-[960px]">
+            <thead className="bg-white/[0.02] border-b border-white/[0.08] text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
               <tr>
-                <th className="p-3 w-10 text-center">
-                  <input
-                    type="checkbox"
+                <th className="py-3.5 pl-6 pr-3 w-14 text-left">
+                  <AdminCheckbox
                     checked={filteredOrders.length > 0 && selectedIds.length === filteredOrders.length}
+                    indeterminate={selectedIds.length > 0 && selectedIds.length < filteredOrders.length}
                     onChange={handleToggleSelectAll}
-                    className="rounded border-white/20 text-amber-500 focus:ring-0 cursor-pointer"
+                    title="Select all orders"
                   />
                 </th>
-                <th className="p-3">Order Number</th>
-                <th className="p-3">Customer</th>
-                <th className="p-3">Amount</th>
-                <th className="p-3">Payment</th>
-                <th className="p-3">Fulfillment</th>
-                <th className="p-3">IP / Security</th>
-                <th className="p-3">Date</th>
-                <th className="p-3 text-right">Actions</th>
+                <th className="p-3 text-left w-[14%] min-w-[120px]">Order Number</th>
+                <th className="p-3 text-left w-[18%] min-w-[150px]">Customer</th>
+                <th className="p-3 text-left w-[11%] min-w-[90px]">Amount</th>
+                <th className="p-3 text-left w-[12%] min-w-[100px]">Payment</th>
+                <th className="p-3 text-left w-[12%] min-w-[100px]">Fulfillment</th>
+                <th className="p-3 text-left w-[12%] min-w-[110px]">IP / Security</th>
+                <th className="p-3 text-left w-[11%] min-w-[100px]">Date</th>
+                <th className="p-3 text-center min-w-[100px]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-500">
+                  <td colSpan={9} className="p-12 text-center text-slate-500">
                     <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-amber-400" />
                     <span>Loading orders...</span>
                   </td>
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-500 italic">
-                    No orders found.
+                  <td colSpan={9} className="p-0">
+                    <AdminEmptyState
+                      title="No orders found"
+                      description="No customer orders matched your current filters."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -642,61 +714,48 @@ export default function AdminOrdersPage() {
                         isSelected ? "bg-amber-500/5" : ""
                       }`}
                     >
-                      <td className="p-3 text-center">
-                        <input
-                          type="checkbox"
+                      <td className="py-3.5 pl-6 pr-3 text-left" onClick={(e) => e.stopPropagation()}>
+                        <AdminCheckbox
                           checked={isSelected}
                           onChange={() => handleToggleSelectRow(order.id)}
-                          className="rounded border-white/20 text-amber-500 focus:ring-0 cursor-pointer"
+                          title={`Select order ${order.order_number}`}
                         />
                       </td>
 
                       {/* Order Number */}
-                      <td className="p-3 font-mono font-bold text-cyan-400">
+                      <td className="p-3 text-left font-mono font-bold text-cyan-400 whitespace-nowrap">
                         {order.order_number}
                       </td>
 
                       {/* Customer */}
-                      <td className="p-3">
-                        <div className="truncate min-w-[150px]">
+                      <td className="p-3 text-left">
+                        <div className="truncate max-w-[180px]">
                           <span className="font-bold text-white block truncate">{order.customer_name}</span>
                           <span className="text-[10.5px] text-slate-400 block truncate">{order.customer_email}</span>
                         </div>
                       </td>
 
                       {/* Amount */}
-                      <td className="p-3 font-mono font-bold text-white">
+                      <td className="p-3 text-left font-mono font-bold text-white whitespace-nowrap">
                         {formatPrice(order.total_amount)}
                       </td>
 
                       {/* Payment */}
-                      <td className="p-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            order.payment_status === "paid"
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : order.payment_status === "refunded"
-                              ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                              : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                          }`}
-                        >
-                          {order.payment_status}
-                        </span>
+                      <td className="p-3 text-left whitespace-nowrap">
+                        <AdminStatusBadge status={order.payment_status} />
                       </td>
 
                       {/* Fulfillment */}
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-slate-300">
-                          {order.order_status}
-                        </span>
+                      <td className="p-3 text-left whitespace-nowrap">
+                        <AdminStatusBadge status={order.order_status} />
                       </td>
 
                       {/* IP Security */}
-                      <td className="p-3">
+                      <td className="p-3 text-left whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => openIpBlockModal(ip)}
-                          className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] font-mono text-slate-400 hover:text-rose-400 hover:border-rose-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                          className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] font-mono text-slate-400 hover:text-rose-400 hover:border-rose-500/30 transition-colors inline-flex items-center gap-1 cursor-pointer"
                           title="Inspect or restrict IP address"
                         >
                           <Shield className="w-3 h-3 text-slate-500" />
@@ -705,13 +764,13 @@ export default function AdminOrdersPage() {
                       </td>
 
                       {/* Date */}
-                      <td className="p-3 text-slate-400 text-[11px]">
+                      <td className="p-3 text-left text-slate-400 text-[11px] whitespace-nowrap">
                         {formatDate(order.created_at)}
                       </td>
 
                       {/* Actions */}
-                      <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="p-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => setSelectedOrder(order)}
                             className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
@@ -741,8 +800,7 @@ export default function AdminOrdersPage() {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
+      </ScrollableTableCard>
 
       {/* INSPECT ORDER MODAL */}
       {selectedOrder && (

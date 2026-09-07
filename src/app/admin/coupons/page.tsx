@@ -17,7 +17,8 @@ import {
   Infinity as InfinityIcon,
   Timer,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Loader2
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
@@ -25,6 +26,7 @@ import { AdminDropdown } from "@/components/admin/AdminDropdown";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { formatPrice, formatDate, formatTime } from "@/lib/utils";
 import { toast } from "sonner";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -545,41 +547,63 @@ export default function AdminCouponsPage() {
         </table>
       </ScrollableTableCard>
 
-      {/* Create / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-
-          <div className="relative w-full max-w-lg rounded-3xl bg-[#0e121e] border border-white/15 shadow-2xl p-6 sm:p-8 z-10 space-y-4 text-xs max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10">
-              <h3 className="text-base font-black text-white">
-                {editingCoupon ? `Edit Coupon: ${editingCoupon.code}` : "Create Promotional Campaign"}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
+      {/* Create / Edit Coupon Slide-over Drawer */}
+      <Sheet open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:w-[580px] md:w-[620px] sm:!max-w-[620px] max-w-full bg-[#0b0e17] border-l border-white/[0.08] p-0 flex flex-col justify-between shadow-2xl text-slate-100 overflow-hidden"
+        >
+          <form onSubmit={handleSaveCoupon} className="flex flex-col h-full overflow-hidden">
+            {/* Compact Header: h-12 */}
+            <div className="h-12 px-6 border-b border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 min-w-0 pr-3">
+                <SheetTitle className="text-xs font-semibold text-white tracking-wide shrink-0">
+                  {editingCoupon ? "Edit Coupon" : "New Promotion"}
+                </SheetTitle>
+                {editingCoupon && (
+                  <>
+                    <span className="text-[10px] font-mono text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded shrink-0">
+                      {editingCoupon.code}
+                    </span>
+                    <span className="text-slate-600 text-xs shrink-0">·</span>
+                    <span className="text-xs text-slate-400 truncate max-w-[200px]">
+                      {editingCoupon.type === "percentage" ? `${editingCoupon.value}% OFF` : `$${editingCoupon.value} OFF`}
+                    </span>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveCoupon} className="space-y-4">
+            {/* Scrollable Form Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Coupon Code</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">Coupon Code <span className="text-rose-400">*</span></label>
                   <input
                     type="text"
                     required
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="e.g. STUDIO25"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-400 font-mono uppercase font-bold"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white focus:border-amber-400/50 focus:outline-none font-mono uppercase font-bold transition"
                   />
                 </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Discount Type</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">Discount Type</label>
                   <AdminDropdown
                     value={type}
                     onChange={(val: any) => setType(val)}
                     className="w-full"
-                    buttonClassName="w-full py-2"
+                    buttonClassName="w-full h-9 rounded-lg"
                     options={[
                       { value: "percentage", label: "Percentage (%)" },
                       { value: "fixed", label: "Fixed Amount ($)" },
@@ -589,9 +613,9 @@ export default function AdminCouponsPage() {
               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                    Value {type === "percentage" ? "(%)" : "($)"}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">
+                    Value {type === "percentage" ? "(%)" : "($)"} <span className="text-rose-400">*</span>
                   </label>
                   <input
                     type="number"
@@ -599,36 +623,36 @@ export default function AdminCouponsPage() {
                     required
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white focus:border-amber-400/50 focus:outline-none transition"
                   />
                 </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Min Spend ($)</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">Min Spend ($)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={minOrderAmount}
                     onChange={(e) => setMinOrderAmount(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white focus:border-amber-400/50 focus:outline-none transition"
                   />
                 </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Usage Limit</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">Usage Limit</label>
                   <input
                     type="number"
                     value={usageLimit}
                     onChange={(e) => setUsageLimit(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white focus:border-amber-400/50 focus:outline-none transition"
                   />
                 </div>
               </div>
 
               {/* Campaign Duration & Timing Policy Panel */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3.5">
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Timer className="w-4 h-4 text-amber-400" />
-                    <span className="text-[11px] font-black uppercase tracking-wider text-white">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white">
                       Campaign Duration & Timing
                     </span>
                   </div>
@@ -640,17 +664,17 @@ export default function AdminCouponsPage() {
                         if (!startsAt) {
                           setStartsAt(toDateTimeLocalValue(new Date().toISOString()));
                         }
-                        applyDurationPreset(72); // Default to 3 days
+                        applyDurationPreset(72);
                       } else {
                         setHasDuration(false);
                         setStartsAt("");
                         setExpiresAt("");
                       }
                     }}
-                    className={`text-[10px] font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                    className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                       hasDuration
                         ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30"
-                        : "bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20"
+                        : "bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold"
                     }`}
                   >
                     {hasDuration ? (
@@ -669,8 +693,8 @@ export default function AdminCouponsPage() {
                   <div className="space-y-3.5 pt-2 border-t border-white/5">
                     {/* Quick Duration Presets */}
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                        Quick Duration Presets
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
+                        Quick Presets
                       </span>
                       <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                         {[
@@ -684,7 +708,7 @@ export default function AdminCouponsPage() {
                             key={p.label}
                             type="button"
                             onClick={() => applyDurationPreset(p.hours)}
-                            className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-amber-500/20 hover:text-amber-300 hover:border-amber-500/30 text-[10px] font-bold text-slate-300 border border-white/5 transition-all text-center"
+                            className="py-1 px-2 rounded-md bg-white/[0.03] hover:bg-amber-400/20 hover:text-amber-300 border border-white/5 text-[10px] font-medium text-slate-300 transition text-center cursor-pointer"
                           >
                             {p.label}
                           </button>
@@ -693,9 +717,9 @@ export default function AdminCouponsPage() {
                     </div>
 
                     {/* Custom Duration Section */}
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
-                      <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
-                        Custom Duration Section
+                    <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5 space-y-2">
+                      <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider block">
+                        Custom Duration
                       </span>
                       <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                         <input
@@ -704,12 +728,12 @@ export default function AdminCouponsPage() {
                           value={customDurationVal}
                           onChange={(e) => setCustomDurationVal(e.target.value)}
                           placeholder="e.g. 10"
-                          className="w-20 bg-[#0c0e15] border border-white/10 rounded-xl px-3 py-1.5 text-white focus:outline-none focus:border-amber-400 font-mono text-xs"
+                          className="w-20 bg-[#131722] border border-white/10 rounded-lg px-2.5 py-1 text-white focus:outline-none focus:border-amber-400 font-mono text-xs"
                         />
                         <select
                           value={customDurationUnit}
                           onChange={(e) => setCustomDurationUnit(e.target.value as any)}
-                          className="bg-[#0c0e15] border border-white/10 rounded-xl px-2.5 py-1.5 text-white focus:outline-none focus:border-amber-400 text-xs"
+                          className="bg-[#131722] border border-white/10 rounded-lg px-2 py-1 text-white focus:outline-none focus:border-amber-400 text-xs cursor-pointer"
                         >
                           <option value="hours">Hours</option>
                           <option value="days">Days</option>
@@ -718,25 +742,24 @@ export default function AdminCouponsPage() {
                         <button
                           type="button"
                           onClick={applyCustomDuration}
-                          className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-black text-[10px] uppercase tracking-wider transition-all shrink-0"
+                          className="px-3 py-1 rounded-lg bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/30 text-amber-300 font-semibold text-[10px] uppercase tracking-wider transition shrink-0 cursor-pointer"
                         >
-                          Apply Custom Duration
+                          Apply Custom
                         </button>
                       </div>
                     </div>
 
                     {/* Datetime Pickers: FROM and TO */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      {/* FROM / START DATE */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider block">
-                            From (Start Date & Time)
+                          <label className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider block">
+                            Start Date & Time
                           </label>
                           <button
                             type="button"
                             onClick={() => setStartsAt(toDateTimeLocalValue(new Date().toISOString()))}
-                            className="text-[9px] text-cyan-400 hover:underline font-bold"
+                            className="text-[9px] text-cyan-400 hover:underline font-bold cursor-pointer"
                           >
                             Set to Now
                           </button>
@@ -745,26 +768,22 @@ export default function AdminCouponsPage() {
                           type="datetime-local"
                           value={startsAt}
                           onChange={(e) => setStartsAt(e.target.value)}
-                          className="w-full bg-[#0c0e15] border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 font-mono text-xs"
+                          className="w-full bg-[#131722] border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-amber-400 font-mono text-xs [color-scheme:dark]"
                         />
-                        <span className="text-[9px] text-slate-500 mt-1 block">
-                          When this campaign officially begins.
-                        </span>
                       </div>
 
-                      {/* TO / EXPIRY DATE */}
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider block">
-                            To (End Date & Time / Expiry)
+                          <label className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider block">
+                            Expiry Date & Time
                           </label>
                           {expiresAt && (
                             <button
                               type="button"
                               onClick={() => setExpiresAt("")}
-                              className="text-[9px] text-slate-400 hover:text-white font-bold"
+                              className="text-[9px] text-slate-400 hover:text-white font-bold cursor-pointer"
                             >
-                              Clear Expiry
+                              Clear
                             </button>
                           )}
                         </div>
@@ -772,56 +791,55 @@ export default function AdminCouponsPage() {
                           type="datetime-local"
                           value={expiresAt}
                           onChange={(e) => setExpiresAt(e.target.value)}
-                          className="w-full bg-[#0c0e15] border border-amber-500/30 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 font-mono text-xs"
+                          className="w-full bg-[#131722] border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-amber-400 font-mono text-xs [color-scheme:dark]"
                         />
-                        <span className="text-[9px] text-slate-500 mt-1 block">
-                          Leave empty for continuous / open-ended campaigns.
-                        </span>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    This coupon has no time constraint and will remain valid indefinitely until manually deactivated or until its usage limit is exhausted. Click <b className="text-amber-400">Set Duration</b> to schedule start (From) and expiration (To) dates.
+                    This coupon has no time constraint and will remain valid indefinitely until manually deactivated or until its usage limit is exhausted.
                   </p>
                 )}
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer text-slate-300 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300 pt-1 text-xs">
                 <input
                   type="checkbox"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded bg-white/5 accent-amber-500"
+                  className="rounded bg-white/5 border-white/20 text-amber-400 accent-amber-400 w-4 h-4 cursor-pointer"
                 />
                 <span>Coupon is actively redeemable by customers</span>
               </label>
+            </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || (editingCoupon ? !isEditDirty : false)}
-                  className={`px-6 py-2.5 rounded-xl font-black uppercase tracking-wide transition-all shadow-md ${
-                    editingCoupon && !isEditDirty
-                      ? "bg-white/10 text-slate-500 cursor-not-allowed border border-white/5"
-                      : "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                  }`}
-                  title={editingCoupon && !isEditDirty ? "No changes made to coupon details" : undefined}
-                >
-                  {saving ? "Saving..." : editingCoupon ? "Update Coupon" : "Create Coupon"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            {/* Compact Footer: h-12 */}
+            <div className="h-12 px-6 border-t border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-xs font-medium text-slate-400 hover:text-white transition px-1 py-1 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving || (editingCoupon ? !isEditDirty : false)}
+                className={`h-8 px-4 rounded-lg text-xs font-semibold transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-sm ${
+                  editingCoupon && !isEditDirty
+                    ? "bg-white/10 text-slate-500 cursor-not-allowed border border-white/5"
+                    : "bg-amber-400 hover:bg-amber-300 text-slate-950"
+                }`}
+                title={editingCoupon && !isEditDirty ? "No changes made to coupon details" : undefined}
+              >
+                {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                <span>{saving ? "Saving..." : editingCoupon ? "Save Changes" : "Create Coupon"}</span>
+              </button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
 
       {/* Delete Modal */}
       {deletingCoupon && (

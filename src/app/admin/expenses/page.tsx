@@ -17,10 +17,12 @@ import {
   Building2, 
   FolderPlus,
   CreditCard,
-  ChevronDown
+  ChevronDown,
+  PieChart
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { Expense, ExpenseCategory, Vendor } from "@/types";
+import { ExpenseBreakdownChart } from "@/components/admin/accounting";
 
 export default function AdminExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -35,6 +37,7 @@ export default function AdminExpensesPage() {
   const [openCategoryFilter, setOpenCategoryFilter] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showSpendAnalytics, setShowSpendAnalytics] = useState(false);
 
   // Modals
   const [createModal, setCreateModal] = useState(false);
@@ -245,7 +248,19 @@ export default function AdminExpensesPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setShowSpendAnalytics(!showSpendAnalytics)}
+            className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+              showSpendAnalytics
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm"
+                : "bg-white/5 hover:bg-white/10 text-slate-200 border-white/10"
+            }`}
+          >
+            <PieChart className="w-4 h-4 text-amber-400" />
+            <span>{showSpendAnalytics ? "Hide Spend Analysis" : "Spend Analysis"}</span>
+          </button>
           <button
             onClick={() => setCategoryModal(true)}
             className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold flex items-center gap-1.5 transition"
@@ -278,6 +293,27 @@ export default function AdminExpensesPage() {
           <span className="text-2xl font-black text-white font-mono">{stats.total_recorded_count || 0}</span>
         </div>
       </div>
+
+      {/* Optional Collapsible Spend Breakdown Analysis */}
+      {showSpendAnalytics && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+          <ExpenseBreakdownChart
+            data={categories
+              .map((cat) => {
+                const catExpenses = expenses.filter((e) => e.expense_category_id === cat.id);
+                const total = catExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+                return {
+                  account_code: cat.code || `CAT-${cat.id}`,
+                  account_name: cat.name,
+                  total_amount: total,
+                };
+              })
+              .filter((item) => item.total_amount > 0)}
+            isLoading={loading}
+            height={280}
+          />
+        </div>
+      )}
 
       {/* Search & Filter Bar */}
       <div className="bg-[#0d0f18] p-4 rounded-2xl border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">

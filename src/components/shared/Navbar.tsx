@@ -4,15 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ShoppingBag, 
-  Heart, 
-  Search, 
-  User as UserIcon, 
-  LogOut, 
-  Package, 
-  Menu, 
-  X, 
+import {
+  ShoppingBag,
+  Heart,
+  Search,
+  User as UserIcon,
+  LogOut,
+  Package,
+  Menu,
+  X,
   Sparkles,
   MapPin,
   Flame,
@@ -29,6 +29,7 @@ import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
+import { useAppTheme } from "@/components/providers/ThemeProvider";
 import { formatPrice } from "@/lib/utils";
 
 interface NavbarProps {
@@ -57,7 +58,7 @@ interface NavCategoryItem {
 
 const CATEGORY_NAV_ITEMS: NavCategoryItem[] = [
   {
-    name: "AUDIO & ACOUSTICS",
+    name: "Audio & Sound",
     slug: "audio-acoustics",
     href: "/products?category=audio-acoustics",
     icon: Headphones,
@@ -75,7 +76,7 @@ const CATEGORY_NAV_ITEMS: NavCategoryItem[] = [
     ],
   },
   {
-    name: "MECHANICAL KEYBOARDS",
+    name: "Keyboards",
     slug: "keyboards-desks",
     href: "/products?category=keyboards-desks",
     icon: Keyboard,
@@ -93,7 +94,7 @@ const CATEGORY_NAV_ITEMS: NavCategoryItem[] = [
     ],
   },
   {
-    name: "EVERYDAY CARRY & TECH PACKS",
+    name: "Everyday Carry",
     slug: "everyday-carry",
     href: "/products?category=everyday-carry",
     icon: Briefcase,
@@ -110,7 +111,7 @@ const CATEGORY_NAV_ITEMS: NavCategoryItem[] = [
     ],
   },
   {
-    name: "SMART LIVING & LIGHTING",
+    name: "Smart Living",
     slug: "smart-living-lighting",
     href: "/products?category=smart-living-lighting",
     icon: Sparkles,
@@ -127,7 +128,7 @@ const CATEGORY_NAV_ITEMS: NavCategoryItem[] = [
     ],
   },
   {
-    name: "PRO CYBER WEARABLES",
+    name: "Wearables",
     slug: "pro-wearables",
     href: "/products?category=pro-wearables",
     icon: Watch,
@@ -188,13 +189,13 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
     }, 100);
   };
 
-  const { theme } = useThemeStore();
+  const { theme } = useAppTheme();
   const activeCategoryData = CATEGORY_NAV_ITEMS.find((c) => c.slug === activeHoverCategory);
 
   return (
     <>
       {/* ===================== NON-STICKY TOP NOTIFICATION BAR ===================== */}
-      {theme.announcement_enabled && (
+      {mounted && theme.announcement_enabled && (
         <div className="bg-gradient-to-r from-indigo-950 via-[#0a0d18] to-cyan-950 border-b border-white/5 text-[11px] py-1 px-4 text-center text-slate-300 flex items-center justify-between max-w-full">
           <div className="hidden md:flex items-center gap-3 text-slate-400">
             <span className="flex items-center gap-1 text-cyan-400 font-medium">
@@ -218,64 +219,60 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
       )}
 
       {/* ===================== NON-STICKY TIER 1: BRAND LOGO + CENTER SEARCH + UTILITIES ===================== */}
-      <div className="bg-[#090b14]/95 border-b border-white/5 text-slate-100">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-4 lg:gap-8">
-          {/* Left: Brand Identity Logo */}
-          <div className="flex items-center shrink-0">
-            <Link href="/" className="flex items-center gap-2.5 group">
+      <div className="bg-white dark:bg-[#090b14]/95 border-b border-gray-200 dark:border-white/5 text-slate-900 dark:text-slate-100 transition-colors">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3 sm:gap-4 lg:gap-8">
+          {/* Left: Brand Identity Logo & Store Department Switcher */}
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            <Link href="/" suppressHydrationWarning className="flex items-center gap-2.5 group select-none">
               {theme.store_brand_logo ? (
-                <div className="h-9 max-w-[160px] flex items-center justify-center shrink-0">
+                <div 
+                  className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full p-1 border-2 border-emerald-600/40 bg-white shadow-sm flex items-center justify-center shrink-0 group-hover:border-[#005826] group-hover:scale-105 transition-all duration-300"
+                  suppressHydrationWarning
+                >
                   <img
                     src={theme.store_brand_logo}
                     alt={theme.store_brand_name || "Company Logo"}
-                    className="max-h-9 w-auto object-contain rounded-lg transition-transform duration-300 group-hover:scale-105"
+                    className="w-full h-full object-contain rounded-full"
+                    suppressHydrationWarning
                   />
                 </div>
               ) : (
                 <div
-                  className="w-9 h-9 rounded-xl p-0.5 shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform duration-300"
-                  style={{
-                    background: "linear-gradient(135deg, var(--theme-primary, #06b6d4), var(--theme-secondary, #6366f1))",
-                  }}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full p-0.5 shadow-sm border border-emerald-600/30 group-hover:scale-105 transition-transform duration-300 bg-gradient-to-br from-[#005826] to-[#2da54b]"
                 >
-                  <div className="w-full h-full bg-[#0d1017] rounded-[9px] flex items-center justify-center">
-                    <span
-                      className="font-black text-base text-transparent bg-clip-text"
-                      style={{
-                        backgroundImage: "linear-gradient(90deg, var(--theme-primary, #06b6d4), var(--theme-secondary, #6366f1))",
-                      }}
-                    >
-                      {theme.store_brand_name?.charAt(0) || "Æ"}
+                  <div className="w-full h-full bg-[#005826] dark:bg-[#0d1017] rounded-full flex items-center justify-center">
+                    <span className="font-black text-sm text-white">
+                      {theme.store_brand_name?.charAt(0) || "I"}
                     </span>
                   </div>
                 </div>
               )}
               <div className="flex flex-col">
-                <span className="font-black text-base sm:text-lg tracking-wider text-white group-hover:text-cyan-400 transition-colors leading-tight">
-                  {theme.store_brand_name || "AETHER"}
+                <span className="font-black text-base sm:text-lg tracking-wider text-slate-900 dark:text-white group-hover:text-[#005826] dark:group-hover:text-cyan-400 transition-colors leading-tight">
+                  {theme.store_brand_name || "INHALIQ"}
                 </span>
-                <span className="text-[8.5px] tracking-widest text-slate-400 uppercase font-semibold">
-                  {theme.store_brand_tagline || "Studio & Lab"}
+                <span className="text-[8px] sm:text-[8.5px] tracking-widest text-slate-500 dark:text-slate-400 uppercase font-semibold">
+                  {theme.store_brand_tagline || "ELEVATE EVERY INHALE"}
                 </span>
               </div>
             </Link>
           </div>
 
           {/* Middle: Big Prominent Search Area */}
-          <div className="flex-1 max-w-xl mx-2 sm:mx-4 lg:mx-8 hidden sm:block">
+          <div className="flex-1 max-w-xl mx-2 sm:mx-4 hidden sm:block">
             <button
               onClick={onOpenSearch}
-              className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 hover:border-cyan-400/60 text-white text-xs transition-all group cursor-pointer shadow-inner"
+              className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/[0.08] hover:bg-gray-200/80 dark:hover:bg-white/[0.12] border border-gray-200 dark:border-white/20 text-slate-800 dark:text-white text-xs transition-all group cursor-pointer shadow-xs"
               title="Search products, categories, audio, gear... (Cmd+K)"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <Search className="w-4 h-4 text-slate-200 group-hover:text-cyan-400 transition-colors shrink-0" />
-                <span className="text-xs text-slate-100 group-hover:text-white font-medium truncate">
+                <Search className="w-4 h-4 text-gray-500 dark:text-slate-300 group-hover:text-[#005826] dark:group-hover:text-cyan-400 transition-colors shrink-0" />
+                <span className="text-xs text-gray-600 dark:text-slate-200 group-hover:text-gray-900 dark:group-hover:text-white font-medium truncate">
                   Search hardware, audio, keyboards, tech packs...
                 </span>
               </div>
               <div className="flex items-center gap-1 shrink-0 ml-2">
-                <kbd className="px-1.5 py-0.5 text-[9px] font-bold text-slate-200 bg-white/10 rounded border border-white/20">
+                <kbd className="px-1.5 py-0.5 text-[9px] font-bold text-gray-600 dark:text-slate-200 bg-white dark:bg-white/10 rounded border border-gray-200 dark:border-white/20">
                   ⌘K
                 </kbd>
               </div>
@@ -283,11 +280,11 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
           </div>
 
           {/* Right: Mobile Search + Wishlist + Cart + Account Profile */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Mobile Search Trigger */}
             <button
               onClick={onOpenSearch}
-              className="sm:hidden p-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-xs transition-all cursor-pointer"
+              className="sm:hidden p-2 rounded-md bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs transition-all cursor-pointer"
               title="Search products (Cmd+K)"
             >
               <Search className="w-4 h-4" />
@@ -296,30 +293,21 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
             {/* Wishlist Icon */}
             <button
               onClick={openWishlist}
-              className="relative p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 border border-transparent transition-all cursor-pointer group"
-              style={{
-                borderColor: mounted && wishlistCount > 0
-                  ? "color-mix(in srgb, var(--theme-secondary, #ec4899) 30%, transparent)"
-                  : undefined,
-              }}
+              className="relative p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-[#005826] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent transition-all cursor-pointer group"
               title="Saved Wishlist"
             >
               <Heart
                 className="w-4 h-4 transition-all duration-200"
                 style={{
-                  color: mounted && wishlistCount > 0 ? "var(--theme-secondary, #ec4899)" : undefined,
-                  fill: mounted && wishlistCount > 0 ? "var(--theme-secondary, #ec4899)" : "none",
+                  color: mounted && wishlistCount > 0 ? "var(--theme-secondary, #2da54b)" : undefined,
+                  fill: mounted && wishlistCount > 0 ? "var(--theme-secondary, #2da54b)" : "none",
                 }}
               />
               {mounted && wishlistCount > 0 && (
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 font-black text-[10px] rounded-full flex items-center justify-center shadow-md ring-2 ring-[#090b14]"
-                  style={{
-                    background: "linear-gradient(135deg, var(--theme-secondary, #ec4899), var(--theme-primary, #6366f1))",
-                    color: "var(--theme-btn-primary-text, #ffffff)",
-                  }}
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 font-black text-[10px] rounded-full flex items-center justify-center shadow-md bg-emerald-600 text-white ring-2 ring-white dark:ring-[#090b14]"
                 >
                   {wishlistCount}
                 </motion.span>
@@ -329,28 +317,20 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
             {/* Shopping Cart Drawer Trigger */}
             <button
               onClick={openCart}
-              className="relative flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-white transition-all shadow-sm group cursor-pointer"
-              style={{
-                background: "linear-gradient(135deg, color-mix(in srgb, var(--theme-primary, #6366f1) 25%, rgba(255, 255, 255, 0.05)) 0%, color-mix(in srgb, var(--theme-secondary, #a855f7) 20%, rgba(255, 255, 255, 0.02)) 100%)",
-                borderColor: "color-mix(in srgb, var(--theme-primary, #6366f1) 40%, rgba(255, 255, 255, 0.15))",
-              }}
+              className="relative flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-slate-800 dark:text-white bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10 hover:border-[#005826] dark:hover:border-cyan-400 transition-all shadow-xs group cursor-pointer"
               title="Shopping Cart"
             >
               {mounted && cartCount > 0 && (
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-1.5 -left-1.5 min-w-[18px] h-[18px] px-1 font-black text-[10px] rounded-full flex items-center justify-center shadow-md ring-2 ring-[#090b14] z-10"
-                  style={{
-                    background: "linear-gradient(135deg, var(--theme-primary, #06b6d4), var(--theme-secondary, #6366f1))",
-                    color: "var(--theme-btn-primary-text, #ffffff)",
-                  }}
+                  className="absolute -top-1.5 -left-1.5 min-w-[18px] h-[18px] px-1 font-black text-[10px] rounded-full flex items-center justify-center shadow-md bg-[#005826] text-white ring-2 ring-white dark:ring-[#090b14] z-10"
                 >
                   {cartCount}
                 </motion.span>
               )}
-              <ShoppingBag className="w-4 h-4 text-indigo-400 group-hover:text-cyan-400 transition-colors" />
-              <span className="text-xs font-bold hidden sm:inline text-white">
+              <ShoppingBag className="w-4 h-4 text-[#005826] dark:text-indigo-400 transition-colors" />
+              <span className="text-xs font-bold hidden sm:inline">
                 Cart
               </span>
             </button>
@@ -361,16 +341,16 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                 <div>
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-lg border border-white/10 hover:border-indigo-500/40 bg-white/5 hover:bg-white/10 transition-all text-xs font-bold text-slate-200 cursor-pointer"
+                    className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-lg border border-gray-200 dark:border-white/10 hover:border-emerald-600/40 bg-gray-100 dark:bg-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 transition-all text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer"
                   >
                     {user.avatar ? (
                       <img
                         src={user.avatar}
                         alt={user.name}
-                        className="w-6 h-6 rounded-md object-cover ring-1 ring-indigo-400/40"
+                        className="w-6 h-6 rounded-md object-cover ring-1 ring-emerald-600/40"
                       />
                     ) : (
-                      <div className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-600/40 to-purple-600/40 text-indigo-200 ring-1 ring-indigo-400/40 flex items-center justify-center font-black text-xs">
+                      <div className="w-6 h-6 rounded-md bg-emerald-600/20 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-600/40 flex items-center justify-center font-black text-xs">
                         {user.name ? user.name.trim().slice(0, 1).toUpperCase() : "U"}
                       </div>
                     )}
@@ -385,16 +365,16 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                         initial={{ opacity: 0, y: 8, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        className="absolute right-0 mt-2 w-56 rounded-2xl glass-card bg-[#0e121e]/95 border border-white/10 shadow-2xl p-2 z-50"
+                        className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-[#0e121e]/95 border border-gray-200 dark:border-white/10 shadow-2xl p-2 z-50 text-slate-800 dark:text-slate-200"
                         onMouseLeave={() => setUserDropdownOpen(false)}
                       >
-                        <div className="px-3 py-2 border-b border-white/10 mb-1">
-                          <p className="text-xs font-bold text-white truncate">
+                        <div className="px-3 py-2 border-b border-gray-100 dark:border-white/10 mb-1">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {user.name?.trim().split(" ")[0] || user.name}
                           </p>
-                          <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
                           {user.role === "admin" && (
-                            <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                               Admin Access
                             </span>
                           )}
@@ -404,9 +384,9 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                           <Link
                             href="/admin"
                             onClick={() => setUserDropdownOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-amber-300 hover:bg-amber-500/10 rounded-xl transition-colors"
+                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors"
                           >
-                            <LayoutDashboard className="w-4 h-4 text-amber-400" />
+                            <LayoutDashboard className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                             Admin Console
                           </Link>
                         )}
@@ -414,27 +394,27 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                         <Link
                           href="/dashboard"
                           onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/10 rounded-xl transition-colors"
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-colors"
                         >
-                          <UserIcon className="w-4 h-4 text-purple-400" />
+                          <UserIcon className="w-4 h-4 text-emerald-600 dark:text-purple-400" />
                           Profile & Settings
                         </Link>
 
                         <Link
                           href="/dashboard"
                           onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/10 rounded-xl transition-colors"
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-colors"
                         >
-                          <Package className="w-4 h-4 text-indigo-400" />
+                          <Package className="w-4 h-4 text-emerald-600 dark:text-indigo-400" />
                           My Orders
                         </Link>
 
                         <Link
                           href="/dashboard/addresses"
                           onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/10 rounded-xl transition-colors"
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-colors"
                         >
-                          <MapPin className="w-4 h-4 text-cyan-400" />
+                          <MapPin className="w-4 h-4 text-emerald-600 dark:text-cyan-400" />
                           Saved Addresses
                         </Link>
 
@@ -444,9 +424,9 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                             setUserDropdownOpen(false);
                             router.push("/");
                           }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors text-left mt-1 border-t border-white/5 cursor-pointer"
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors text-left mt-1 border-t border-gray-100 dark:border-white/5 cursor-pointer"
                         >
-                          <LogOut className="w-4 h-4 text-rose-400" />
+                          <LogOut className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                           Sign Out
                         </button>
                       </motion.div>
@@ -456,9 +436,9 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
               ) : (
                 <button
                   onClick={() => openAuthModal("login")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white hover:border-indigo-400/40 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 text-xs font-bold text-slate-800 dark:text-white hover:border-[#005826] transition-all cursor-pointer"
                 >
-                  <UserIcon className="w-3.5 h-3.5 text-indigo-400" />
+                  <UserIcon className="w-3.5 h-3.5 text-[#005826] dark:text-indigo-400" />
                   <span>Sign In</span>
                 </button>
               )}
@@ -467,7 +447,7 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
             {/* Mobile Navigation Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer"
+              className="lg:hidden p-1.5 rounded-lg text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
               aria-label="Toggle Menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -480,51 +460,79 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
       <nav
         ref={navContainerRef}
         onMouseLeave={handleMouseLeave}
-        className={`sticky top-0 z-40 transition-all duration-300 border-b theme-sticky-subnav ${
-          isScrolled
-            ? "bg-[#070911]/95 backdrop-blur-xl shadow-2xl border-white/10 py-1.5"
-            : "bg-[#090b14]/90 backdrop-blur-md border-white/5 py-1.5"
-        }`}
+        className={`sticky top-0 z-40 transition-all duration-300 border-b theme-sticky-subnav ${isScrolled
+            ? "bg-white/95 dark:bg-[#070911]/95 backdrop-blur-xl shadow-md dark:shadow-2xl border-gray-200 dark:border-white/10 py-1.5"
+            : "bg-white/90 dark:bg-[#090b14]/90 backdrop-blur-md border-gray-200 dark:border-white/5 py-1.5"
+          }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Strict Single-Line Category Navigation (No wrapping, pure categories only) */}
-          <div className="hidden lg:flex items-center justify-center gap-1 sm:gap-2 md:gap-4 lg:gap-8 flex-nowrap whitespace-nowrap overflow-x-auto no-scrollbar">
-            {CATEGORY_NAV_ITEMS.map((cat) => {
-              const isHovered = activeHoverCategory === cat.slug;
-              return (
-                <div
-                  key={cat.slug}
-                  onMouseEnter={() => handleMouseEnter(cat.slug)}
-                  className="relative shrink-0"
-                >
-                  <Link
-                    href={cat?.href || "/products"}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
-                      isHovered
-                        ? "text-white bg-white/10 shadow-sm shadow-cyan-950/50"
-                        : "text-slate-300 hover:text-white hover:bg-white/5"
-                    }`}
+          {/* LuLu Style: Clean Single-Line Navigation with All Categories & Deals */}
+          <div className="hidden lg:flex items-center justify-between gap-2 xl:gap-3 flex-nowrap whitespace-nowrap">
+            {/* Left: Green "All Categories" Dropdown Button */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#005826] hover:bg-[#007a3d] transition-all shadow-xs shrink-0 cursor-pointer"
+              >
+                <Menu className="w-3.5 h-3.5" />
+                <span>All Categories</span>
+              </Link>
+            </div>
+
+            {/* Center: Clean Category Nav Links + Red Deals Pill */}
+            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 shrink-0">
+              {CATEGORY_NAV_ITEMS.map((cat) => {
+                const isHovered = activeHoverCategory === cat.slug;
+                return (
+                  <div
+                    key={cat.slug}
+                    onMouseEnter={() => handleMouseEnter(cat.slug)}
+                    className="relative shrink-0"
                   >
-                    <span>{cat.name}</span>
-                    <ChevronDown
-                      className={`w-3 h-3 text-slate-500 transition-transform duration-200 shrink-0 ${
-                        isHovered ? "rotate-180 text-cyan-400" : ""
-                      }`}
-                    />
-                  </Link>
-                </div>
-              );
-            })}
+                    <Link
+                      href={cat?.href || "/products"}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-semibold transition-all cursor-pointer whitespace-nowrap ${isHovered
+                          ? "text-[#005826] dark:text-white bg-emerald-50 dark:bg-white/10"
+                          : "text-slate-700 dark:text-slate-300 hover:text-[#005826] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
+                        }`}
+                    >
+                      <span>{cat.name}</span>
+                      <ChevronDown
+                        className={`w-3 h-3 text-slate-400 transition-transform duration-200 shrink-0 ${isHovered ? "rotate-180 text-[#005826] dark:text-cyan-400" : ""
+                          }`}
+                      />
+                    </Link>
+                  </div>
+                );
+              })}
+
+              {/* LuLu Inspired: Coral Red Deals Tab with Flame Icon */}
+              <Link
+                href="/promotions"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-extrabold text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 transition-all shrink-0 cursor-pointer"
+              >
+                <Flame className="w-3.5 h-3.5 text-rose-600 fill-rose-600 animate-pulse" />
+                <span>Deals</span>
+              </Link>
+            </div>
+
+            {/* Right: LuLu Style Micro Promo Badge with Coupon Code */}
+            <div className="hidden xl:flex items-center gap-1.5 shrink-0 text-xs">
+              <span className="font-black text-slate-900 dark:text-white text-[10.5px]">20% OFF</span>
+              <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-mono text-[9px] font-bold shadow-xs whitespace-nowrap">
+                CODE: AETHER10
+              </span>
+            </div>
           </div>
 
           {/* Mobile Categories Bar */}
-          <div className="lg:hidden flex items-center justify-between text-xs font-bold text-slate-300 py-1">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400">
+          <div className="lg:hidden flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 py-1">
+            <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Explore Hardware Departments
             </span>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-cyan-400 hover:text-cyan-300 text-xs flex items-center gap-1"
+              className="text-[#005826] dark:text-cyan-400 hover:opacity-80 text-xs flex items-center gap-1"
             >
               <span>{mobileMenuOpen ? "Close Menu" : "View All"}</span>
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mobileMenuOpen ? "rotate-180" : ""}`} />
@@ -548,22 +556,22 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
             >
               <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 sm:py-5">
                 <div className="grid grid-cols-12 gap-6 lg:gap-8 items-start">
-                  
+
                   {/* Left Col: Category Title, Badge & Subcategories */}
                   <div className="col-span-8">
-                    <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-white/10">
+                    <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-gray-200 dark:border-white/10">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-md bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                        <div className="w-6 h-6 rounded-md bg-emerald-500/10 dark:bg-cyan-500/10 border border-emerald-500/30 dark:border-cyan-500/30 flex items-center justify-center text-[#005826] dark:text-cyan-400">
                           {(() => {
                             const Icon = activeCategoryData.icon;
                             return <Icon className="w-3.5 h-3.5" />;
                           })()}
                         </div>
                         <div>
-                          <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                          <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
                             {activeCategoryData.name}
                           </h3>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
                             {activeCategoryData.subcategories.length} Curated Collections
                           </span>
                         </div>
@@ -572,7 +580,7 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                       <Link
                         href={activeCategoryData?.href || "/products"}
                         onClick={() => setActiveHoverCategory(null)}
-                        className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 group/viewall"
+                        className="text-xs font-bold text-[#005826] dark:text-cyan-400 hover:opacity-80 flex items-center gap-1 group/viewall"
                       >
                         <span>View All {activeCategoryData.name}</span>
                         <ArrowRight className="w-3.5 h-3.5 group-hover/viewall:translate-x-1 transition-transform" />
@@ -586,10 +594,10 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                           key={idx}
                           href={sub?.href || "/products"}
                           onClick={() => setActiveHoverCategory(null)}
-                          className="theme-mega-item flex items-center justify-between p-2 rounded-md bg-white/[0.03] hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-slate-300 hover:text-white transition-all group/item"
+                          className="theme-mega-item flex items-center justify-between p-2 rounded-md bg-gray-50 dark:bg-white/[0.03] hover:bg-emerald-50 dark:hover:bg-cyan-500/10 border border-gray-200 dark:border-white/10 hover:border-[#005826]/30 dark:hover:border-cyan-500/30 text-slate-700 dark:text-slate-300 hover:text-[#005826] dark:hover:text-white transition-all group/item"
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/50 group-hover/item:bg-cyan-400 group-hover/item:scale-125 transition-all" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#005826]/50 dark:bg-cyan-400/50 group-hover/item:bg-[#005826] dark:group-hover/item:bg-cyan-400 group-hover/item:scale-125 transition-all" />
                             <span className="text-xs font-medium group-hover/item:font-bold transition-all truncate">
                               {sub.title}
                             </span>
@@ -597,16 +605,16 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
 
                           <div className="flex items-center gap-1.5 shrink-0">
                             {sub.badge && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-sm bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-sm bg-emerald-500/15 text-emerald-800 dark:text-cyan-300 border border-emerald-500/30">
                                 {sub.badge}
                               </span>
                             )}
                             {sub.tag && (
-                              <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-sm bg-white/5 text-slate-400">
+                              <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-sm bg-gray-200/60 dark:bg-white/5 text-slate-600 dark:text-slate-400">
                                 {sub.tag}
                               </span>
                             )}
-                            <ArrowRight className="w-3 h-3 text-slate-600 group-hover/item:text-cyan-400 group-hover/item:translate-x-0.5 transition-all" />
+                            <ArrowRight className="w-3 h-3 text-slate-400 group-hover/item:text-[#005826] dark:group-hover/item:text-cyan-400 group-hover/item:translate-x-0.5 transition-all" />
                           </div>
                         </Link>
                       ))}
@@ -649,7 +657,7 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
 
                       <div className="relative z-10 pt-2.5 mt-2.5 border-t border-white/10 flex items-center justify-between">
                         <span className="text-[10px] text-slate-400 font-medium">
-                          Aether Engineered
+                          {theme.store_brand_name || "Aether"} Engineered
                         </span>
                         <Link
                           href={activeCategoryData?.href || "/products"}
@@ -701,9 +709,8 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                       <span>{cat.name}</span>
                     </div>
                     <ChevronDown
-                      className={`w-4 h-4 text-slate-500 transition-transform ${
-                        isExpanded ? "rotate-180 text-cyan-400" : ""
-                      }`}
+                      className={`w-4 h-4 text-slate-500 transition-transform ${isExpanded ? "rotate-180 text-cyan-400" : ""
+                        }`}
                     />
                   </button>
 

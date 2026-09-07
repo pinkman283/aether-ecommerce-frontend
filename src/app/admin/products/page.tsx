@@ -21,6 +21,7 @@ import {
   Star,
   RotateCcw,
   Upload,
+  UploadCloud,
   Image as ImageIcon,
   Loader2,
   Link as LinkIcon,
@@ -33,9 +34,14 @@ import { adminApi } from "@/lib/adminApi";
 import { Brand, Category, Product, ProductImage } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
+import { AdminPageHeader, AdminStatusBadge, AdminEmptyState } from "@/components/admin/ui";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+
 
 interface ProductFormImage {
   id?: number;
@@ -398,8 +404,7 @@ export default function AdminProductsPage() {
     toast.success("Image added.");
   };
 
-  const handleDeviceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const handleFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
 
     const remainingSlots = 5 - formImages.length;
@@ -439,6 +444,10 @@ export default function AdminProductsPage() {
       setIsUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleDeviceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) handleFiles(e.target.files);
   };
 
   const handleRemoveImage = (index: number) => {
@@ -583,35 +592,40 @@ export default function AdminProductsPage() {
     });
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Products Catalog</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Manage hardware items, inventory variants, and pricing</p>
-        </div>
-
-        <button
-          onClick={handleOpenCreate}
-          className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Add Product
-        </button>
-      </div>
+    <div className="space-y-4 max-w-7xl mx-auto">
+      {/* Unified Header */}
+      <AdminPageHeader
+        title="Products"
+        description="Catalog inventory, variants, and pricing"
+        badge={`${displayedProducts.length} items`}
+        breadcrumbs={[
+          { label: "Operations" },
+          { label: "Products" },
+        ]}
+        action={
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Product
+          </button>
+        }
+      />
 
       {/* Filter & Search Bar */}
-      <div className="p-3 rounded-xl bg-[#0b0e17] border border-white/10 flex flex-col lg:flex-row items-center justify-between gap-2.5">
+      <div className="p-2.5 rounded-xl bg-[#0f121b] border border-white/[0.08] flex flex-col lg:flex-row items-center justify-between gap-2">
         <form onSubmit={handleSearch} className="relative w-full lg:w-72">
           <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            value={search}
+            value={search || ""}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search SKU, name, brand..."
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-8.5 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg pl-8.5 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
           />
         </form>
+
 
         <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
           <AdminDropdown
@@ -681,39 +695,50 @@ export default function AdminProductsPage() {
       />
 
       {/* Products Table Card */}
-      <div className="rounded-xl bg-[#0b0e17] border border-white/10 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-semibold uppercase text-[9.5px] tracking-wider">
-              <tr>
-                <th className="p-3 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={displayedProducts.length > 0 && selectedIds.length === displayedProducts.length}
-                    onChange={handleToggleSelectAll}
-                    className="rounded border-white/20 text-amber-500 focus:ring-0 cursor-pointer"
-                  />
-                </th>
-                <th className="p-3">Product</th>
-                <th className="p-3">Category</th>
-                <th className="p-3">Price</th>
-                <th className="p-3">Stock</th>
-                <th className="p-3">Flags</th>
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
+      <ScrollableTableCard className="bg-[#0f121b] border-white/[0.08]">
+        <table className="w-full text-left text-xs text-slate-300 min-w-[960px]">
+          <thead className="bg-white/[0.02] border-b border-white/[0.08] text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+            <tr>
+              <th className="py-3.5 pl-6 pr-3 w-14 text-left">
+                <AdminCheckbox
+                  checked={displayedProducts.length > 0 && selectedIds.length === displayedProducts.length}
+                  indeterminate={selectedIds.length > 0 && selectedIds.length < displayedProducts.length}
+                  onChange={handleToggleSelectAll}
+                  title="Select all products"
+                />
+              </th>
+              <th className="p-3 text-left w-[30%] min-w-[220px]">Product</th>
+              <th className="p-3 text-left w-[18%] min-w-[150px]">Category</th>
+              <th className="p-3 text-left w-[14%] min-w-[110px]">Price</th>
+              <th className="p-3 text-left w-[12%] min-w-[100px]">Stock</th>
+              <th className="p-3 text-left w-[12%] min-w-[110px]">Flags</th>
+              <th className="p-3 text-center min-w-[120px]">Actions</th>
+            </tr>
+          </thead>
+            <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-500">
+                  <td colSpan={7} className="p-12 text-center text-slate-500">
                     <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-amber-400" />
                     <span>Loading products catalog...</span>
                   </td>
                 </tr>
               ) : displayedProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-500 italic">
-                    No products matching current filters.
+                  <td colSpan={7} className="p-0">
+                    <AdminEmptyState
+                      title="No products found"
+                      description="No catalog items matched your current filters. Try resetting search."
+                      action={
+                        <button
+                          type="button"
+                          onClick={handleResetFilters}
+                          className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        >
+                          Reset Filters
+                        </button>
+                      }
+                    />
                   </td>
                 </tr>
               ) : (
@@ -729,31 +754,33 @@ export default function AdminProductsPage() {
                         isSelected ? "bg-amber-500/5" : ""
                       }`}
                     >
-                      <td className="p-3 text-center">
-                        <input
-                          type="checkbox"
+                      <td className="py-3.5 pl-6 pr-3 text-left" onClick={(e) => e.stopPropagation()}>
+                        <AdminCheckbox
                           checked={isSelected}
                           onChange={() => handleToggleSelectRow(product.id)}
-                          className="rounded border-white/20 text-amber-500 focus:ring-0 cursor-pointer"
+                          title={`Select ${product.name}`}
                         />
                       </td>
 
                       {/* Product details */}
-                      <td className="p-3">
-                        <div className="flex items-center gap-2.5 min-w-[200px]">
+                      <td className="p-3 text-left">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           {img ? (
                             <img
                               src={img}
                               alt={product.name}
-                              className="w-9 h-9 rounded-lg object-cover bg-slate-900 border border-white/10 shrink-0"
+                              className="w-8 h-8 rounded-lg object-cover bg-slate-900 border border-white/10 shrink-0"
                             />
                           ) : (
-                            <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
                               <Package className="w-4 h-4 text-slate-500" />
                             </div>
                           )}
-                          <div className="truncate">
-                            <span className="font-bold text-white block truncate hover:text-amber-400 transition-colors">
+                          <div className="min-w-0 max-w-[200px] sm:max-w-[240px]">
+                            <span
+                              className="font-bold text-white block truncate hover:text-amber-400 transition-colors"
+                              title={product.name}
+                            >
                               {product.name}
                             </span>
                             <span className="text-[10px] text-slate-400 block truncate">
@@ -764,14 +791,17 @@ export default function AdminProductsPage() {
                       </td>
 
                       {/* Category */}
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10.5px] font-medium text-slate-300">
+                      <td className="p-3 text-left whitespace-nowrap">
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/10 text-[11px] font-medium text-slate-200 whitespace-nowrap"
+                          title={product.category?.name || "Hardware"}
+                        >
                           {product.category?.name || "Hardware"}
                         </span>
                       </td>
 
                       {/* Price */}
-                      <td className="p-3">
+                      <td className="p-3 text-left whitespace-nowrap">
                         <div className="font-mono">
                           <span className="font-bold text-white block">{formatPrice(product.price)}</span>
                           {product.compare_at_price && (
@@ -783,7 +813,7 @@ export default function AdminProductsPage() {
                       </td>
 
                       {/* Stock */}
-                      <td className="p-3">
+                      <td className="p-3 text-left whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <span
                             className={`w-2 h-2 rounded-full ${
@@ -804,7 +834,7 @@ export default function AdminProductsPage() {
                       </td>
 
                       {/* Flags */}
-                      <td className="p-3">
+                      <td className="p-3 text-left whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           {product.is_featured && (
                             <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[9.5px] font-bold border border-amber-500/20">
@@ -820,8 +850,8 @@ export default function AdminProductsPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="p-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenView(product)}
                             className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
@@ -851,227 +881,336 @@ export default function AdminProductsPage() {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
+      </ScrollableTableCard>
 
-      {/* CREATE / EDIT PRODUCT MODAL */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-[#0e121e] border border-white/15 rounded-2xl shadow-2xl overflow-hidden my-8">
+      {/* CREATE / EDIT PRODUCT DRAWER */}
+      <Sheet open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:w-[580px] md:w-[620px] sm:!max-w-[620px] max-w-full bg-[#0b0e17] border-l border-white/[0.08] p-0 flex flex-col justify-between shadow-2xl text-slate-100 overflow-hidden"
+        >
+          <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
             
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-[#0a0d16]">
-              <div>
-                <h3 className="text-sm font-black text-white">
-                  {editingProduct ? `Edit '${editingProduct.name}'` : "Add New Product"}
+            {/* Compact Sleek Header */}
+            <div className="h-12 px-6 border-b border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 min-w-0 pr-3">
+                <h3 className="text-xs font-semibold text-white tracking-wide shrink-0">
+                  {editingProduct ? "Edit Product" : "New Product"}
                 </h3>
-                <span className="text-[10.5px] text-slate-400">Configure catalog information, imagery & inventory</span>
+                {editingProduct && (
+                  <>
+                    <span className="text-[10px] font-mono text-slate-400 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shrink-0">
+                      #{editingProduct.id}
+                    </span>
+                    <span className="text-slate-600 text-xs shrink-0">·</span>
+                    <span className="text-xs text-slate-400 truncate max-w-[280px]">
+                      {editingProduct.name}
+                    </span>
+                  </>
+                )}
               </div>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-md text-slate-400 hover:text-white"
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer shrink-0"
+                title="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal Form Body */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
+            {/* Scrollable Form Body - Clean & Simple Flow */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
               
-              {/* Product Name */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-300 block">
-                  Product Name <span className="text-rose-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. AeroPack X-Pac 24L Modular Travel Pack"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              {/* Category & Brand with Quick-Add */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-300">Category</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsQuickCategoryModalOpen(true)}
-                      className="text-[10px] font-bold text-amber-400 hover:underline flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <Plus className="w-2.5 h-2.5" /> New Category
-                    </button>
-                  </div>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id.toString()} className="bg-[#0e121e]">
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-300">Brand</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsQuickBrandModalOpen(true)}
-                      className="text-[10px] font-bold text-amber-400 hover:underline flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <Plus className="w-2.5 h-2.5" /> New Brand
-                    </button>
-                  </div>
-                  <select
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-                  >
-                    {brands.map((b) => (
-                      <option key={b.id} value={b.name} className="bg-[#0e121e]">
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Pricing & Base Stock */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-300 block">
-                    Base Price <span className="text-rose-400">*</span>
+              {/* Section 1: Basic Information */}
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">
+                    Product Title <span className="text-rose-400">*</span>
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
                     required
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-400"
+                    value={name || ""}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. AeroPack X-Pac 24L Modular Travel Pack"
+                    className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 focus:bg-white/[0.05] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-300 block">Compare At Price</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={comparePrice}
-                    onChange={(e) => setComparePrice(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-400"
-                  />
+                {/* Category & Brand */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-slate-300">Category</label>
+                      <button
+                        type="button"
+                        onClick={() => setIsQuickCategoryModalOpen(true)}
+                        className="text-[11px] font-medium text-amber-400/80 hover:text-amber-300 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" /> New
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3.5 py-2.5 text-xs text-white appearance-none transition-all outline-none cursor-pointer pr-9"
+                      >
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id.toString()} className="bg-[#0e121e]">
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-slate-300">Brand</label>
+                      <button
+                        type="button"
+                        onClick={() => setIsQuickBrandModalOpen(true)}
+                        className="text-[11px] font-medium text-amber-400/80 hover:text-amber-300 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" /> New
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={brand}
+                        onChange={(e) => setBrand(e.target.value)}
+                        className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3.5 py-2.5 text-xs text-white appearance-none transition-all outline-none cursor-pointer pr-9"
+                      >
+                        {brands.map((b) => (
+                          <option key={b.id} value={b.name} className="bg-[#0e121e]">
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-300 block">
-                    Total Stock Quantity <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={stock}
-                    onChange={(e) => setStock(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-400"
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">Description</label>
+                  <textarea
+                    rows={3}
+                    value={description || ""}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Detailed specifications, features, dimensions, materials..."
+                    className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 transition-all outline-none resize-y leading-relaxed"
                   />
                 </div>
               </div>
 
-              {/* Visual Gallery / Images */}
-              <div className="space-y-2 pt-2 border-t border-white/5">
+              {/* Section 2: Pricing & Stock */}
+              <div className="pt-6 border-t border-white/[0.06] space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-300">
-                    Product Images ({formImages.length}/5) <span className="text-rose-400">*</span>
-                  </label>
-                  <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-semibold text-white tracking-wide">Pricing & Inventory</h4>
+                  <span className="text-[11px] text-slate-500 font-mono">USD ($)</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-300 block">
+                      Price <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-400">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={price || "0"}
+                        onChange={(e) => setPrice(e.target.value)}
+                        className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl pl-8 pr-3 py-2.5 text-xs text-white font-mono transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-300 block">Compare At</label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-400">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={comparePrice || "0"}
+                        onChange={(e) => setComparePrice(e.target.value)}
+                        className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl pl-8 pr-3 py-2.5 text-xs text-white font-mono transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-300 block">
+                      Stock Quantity <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={stock || "0"}
+                      onChange={(e) => setStock(e.target.value)}
+                      className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono transition-all outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Media Gallery */}
+              <div className="pt-6 border-t border-white/[0.06] space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-semibold text-white tracking-wide">Product Images</h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{formImages.length}/5 uploaded (first is primary)</p>
+                  </div>
+
+                  {/* Segmented Switch */}
+                  <div className="p-0.5 rounded-lg bg-white/[0.04] border border-white/10 flex items-center">
                     <button
                       type="button"
                       onClick={() => setImageInputMode("upload")}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
-                        imageInputMode === "upload" ? "bg-amber-500/20 text-amber-300" : "text-slate-400 hover:text-white"
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        imageInputMode === "upload"
+                          ? "bg-white/15 text-white shadow-xs"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
-                      Device Upload
+                      Upload
                     </button>
                     <button
                       type="button"
                       onClick={() => setImageInputMode("url")}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
-                        imageInputMode === "url" ? "bg-amber-500/20 text-amber-300" : "text-slate-400 hover:text-white"
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        imageInputMode === "url"
+                          ? "bg-white/15 text-white shadow-xs"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
-                      Web URL
+                      URL
                     </button>
                   </div>
                 </div>
 
-                {/* Image Input Bar */}
+                {/* Hidden native input */}
+                <input
+                  key="file-upload-input"
+                  type="file"
+                  ref={fileInputRef}
+                  multiple
+                  accept="image/*"
+                  onChange={handleDeviceUpload}
+                  disabled={isUploadingImage || formImages.length >= 5}
+                  className="hidden"
+                />
+
+                {/* Upload Dropzone / URL Input */}
                 {imageInputMode === "upload" ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      multiple
-                      accept="image/*"
-                      onChange={handleDeviceUpload}
-                      disabled={isUploadingImage || formImages.length >= 5}
-                      className="text-xs text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-white hover:file:bg-white/20 cursor-pointer"
-                    />
-                    {isUploadingImage && <Loader2 className="w-4 h-4 animate-spin text-amber-400" />}
+                  <div
+                    key="image-upload-mode"
+                    onClick={() => {
+                      if (!isUploadingImage && formImages.length < 5) {
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+                    }}
+                    className={`border border-dashed rounded-xl py-6 px-4 text-center transition-all flex flex-col items-center justify-center gap-2 ${
+                      formImages.length >= 5
+                        ? "opacity-40 border-white/10 cursor-not-allowed bg-white/[0.01]"
+                        : "border-white/15 hover:border-white/30 bg-white/[0.02] hover:bg-white/[0.04] cursor-pointer group"
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-300 group-hover:text-white group-hover:scale-105 transition">
+                      {isUploadingImage ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-200" />
+                      ) : (
+                        <UploadCloud className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-200">
+                        {isUploadingImage
+                          ? "Uploading images..."
+                          : formImages.length >= 5
+                          ? "Maximum 5 images reached"
+                          : "Click to browse or drag images here"}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">PNG, JPG, WebP up to 5MB</p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div key="image-url-mode" className="flex items-center gap-2">
                     <input
+                      key="url-image-input"
                       type="url"
-                      value={newImageUrl}
+                      value={newImageUrl || ""}
                       onChange={(e) => setNewImageUrl(e.target.value)}
-                      placeholder="https://example.com/product.jpg"
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                      placeholder="https://images.unsplash.com/photo-..."
+                      className="flex-1 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
                     />
                     <button
                       type="button"
                       onClick={handleAddImageUrl}
-                      className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold cursor-pointer"
+                      className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition cursor-pointer"
                     >
                       Add
                     </button>
                   </div>
                 )}
 
-                {/* Uploaded Images Thumbnails */}
+                {/* Thumbnails */}
                 {formImages.length > 0 && (
-                  <div className="grid grid-cols-5 gap-2 pt-1">
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 pt-1">
                     {formImages.map((img, idx) => (
                       <div
                         key={idx}
                         className={`relative aspect-square rounded-xl overflow-hidden border ${
-                          img.is_primary ? "border-amber-400 ring-2 ring-amber-400/20" : "border-white/10"
-                        } group`}
+                          img.is_primary
+                            ? "border-amber-400/60 ring-1 ring-amber-400/30"
+                            : "border-white/10"
+                        } bg-black/40 group`}
                       >
                         <img src={img.image_url} alt="preview" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                        
+                        {img.is_primary && (
+                          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur-sm text-amber-300 text-[9px] font-semibold border border-amber-400/30 shadow-xs">
+                            Primary
+                          </span>
+                        )}
+
+                        <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                           {!img.is_primary && (
                             <button
                               type="button"
                               onClick={() => handleSetPrimaryImage(idx)}
-                              className="p-1 rounded bg-amber-500 text-slate-950 text-[9px] font-black cursor-pointer"
+                              className="px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-[10px] font-medium transition cursor-pointer"
                               title="Set Primary"
                             >
-                              ★
+                              Primary
                             </button>
                           )}
                           <button
                             type="button"
                             onClick={() => handleRemoveImage(idx)}
-                            className="p-1 rounded bg-rose-500 text-white cursor-pointer"
+                            className="p-1 rounded-md bg-rose-500/80 hover:bg-rose-500 text-white transition cursor-pointer"
                             title="Remove"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -1083,217 +1222,215 @@ export default function AdminProductsPage() {
                 )}
               </div>
 
-              {/* Color Variants Builder */}
-              <div className="space-y-2 pt-2 border-t border-white/5">
-                <label className="text-[11px] font-bold text-slate-300 block">
-                  Color Variants & Stock Modifiers ({formVariants.length})
-                </label>
+              {/* Section 4: Color Variants */}
+              <div className="pt-6 border-t border-white/[0.06] space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-white tracking-wide">
+                    Color Variants ({formVariants.length})
+                  </h4>
+                  <span className="text-[11px] text-slate-400">Inventory modifiers</span>
+                </div>
 
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/10 space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                    <input
-                      type="text"
-                      value={newVariantName}
-                      onChange={(e) => setNewVariantName(e.target.value)}
-                      placeholder="Variant name (e.g. Stealth Black)"
-                      className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white"
-                    />
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="color"
-                        value={newVariantColorHex}
-                        onChange={(e) => setNewVariantColorHex(e.target.value)}
-                        className="w-8 h-8 rounded border border-white/15 bg-transparent cursor-pointer"
+                {/* Add variant row */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  <input
+                    type="text"
+                    value={newVariantName || ""}
+                    onChange={(e) => setNewVariantName(e.target.value)}
+                    placeholder="Variant name (e.g. Midnight Black)"
+                    className="sm:col-span-2 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
+                  />
+                  <label className="relative flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-300 transition-all cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 shadow-xs"
+                        style={{ backgroundColor: newVariantColorHex || "#000000" }}
                       />
-                      <input
-                        type="text"
-                        value={newVariantColorHex}
-                        onChange={(e) => setNewVariantColorHex(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white font-mono"
-                      />
+                      <span className="font-mono text-[10.5px] text-slate-300">{newVariantColorHex || "#000000"}</span>
                     </div>
                     <input
+                      type="color"
+                      value={newVariantColorHex || "#000000"}
+                      onChange={(e) => setNewVariantColorHex(e.target.value)}
+                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                    />
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
                       type="number"
-                      value={newVariantStock}
+                      value={newVariantStock || ""}
                       onChange={(e) => setNewVariantStock(e.target.value)}
                       placeholder="Stock"
-                      className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"
+                      className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 transition-all outline-none"
                     />
                     <button
                       type="button"
                       onClick={handleAddVariant}
-                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition cursor-pointer shrink-0"
                     >
-                      + Add
+                      Add
                     </button>
                   </div>
+                </div>
 
-                  {/* Preset color chips */}
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                    <span className="text-[10px] text-slate-500">Presets:</span>
-                    {COLOR_PRESETS.map((p) => (
-                      <button
-                        key={p.name}
-                        type="button"
-                        onClick={() => {
-                          setNewVariantName(p.name);
-                          setNewVariantColorHex(p.hex);
-                        }}
-                        className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-slate-300 hover:text-white flex items-center gap-1 cursor-pointer"
-                      >
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.hex }} />
-                        {p.name}
-                      </button>
+                {/* Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-slate-500">Presets:</span>
+                  {COLOR_PRESETS.map((p) => (
+                    <button
+                      key={p.name}
+                      type="button"
+                      onClick={() => {
+                        setNewVariantName(p.name);
+                        setNewVariantColorHex(p.hex);
+                      }}
+                      className="px-2 py-0.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-[10.5px] text-slate-300 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.hex }} />
+                      <span>{p.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* List of existing variants */}
+                {formVariants.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    {formVariants.map((v, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
+                        <div className="flex items-center gap-2">
+                          {v.color_hex && (
+                            <span
+                              className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0"
+                              style={{ backgroundColor: v.color_hex }}
+                            />
+                          )}
+                          <span className="font-medium text-white">{v.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-400">Stock:</span>
+                          <input
+                            type="number"
+                            value={v.stock_quantity ?? 0}
+                            onChange={(e) => handleUpdateVariantStock(idx, e.target.value)}
+                            className="w-14 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-center focus:outline-none focus:border-amber-400/50"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariant(idx)}
+                            className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
+                )}
+              </div>
 
-                  {/* Added variants list */}
-                  {formVariants.length > 0 && (
-                    <div className="space-y-1.5 pt-2 border-t border-white/5">
-                      {formVariants.map((v, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-white/5 text-xs">
-                          <div className="flex items-center gap-2">
-                            {v.color_hex && (
-                              <span
-                                className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0"
-                                style={{ backgroundColor: v.color_hex }}
-                              />
-                            )}
-                            <span className="font-bold text-white">{v.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-slate-400">Stock:</span>
-                            <input
-                              type="number"
-                              value={v.stock_quantity}
-                              onChange={(e) => handleUpdateVariantStock(idx, e.target.value)}
-                              className="w-16 bg-black/40 border border-white/10 rounded px-2 py-0.5 text-xs text-white font-mono text-center"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveVariant(idx)}
-                              className="p-1 text-slate-400 hover:text-rose-400 cursor-pointer"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+              {/* Section 5: Badges & Visibility */}
+              <div className="pt-6 border-t border-white/[0.06] space-y-3.5">
+                <h4 className="text-xs font-semibold text-white tracking-wide">Visibility & Badges</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-white">Featured</p>
+                      <p className="text-[10px] text-slate-400">Hero banner & curated</p>
                     </div>
-                  )}
+                    <Switch checked={isFeatured} onCheckedChange={setIsFeatured} size="sm" />
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-white">New Arrival</p>
+                      <p className="text-[10px] text-slate-400">Highlight badge</p>
+                    </div>
+                    <Switch checked={isNewArrival} onCheckedChange={setIsNewArrival} size="sm" />
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-white">Best Seller</p>
+                      <p className="text-[10px] text-slate-400">Popular collection</p>
+                    </div>
+                    <Switch checked={isBestSeller} onCheckedChange={setIsBestSeller} size="sm" />
+                  </div>
                 </div>
               </div>
 
-              {/* Badges / Visibility */}
-              <div className="flex items-center gap-4 pt-2 border-t border-white/5">
-                <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isFeatured}
-                    onChange={(e) => setIsFeatured(e.target.checked)}
-                    className="rounded text-amber-500 focus:ring-0"
-                  />
-                  <span>Featured</span>
-                </label>
-                <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isNewArrival}
-                    onChange={(e) => setIsNewArrival(e.target.checked)}
-                    className="rounded text-amber-500 focus:ring-0"
-                  />
-                  <span>New Arrival</span>
-                </label>
-                <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isBestSeller}
-                    onChange={(e) => setIsBestSeller(e.target.checked)}
-                    className="rounded text-amber-500 focus:ring-0"
-                  />
-                  <span>Best Seller</span>
-                </label>
-              </div>
+            </div>
 
-              {/* Description */}
-              <div className="space-y-1 pt-2 border-t border-white/5">
-                <label className="text-[11px] font-bold text-slate-300 block">Description</label>
-                <textarea
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Detailed product specifications and highlights..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 leading-relaxed"
-                />
-              </div>
+            {/* Compact Sleek Footer */}
+            <div className="h-12 px-6 border-t border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-xs font-medium text-slate-400 hover:text-white transition cursor-pointer px-1 py-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="h-8 px-4 rounded-lg bg-white hover:bg-slate-200 text-slate-950 text-xs font-semibold transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+              >
+                {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                <span>{saving ? "Saving..." : editingProduct ? "Save Changes" : "Create Product"}</span>
+              </button>
+            </div>
 
-              {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {saving ? "Saving..." : editingProduct ? "Update Product" : "Create Product"}
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
+          </form>
+        </SheetContent>
+      </Sheet>
 
       {/* QUICK CATEGORY MODAL */}
       {isQuickCategoryModalOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#0e121e] border border-white/15 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10">
-              <h3 className="text-sm font-black text-white">Create Category</h3>
-              <button onClick={() => setIsQuickCategoryModalOpen(false)} className="text-slate-400 hover:text-white">
+          <div className="w-full max-w-md bg-[#0c101d] border border-white/10 rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <h3 className="text-sm font-semibold text-white">Create Category</h3>
+              <button
+                type="button"
+                onClick={() => setIsQuickCategoryModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleSaveQuickCategory} className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300 block">Category Name *</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">Category Name <span className="text-rose-400">*</span></label>
                 <input
                   type="text"
                   required
                   value={quickCategoryName}
                   onChange={(e) => setQuickCategoryName(e.target.value)}
                   placeholder="e.g. Ergonomics & Comfort"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-white/30 transition"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300 block">Description</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">Description</label>
                 <input
                   type="text"
-                  value={quickCategoryDescription}
+                  value={quickCategoryDescription || ""}
                   onChange={(e) => setQuickCategoryDescription(e.target.value)}
-                  placeholder="Short description"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                  placeholder="Short category summary"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-white/30 transition"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setIsQuickCategoryModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 font-bold"
+                  className="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 font-medium text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={quickCategorySaving}
-                  className="px-4 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-black"
+                  className="px-4 py-1.5 rounded-lg bg-white hover:bg-slate-200 text-slate-950 font-semibold text-xs transition cursor-pointer disabled:opacity-50 shadow-sm"
                 >
                   {quickCategorySaving ? "Creating..." : "Save Category"}
                 </button>
@@ -1306,47 +1443,51 @@ export default function AdminProductsPage() {
       {/* QUICK BRAND MODAL */}
       {isQuickBrandModalOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#0e121e] border border-white/15 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10">
-              <h3 className="text-sm font-black text-white">Create Brand</h3>
-              <button onClick={() => setIsQuickBrandModalOpen(false)} className="text-slate-400 hover:text-white">
+          <div className="w-full max-w-md bg-[#0c101d] border border-white/10 rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <h3 className="text-sm font-semibold text-white">Create Brand</h3>
+              <button
+                type="button"
+                onClick={() => setIsQuickBrandModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleSaveQuickBrand} className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300 block">Brand Name *</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">Brand Name <span className="text-rose-400">*</span></label>
                 <input
                   type="text"
                   required
-                  value={quickBrandName}
+                  value={quickBrandName || ""}
                   onChange={(e) => setQuickBrandName(e.target.value)}
                   placeholder="e.g. OrbitKey Labs"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-white/30 transition"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300 block">Website (Optional)</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">Website (Optional)</label>
                 <input
                   type="url"
-                  value={quickBrandWebsite}
+                  value={quickBrandWebsite || ""}
                   onChange={(e) => setQuickBrandWebsite(e.target.value)}
                   placeholder="https://brand.com"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-white/30 transition"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setIsQuickBrandModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 font-bold"
+                  className="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 font-medium text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={quickBrandSaving}
-                  className="px-4 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-black"
+                  className="px-4 py-1.5 rounded-lg bg-white hover:bg-slate-200 text-slate-950 font-semibold text-xs transition cursor-pointer disabled:opacity-50 shadow-sm"
                 >
                   {quickBrandSaving ? "Creating..." : "Save Brand"}
                 </button>
@@ -1359,24 +1500,28 @@ export default function AdminProductsPage() {
       {/* VIEW PRODUCT PREVIEW MODAL */}
       {viewingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg bg-[#0e121e] border border-white/15 rounded-2xl p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10">
-              <h3 className="text-sm font-black text-white">{viewingProduct.name}</h3>
-              <button onClick={() => setViewingProduct(null)} className="text-slate-400 hover:text-white">
+          <div className="relative w-full max-w-lg bg-[#0c101d] border border-white/10 rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <h3 className="text-sm font-semibold text-white tracking-tight">{viewingProduct.name}</h3>
+              <button
+                type="button"
+                onClick={() => setViewingProduct(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3.5 text-xs">
               {viewingActiveImage && (
                 <div className="relative aspect-video rounded-xl overflow-hidden bg-black/40 border border-white/10">
                   <img src={viewingActiveImage} alt={viewingProduct.name} className="w-full h-full object-contain" />
                 </div>
               )}
-              <div className="flex justify-between items-center">
-                <span className="font-mono text-lg font-black text-cyan-400">{formatPrice(viewingProduct.price)}</span>
-                <span className="text-slate-400">Stock: {viewingProduct.stock_quantity}</span>
+              <div className="flex justify-between items-center py-1">
+                <span className="font-mono text-base font-bold text-emerald-400">{formatPrice(viewingProduct.price)}</span>
+                <span className="text-slate-400 text-xs">Stock: {viewingProduct.stock_quantity} units</span>
               </div>
-              <p className="text-slate-300 leading-relaxed">{viewingProduct.description}</p>
+              <p className="text-slate-300 leading-relaxed bg-white/[0.02] border border-white/[0.06] rounded-xl p-3">{viewingProduct.description || "No description provided."}</p>
             </div>
           </div>
         </div>
@@ -1385,25 +1530,27 @@ export default function AdminProductsPage() {
       {/* DELETE CONFIRM MODAL */}
       {deletingProduct && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#0e121e] border border-rose-500/30 rounded-2xl p-5 space-y-4">
+          <div className="w-full max-w-md bg-[#0c101d] border border-rose-500/20 rounded-2xl p-5 space-y-4 shadow-2xl">
             <div className="flex items-center gap-2.5 text-rose-400">
-              <AlertTriangle className="w-5 h-5" />
-              <h3 className="text-sm font-black text-white">Delete Product?</h3>
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <h3 className="text-sm font-semibold text-white">Delete Product?</h3>
             </div>
-            <p className="text-xs text-slate-300">
-              Are you sure you want to delete <span className="font-bold text-white">"{deletingProduct.name}"</span>? This action cannot be undone.
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to delete <span className="font-semibold text-white">"{deletingProduct.name}"</span>? This action cannot be undone.
             </p>
-            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/[0.08]">
               <button
+                type="button"
                 onClick={() => setDeletingProduct(null)}
-                className="px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 font-bold text-xs"
+                className="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 font-medium text-xs transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleDeleteProduct}
                 disabled={deleting}
-                className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs"
+                className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition cursor-pointer disabled:opacity-50 shadow-sm"
               >
                 {deleting ? "Deleting..." : "Confirm Delete"}
               </button>

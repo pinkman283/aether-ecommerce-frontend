@@ -1,48 +1,101 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { 
   Star, 
   Search, 
   CheckCircle2, 
   XCircle, 
   Trash2, 
-  Sparkles,
-  MessageSquare,
-  Eye,
-  X,
-  Package,
-  User as UserIcon,
-  Calendar,
-  Check,
-  RotateCcw
+  Sparkles, 
+  MessageSquare, 
+  Eye, 
+  X, 
+  Package, 
+  User as UserIcon, 
+  Calendar, 
+  Check, 
+  RotateCcw,
+  Plus,
+  Edit,
+  SlidersHorizontal,
+  Loader2,
+  AlertTriangle,
+  RefreshCw,
+  ShieldCheck
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
-import { formatDate } from "@/lib/utils";
-import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
-import { BulkActionBar } from "@/components/admin/BulkActionBar";
+import { Review, ReviewSummary, Product } from "@/types";
+import { AdminPageHeader, AdminStatStrip, AdminStatusBadge, AdminEmptyState, AdminPagination } from "@/components/admin/ui";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<any[]>([]);
+  const [summary, setSummary] = useState<ReviewSummary | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filters & Pagination
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending">("all");
-  const [viewingReview, setViewingReview] = useState<any | null>(null);
+  const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
-  // Bulk Selection & Deletion State
+  // Bulk Selection
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkActing, setBulkActing] = useState(false);
+
+  // Create / Edit Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingReview, setEditingReview] = useState<any | null>(null);
+  const [formProductId, setFormProductId] = useState<string>("");
+  const [formUserName, setFormUserName] = useState("");
+  const [formRating, setFormRating] = useState(5);
+  const [formTitle, setFormTitle] = useState("");
+  const [formComment, setFormComment] = useState("");
+  const [formVerified, setFormVerified] = useState(true);
+  const [formApproved, setFormApproved] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Delete State
+  const [deletingReview, setDeletingReview] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const fetchSummary = async () => {
+    try {
+      const data = await adminApi.getReviewSummary();
+      setSummary(data);
+    } catch (err) {
+      // Non-blocking
+    }
+  };
+
+  const fetchProductsList = async () => {
+    try {
+      const data = await adminApi.getProducts();
+      setProducts(Array.isArray(data) ? data : (data as any)?.data || []);
+    } catch (err) {
+      // Non-blocking
+    }
+  };
 
   const loadReviews = async () => {
     setLoading(true);
     try {
       const res = await adminApi.getReviews({
         search: search.trim() || undefined,
-        status: statusFilter,
-        per_page: 50,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        rating: ratingFilter !== "all" ? Number(ratingFilter) : undefined,
+        page: currentPage,
+        per_page: 20,
       });
       setReviews(res.data || []);
+      setTotalPages(res.last_page || 1);
+      setTotalItems(res.total || 0);
     } catch (err) {
       toast.error("Failed to load customer reviews.");
     } finally {
@@ -51,400 +104,743 @@ export default function AdminReviewsPage() {
   };
 
   useEffect(() => {
-    loadReviews();
-  }, [statusFilter]);
+    fetchSummary();
+    fetchProductsList();
+  }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
     loadReviews();
+  }, [currentPage, statusFilter, ratingFilter, search]);
+
+  const handleOpenCreate = () => {
+    setEditingReview(null);
+    setFormProductId(products[0]?.id ? String(products[0].id) : "");
+    setFormUserName("");
+    setFormRating(5);
+    setFormTitle("");
+    setFormComment("");
+    setFormVerified(true);
+    setFormApproved(true);
+    setIsModalOpen(true);
   };
 
-  const handleResetFilters = () => {
-    setSearch("");
-    setStatusFilter("all");
-    adminApi.getReviews({ per_page: 50 }).then((res) => {
-      setReviews(res.data || []);
-    });
-    toast.success("Review filters reset to default.");
+  const handleOpenEdit = (rev: any) => {
+    setEditingReview(rev);
+    setFormProductId(String(rev.product_id));
+    setFormUserName(rev.user_name);
+    setFormRating(rev.rating);
+    setFormTitle(rev.title || "");
+    setFormComment(rev.comment || "");
+    setFormVerified(Boolean(rev.is_verified_purchase));
+    setFormApproved(Boolean(rev.is_approved));
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formUserName.trim()) {
+      toast.error("Customer name is required.");
+      return;
+    }
+    if (!formComment.trim()) {
+      toast.error("Review comment is required.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (editingReview) {
+        await adminApi.updateReview(editingReview.id, {
+          user_name: formUserName.trim(),
+          rating: formRating,
+          title: formTitle.trim() || undefined,
+          comment: formComment.trim(),
+          is_verified_purchase: formVerified,
+          is_approved: formApproved,
+        });
+        toast.success("Review updated successfully.");
+      } else {
+        if (!formProductId) {
+          toast.error("Please select a target product.");
+          setSaving(false);
+          return;
+        }
+        await adminApi.createReview({
+          product_id: Number(formProductId),
+          user_name: formUserName.trim(),
+          rating: formRating,
+          title: formTitle.trim() || undefined,
+          comment: formComment.trim(),
+          is_verified_purchase: formVerified,
+          is_approved: formApproved,
+        });
+        toast.success("Verified customer review created.");
+      }
+      setIsModalOpen(false);
+      loadReviews();
+      fetchSummary();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Failed to save review.";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleToggleApproval = async (id: number) => {
     try {
       const res = await adminApi.toggleReviewApproval(id);
-      setReviews(reviews.map((r) => (r.id === id ? { ...r, is_approved: res.review.is_approved } : r)));
-      if (viewingReview && viewingReview.id === id) {
-        setViewingReview({ ...viewingReview, is_approved: res.review.is_approved });
-      }
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...r, is_approved: res.review.is_approved } : r
+        )
+      );
       toast.success(res.message);
+      fetchSummary();
     } catch (err) {
       toast.error("Failed to moderate review.");
     }
   };
 
-  const handleDeleteReview = async (id: number) => {
+  const handleDeleteReview = async () => {
+    if (!deletingReview) return;
+    setDeleting(true);
     try {
-      await adminApi.deleteReview(id);
-      setReviews(reviews.filter((r) => r.id !== id));
-      setSelectedIds((prev) => prev.filter((item) => item !== id));
-      if (viewingReview && viewingReview.id === id) {
-        setViewingReview(null);
-      }
+      await adminApi.deleteReview(deletingReview.id);
       toast.success("Review removed.");
+      setDeletingReview(null);
+      loadReviews();
+      fetchSummary();
     } catch (err) {
       toast.error("Failed to delete review.");
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const handleToggleSelectAll = () => {
-    if (reviews.length > 0 && selectedIds.length === reviews.length) {
-      setSelectedIds([]);
-    } else {
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
       setSelectedIds(reviews.map((r) => r.id));
+    } else {
+      setSelectedIds([]);
     }
   };
 
-  const handleToggleSelectRow = (id: number) => {
+  const handleToggleSelect = (id: number) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
+  const handleBulkApprove = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkActing(true);
+    try {
+      await adminApi.bulkApproveReviews(selectedIds);
+      toast.success(`Approved ${selectedIds.length} review(s).`);
+      setSelectedIds([]);
+      loadReviews();
+      fetchSummary();
+    } catch (err) {
+      toast.error("Bulk approve failed.");
+    } finally {
+      setBulkActing(false);
+    }
+  };
+
+  const handleBulkReject = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkActing(true);
+    try {
+      await adminApi.bulkRejectReviews(selectedIds);
+      toast.success(`Marked ${selectedIds.length} review(s) as pending.`);
+      setSelectedIds([]);
+      loadReviews();
+      fetchSummary();
+    } catch (err) {
+      toast.error("Bulk reject failed.");
+    } finally {
+      setBulkActing(false);
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    setIsBulkDeleting(true);
+    setBulkActing(true);
     try {
-      const res = await adminApi.bulkDeleteReviews(selectedIds);
-      setReviews((prev) => prev.filter((r) => !selectedIds.includes(r.id)));
-      if (viewingReview && selectedIds.includes(viewingReview.id)) setViewingReview(null);
+      await adminApi.bulkDeleteReviews(selectedIds);
+      toast.success(`Deleted ${selectedIds.length} review(s).`);
       setSelectedIds([]);
-      toast.success(res.message || `Deleted ${selectedIds.length} review(s).`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to delete selected reviews.");
+      loadReviews();
+      fetchSummary();
+    } catch (err) {
+      toast.error("Bulk delete failed.");
     } finally {
-      setIsBulkDeleting(false);
+      setBulkActing(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
-            Community & Reputation
-          </span>
-          <h1 className="text-2xl font-black text-white">Review Moderation Queue ({reviews.length})</h1>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Customer Reviews & Testimonials"
+        description="Moderate customer product reviews, create verified testimonials, and configure storefront rating scores."
+        badge="Quality & Trust"
+        badgeVariant="cyan"
+        breadcrumbs={[
+          { label: "Dashboard", href: "/admin" },
+          { label: "Operations" },
+          { label: "Reviews" },
+        ]}
+        action={
+          <button
+            onClick={handleOpenCreate}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-black bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Review</span>
+          </button>
+        }
+      />
 
-      {/* Filter & Search Bar */}
-      <div className="p-4 rounded-2xl bg-[#0e121e] border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <form onSubmit={handleSearch} className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+      {/* Stats Strip */}
+      <AdminStatStrip
+        columns={4}
+        stats={[
+          {
+            label: "Total Reviews",
+            value: summary?.total_reviews ?? totalItems,
+            icon: MessageSquare,
+            variant: "cyan",
+            helper: "Across entire hardware catalog",
+          },
+          {
+            label: "Pending Moderation",
+            value: summary?.pending_reviews ?? 0,
+            icon: AlertTriangle,
+            variant: (summary?.pending_reviews ?? 0) > 0 ? "amber" : "default",
+            helper: "Awaiting administrator approval",
+          },
+          {
+            label: "Approved Reviews",
+            value: summary?.approved_reviews ?? 0,
+            icon: CheckCircle2,
+            variant: "emerald",
+            helper: "Live on storefront product pages",
+          },
+          {
+            label: "Average Rating",
+            value: `${summary?.average_rating ?? 5.0} / 5.0`,
+            icon: Star,
+            variant: "amber",
+            helper: "Average calculated rating",
+          },
+        ]}
+      />
+
+      {/* Bulk Action Bar if items selected */}
+      {selectedIds.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-amber-400/10 border border-amber-400/25 rounded-xl text-xs text-amber-300 animate-in fade-in duration-150">
+          <span className="font-semibold">
+            {selectedIds.length} review{selectedIds.length > 1 ? "s" : ""} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkApprove}
+              disabled={bulkActing}
+              className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded-lg font-semibold transition-colors cursor-pointer"
+            >
+              Approve Selected
+            </button>
+            <button
+              onClick={handleBulkReject}
+              disabled={bulkActing}
+              className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg font-semibold transition-colors cursor-pointer"
+            >
+              Hide / Pending
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkActing}
+              className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-lg font-semibold transition-colors cursor-pointer"
+            >
+              Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3 p-3.5 rounded-xl bg-[#0f121b] border border-white/[0.08]">
+        <div className="relative w-full md:w-80">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
+            placeholder="Search author, title, or comments..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search review comments, titles, or author..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9.5 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full pl-9 pr-4 py-1.5 text-xs bg-[#161a26] border border-white/[0.08] rounded-lg text-white placeholder:text-slate-500 focus:outline-hidden focus:border-amber-400/50"
           />
-        </form>
+        </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1 bg-[#161a26] p-1 rounded-lg border border-white/[0.08]">
             <button
-              onClick={() => setStatusFilter("all")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                statusFilter === "all" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-white"
+              onClick={() => {
+                setStatusFilter("all");
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer ${
+                statusFilter === "all" ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              All Reviews
+              All
             </button>
             <button
-              onClick={() => setStatusFilter("approved")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                statusFilter === "approved" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-white"
+              onClick={() => {
+                setStatusFilter(statusFilter === "approved" ? "all" : "approved");
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer ${
+                statusFilter === "approved" ? "bg-emerald-500/20 text-emerald-300 font-bold" : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Live on Store
+              Approved
             </button>
             <button
-              onClick={() => setStatusFilter("pending")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                statusFilter === "pending" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-white"
+              onClick={() => {
+                setStatusFilter(statusFilter === "pending" ? "all" : "pending");
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer ${
+                statusFilter === "pending" ? "bg-amber-500/20 text-amber-300 font-bold" : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Hidden / Moderation
+              Pending
             </button>
           </div>
 
+          {/* Rating Dropdown */}
+          <div className="flex items-center gap-1.5 bg-[#161a26] border border-white/[0.08] px-2.5 py-1.5 rounded-lg text-xs text-slate-300">
+            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+            <select
+              value={ratingFilter}
+              onChange={(e) => {
+                setRatingFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-transparent text-xs text-white focus:outline-hidden cursor-pointer"
+            >
+              <option value="all" className="bg-[#161a26] text-white">All Ratings</option>
+              <option value="5" className="bg-[#161a26] text-white">5 Stars (★★★★★)</option>
+              <option value="4" className="bg-[#161a26] text-white">4 Stars (★★★★☆)</option>
+              <option value="3" className="bg-[#161a26] text-white">3 Stars (★★★☆☆)</option>
+              <option value="2" className="bg-[#161a26] text-white">2 Stars (★★☆☆☆)</option>
+              <option value="1" className="bg-[#161a26] text-white">1 Star (★☆☆☆☆)</option>
+            </select>
+          </div>
+
           <button
-            type="button"
-            onClick={handleResetFilters}
-            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 transition-all shrink-0"
-            title="Reset all review filters"
+            onClick={() => {
+              loadReviews();
+              fetchSummary();
+            }}
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-white bg-[#161a26] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors cursor-pointer"
+            title="Refresh"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-amber-400" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* Reviews Table with Drag Scrolling */}
-      <ScrollableTableCard>
-        <table className="w-full text-left text-xs text-slate-300 min-w-[760px]">
-          <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-            <tr>
-              <th className="p-3.5 w-10 text-center">
-                <input
-                  type="checkbox"
-                  checked={reviews.length > 0 && selectedIds.length === reviews.length}
-                  onChange={handleToggleSelectAll}
-                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
-                  title="Select all reviews"
-                />
-              </th>
-              <th className="p-3.5">Target Hardware</th>
-              <th className="p-3.5">Reviewer</th>
-              <th className="p-3.5">Rating</th>
-              <th className="p-3.5">Review Snippet</th>
-              <th className="p-3.5">Status</th>
-              <th className="p-3.5">Date</th>
-              <th className="p-3.5 text-center min-w-[140px]">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="p-8 text-center text-slate-500">
-                  Loading customer feedback...
-                </td>
-              </tr>
-            ) : reviews.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="p-8 text-center text-slate-500 italic">
-                  No reviews in the moderation queue.
-                </td>
-              </tr>
-            ) : (
-              reviews.map((r) => {
-                const isSelected = selectedIds.includes(r.id);
-                return (
-                  <tr
-                    key={r.id}
-                    className={`transition-colors ${
-                      isSelected
-                        ? "bg-amber-500/10 border-l-2 border-amber-500"
-                        : "hover:bg-white/[0.02]"
-                    }`}
-                  >
-                    <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+      {/* Reviews Table Card */}
+      <div className="rounded-xl bg-[#0f121b] border border-white/[0.08] overflow-hidden">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
+            <Loader2 className="w-7 h-7 text-amber-400 animate-spin" />
+            <span className="text-xs uppercase tracking-wider font-semibold">Loading reviews...</span>
+          </div>
+        ) : reviews.length === 0 ? (
+          <div className="p-8">
+            <AdminEmptyState
+              title="No Reviews Found"
+              description="No customer reviews matched your search or moderation filters."
+              action={
+                <button
+                  onClick={handleOpenCreate}
+                  className="px-4 py-2 text-xs font-semibold text-black bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors cursor-pointer"
+                >
+                  + Add Verified Review
+                </button>
+              }
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300">
+              <thead className="bg-[#161a26] text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-white/[0.08]">
+                <tr>
+                  <th className="py-3 px-4 w-8">
+                    <input
+                      type="checkbox"
+                      checked={reviews.length > 0 && selectedIds.length === reviews.length}
+                      onChange={handleSelectAll}
+                      className="rounded border-white/20 bg-[#161a26] text-amber-400 focus:ring-0 cursor-pointer"
+                    />
+                  </th>
+                  <th className="py-3 px-4">Product</th>
+                  <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">Rating</th>
+                  <th className="py-3 px-4">Review Body</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.06]">
+                {reviews.map((rev) => (
+                  <tr key={rev.id} className="hover:bg-white/[0.015] transition-colors">
+                    <td className="py-3.5 px-4">
                       <input
                         type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleSelectRow(r.id)}
-                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                        checked={selectedIds.includes(rev.id)}
+                        onChange={() => handleToggleSelect(rev.id)}
+                        className="rounded border-white/20 bg-[#161a26] text-amber-400 focus:ring-0 cursor-pointer"
                       />
                     </td>
-                    <td className="p-3.5 font-bold text-white max-w-[160px] truncate">
-                    {r.product?.name || "Acoustic Gear"}
-                  </td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    <span className="font-bold text-white block">{r.user_name}</span>
-                    {r.is_verified_purchase && (
-                      <span className="text-[10px] text-cyan-400 font-medium">Verified Buyer</span>
-                    )}
-                  </td>
-                  <td className="p-3.5 font-black text-amber-400 whitespace-nowrap">
-                    {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
-                  </td>
-                  <td className="p-3.5 max-w-sm">
-                    <span className="font-bold text-white block truncate">{r.title}</span>
-                    <p className="text-slate-400 text-[11px] line-clamp-2">{r.comment}</p>
-                  </td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      r.is_approved
-                        ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                        : "bg-amber-500/15 text-amber-300 border border-amber-500/30"
-                    }`}>
-                      {r.is_approved ? "Live on Store" : "Hidden"}
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-slate-400 whitespace-nowrap">{formatDate(r.created_at)}</td>
-                  
-                  {/* ICON-ONLY ACTION SYSTEM */}
-                  <td className="p-3.5 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-start gap-1.5 flex-wrap w-[146px] mx-auto">
-                      <button
-                        onClick={() => setViewingReview(r)}
-                        className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:scale-105 transition-all shadow-sm"
-                        title="View Full Review Details"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
 
-                      <button
-                        onClick={() => handleToggleApproval(r.id)}
-                        className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center border hover:scale-105 transition-all shadow-sm ${
-                          r.is_approved
-                            ? "bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border-amber-500/30"
-                            : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30"
-                        }`}
-                        title={r.is_approved ? "Hide Review from Store" : "Approve Review"}
-                      >
-                        {r.is_approved ? (
-                          <XCircle className="w-3.5 h-3.5 text-amber-400" />
-                        ) : (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    {/* Product */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      {rev.product ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-cyan-400 shrink-0">
+                            <Package className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="font-bold text-white block truncate max-w-[180px]">
+                              {rev.product.name}
+                            </span>
+                            <span className="font-mono text-[10px] text-slate-500">
+                              SKU: {rev.product.sku || "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500 font-mono text-[11px]">Product #{rev.product_id}</span>
+                      )}
+                    </td>
+
+                    {/* Customer */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-white">{rev.user_name}</span>
+                          {rev.is_verified_purchase && (
+                            <span title="Verified Purchase">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                            </span>
+                          )}
+                        </div>
+                        {rev.created_at && (
+                          <span className="text-[10px] text-slate-500 block">
+                            {new Date(rev.created_at).toLocaleDateString()}
+                          </span>
                         )}
-                      </button>
+                      </div>
+                    </td>
+
+                    {/* Rating Stars */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-3.5 h-3.5 ${
+                              i < rev.rating
+                                ? "text-amber-400 fill-amber-400"
+                                : "text-slate-600"
+                            }`}
+                          />
+                        ))}
+                        <span className="font-mono text-[11px] text-slate-400 ml-1">
+                          {rev.rating}.0
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Review Body */}
+                    <td className="py-3.5 px-4 max-w-sm">
+                      {rev.title && (
+                        <span className="font-bold text-white block truncate text-[11.5px]">
+                          "{rev.title}"
+                        </span>
+                      )}
+                      <p className="text-slate-400 text-xs line-clamp-2 mt-0.5">
+                        {rev.comment}
+                      </p>
+                    </td>
+
+                    {/* Status */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <button
-                        onClick={() => handleDeleteReview(r.id)}
-                        className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:scale-105 transition-all shadow-sm"
-                        title="Delete Spam Review"
+                        onClick={() => handleToggleApproval(rev.id)}
+                        className="cursor-pointer"
+                        title="Toggle approval"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <AdminStatusBadge
+                          status={rev.is_approved ? "approved" : "pending"}
+                          label={rev.is_approved ? "Approved" : "Pending"}
+                          size="sm"
+                        />
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })
-            )}
-          </tbody>
-        </table>
-      </ScrollableTableCard>
+                    </td>
 
-      {/* View Review Modal */}
-      {viewingReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setViewingReview(null)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+                    {/* Actions */}
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(rev)}
+                          className="p-1.5 text-slate-400 hover:text-white hover:bg-white/[0.08] rounded-lg transition-colors cursor-pointer"
+                          title="Edit"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingReview(rev)}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-          <div className="relative w-full max-w-lg rounded-3xl bg-[#0c0e15] border border-cyan-500/30 shadow-2xl p-6 sm:p-8 z-10 space-y-5 text-xs max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-300">
-                  <MessageSquare className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-white">Customer Review Inspection</h3>
-                  <span className="text-[10px] text-slate-400">ID #{viewingReview.id} • Posted {formatDate(viewingReview.created_at)}</span>
-                </div>
+        {/* Pagination footer */}
+        {totalPages > 1 && (
+          <div className="p-3.5 border-t border-white/[0.08]">
+            <AdminPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={totalItems}
+              itemsPerPage={20}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Create / Edit Review Slide-over Drawer */}
+      <Sheet open={isModalOpen} onOpenChange={(open) => { if (!open) setIsModalOpen(false); }}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:w-[480px] md:w-[520px] sm:!max-w-[520px] max-w-full bg-[#0b0e17] border-l border-white/[0.08] p-0 flex flex-col justify-between shadow-2xl text-slate-100 overflow-hidden"
+        >
+          <form onSubmit={handleSave} className="flex flex-col h-full overflow-hidden">
+            {/* Compact Header: h-12 */}
+            <div className="h-12 px-6 border-b border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 min-w-0 pr-3">
+                <SheetTitle className="text-xs font-semibold text-white tracking-wide shrink-0">
+                  {editingReview ? "Edit Review" : "Add Verified Review"}
+                </SheetTitle>
+                <span className="text-slate-600 text-xs shrink-0">·</span>
+                <span className="text-xs text-slate-400 truncate">
+                  {editingReview ? `ID #${editingReview.id}` : "Customer Feedback Moderation"}
+                </span>
               </div>
-              <button onClick={() => setViewingReview(null)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Target Product Info */}
-            <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                  <Package className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Product</span>
-                  <span className="text-xs font-black text-white">{viewingReview.product?.name || "Audio Hardware"}</span>
-                </div>
-              </div>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                viewingReview.is_approved
-                  ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                  : "bg-amber-500/15 text-amber-300 border border-amber-500/30"
-              }`}>
-                {viewingReview.is_approved ? "Live on Store" : "Hidden"}
-              </span>
-            </div>
-
-            {/* Author & Rating Banner */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Reviewer</span>
-                <span className="text-xs font-bold text-white block">{viewingReview.user_name}</span>
-                {viewingReview.is_verified_purchase && (
-                  <span className="text-[10px] text-cyan-400 font-bold block flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Verified Purchase
-                  </span>
-                )}
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Rating Score</span>
-                <div className="flex items-center gap-1.5">
-                  <div className="flex text-amber-400">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`w-4 h-4 ${s <= viewingReview.rating ? "fill-amber-400 text-amber-400" : "text-slate-600"}`}
-                      />
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 text-xs">
+              {!editingReview && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">
+                    Product Target <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={formProductId}
+                    onChange={(e) => setFormProductId(e.target.value)}
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white focus:border-white/20 focus:outline-none transition cursor-pointer"
+                    required
+                  >
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-[#131722] text-white">
+                        {p.name}
+                      </option>
                     ))}
-                  </div>
-                  <span className="font-mono font-bold text-white text-xs">{viewingReview.rating}.0 / 5.0</span>
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">
+                  Customer / Reviewer Name <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. David Hasselbeck"
+                  value={formUserName}
+                  onChange={(e) => setFormUserName(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-white/20 focus:outline-none transition"
+                  required
+                />
+              </div>
+
+              {/* Star Rating Picker */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">
+                  Rating Score ({formRating} / 5 Stars)
+                </label>
+                <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setFormRating(star)}
+                      className="p-1 text-slate-500 hover:scale-110 transition cursor-pointer"
+                    >
+                      <Star
+                        className={`w-4 h-4 ${
+                          star <= formRating
+                            ? "text-amber-400 fill-amber-400"
+                            : "text-slate-600"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="text-xs font-medium text-slate-400 ml-2">
+                    {formRating === 5 ? "Exceptional" : formRating === 4 ? "Very Good" : formRating === 3 ? "Average" : formRating === 2 ? "Poor" : "Terrible"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">Review Headline</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Exceeded every expectation!"
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-white/20 focus:outline-none transition"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">
+                  Comment Body <span className="text-rose-400">*</span>
+                </label>
+                <textarea
+                  rows={4}
+                  placeholder="Customer experience narrative and feedback..."
+                  value={formComment}
+                  onChange={(e) => setFormComment(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-[#131722] p-3 text-xs text-white placeholder:text-slate-500 focus:border-white/20 focus:outline-none transition resize-none"
+                  required
+                />
+              </div>
+
+              <div className="p-3.5 rounded-lg bg-white/[0.02] border border-white/5 space-y-2.5">
+                <span className="text-[10px] font-medium text-slate-400 block uppercase tracking-wider">
+                  Verification & Moderation
+                </span>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-white transition">
+                    <input
+                      type="checkbox"
+                      checked={formVerified}
+                      onChange={(e) => setFormVerified(e.target.checked)}
+                      className="w-4 h-4 rounded text-white bg-[#131722] border-white/20 focus:ring-0 focus:outline-none"
+                    />
+                    <span>Mark as Verified Purchaser</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-white transition">
+                    <input
+                      type="checkbox"
+                      checked={formApproved}
+                      onChange={(e) => setFormApproved(e.target.checked)}
+                      className="w-4 h-4 rounded text-white bg-[#131722] border-white/20 focus:ring-0 focus:outline-none"
+                    />
+                    <span>Immediately Approved (Display live on storefront)</span>
+                  </label>
                 </div>
               </div>
             </div>
 
-            {/* Review Title & Full Body */}
-            <div className="space-y-2 p-4 rounded-2xl bg-black/40 border border-white/10">
-              <span className="text-sm font-black text-white block">{viewingReview.title || "No Title Provided"}</span>
-              <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">
-                {viewingReview.comment || "No written review feedback provided."}
+            {/* Compact Footer: h-12 */}
+            <div className="h-12 px-6 border-t border-white/[0.06] bg-[#0b0e17] flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-xs text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="h-8 px-4 rounded-lg bg-white hover:bg-slate-200 text-slate-950 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 shadow-sm"
+              >
+                {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>{editingReview ? "Update Review" : "Save Review"}</span>
+              </button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Confirmation Modal */}
+      {deletingReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-[#0f121b] border border-white/[0.12] rounded-2xl p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-sm font-bold text-white">Delete Review</h3>
+              <p className="text-xs text-slate-400">
+                Are you sure you want to delete this review by{" "}
+                <span className="text-white font-semibold">{deletingReview.user_name}</span>? Product average rating will be recalculated.
               </p>
             </div>
-
-            {/* Modal Actions */}
-            <div className="flex justify-between items-center pt-3 border-t border-white/10">
+            <div className="flex items-center justify-center gap-2 pt-2">
               <button
-                onClick={() => handleDeleteReview(viewingReview.id)}
-                className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold text-xs flex items-center gap-1.5 transition-all"
+                onClick={() => setDeletingReview(null)}
+                className="px-3.5 py-1.5 text-xs text-slate-300 hover:bg-white/[0.08] rounded-lg transition-colors cursor-pointer"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Review</span>
+                Cancel
               </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setViewingReview(null)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white font-bold text-xs"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => handleToggleApproval(viewingReview.id)}
-                  className={`px-5 py-2 rounded-xl font-black text-xs uppercase tracking-wide flex items-center gap-1.5 transition-all shadow-md ${
-                    viewingReview.is_approved
-                      ? "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                      : "bg-emerald-500 hover:bg-emerald-400 text-slate-950"
-                  }`}
-                >
-                  {viewingReview.is_approved ? (
-                    <>
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Hide Review</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Approve & Publish</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                onClick={handleDeleteReview}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition-colors cursor-pointer"
+              >
+                {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Confirm Delete</span>
+              </button>
             </div>
           </div>
         </div>
       )}
-      {/* Floating Bulk Action Bar */}
-      <BulkActionBar
-        selectedCount={selectedIds.length}
-        totalCount={reviews.length}
-        itemName="review"
-        isDeleting={isBulkDeleting}
-        onClearSelection={() => setSelectedIds([])}
-        onSelectAll={handleToggleSelectAll}
-        onConfirmDelete={handleBulkDelete}
-      />
     </div>
   );
 }

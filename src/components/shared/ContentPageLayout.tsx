@@ -17,7 +17,7 @@ const POLICY_NAV_LINKS = [
   { name: "Return & Refund Policy", href: "/refund-policy", slug: "refund-policy" },
   { name: "Frequently Asked Questions", href: "/faq", slug: "faq" },
   { name: "Contact & Support", href: "/contact", slug: "contact" },
-  { name: "About AETHER Studio", href: "/about", slug: "about" },
+  { name: "About Us", href: "/about", slug: "about" },
 ];
 
 export function ContentPageLayout({

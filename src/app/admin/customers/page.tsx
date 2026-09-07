@@ -46,6 +46,11 @@ import { ImageUploadAvatar } from "@/components/ui/ImageUploadAvatar";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
+import { 
+  AdminPageHeader, 
+  AdminStatusBadge, 
+  AdminEmptyState 
+} from "@/components/admin/ui";
 
 function AdminCustomersContent() {
   const searchParams = useSearchParams();
@@ -317,41 +322,34 @@ function AdminCustomersContent() {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 pb-16">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Customer Intelligence & Risk Control</h1>
-              <p className="text-xs text-slate-400">Holistic buyer profiling, automated cancellation risk scoring, and multi-IP telemetry.</p>
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-purple-600/20 transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Customer</span>
-        </button>
-      </div>
+      <AdminPageHeader
+        title="Customer Intelligence & Risk Control"
+        description="Holistic buyer profiling, automated cancellation risk scoring, and multi-IP telemetry."
+        badge={`${customers.length} records`}
+        actions={
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Customer</span>
+          </button>
+        }
+      />
 
       {/* Search and Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-[#0e131f] p-4 rounded-2xl border border-white/5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-[#0f121b] p-3.5 rounded-xl border border-white/[0.08]">
         <div className="relative lg:col-span-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search name, email, phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && loadCustomers()}
-            className="w-full bg-[#07080c] border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500/50"
+            className="w-full bg-[#161a26] border border-white/[0.08] focus:border-amber-400/50 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none transition"
           />
         </div>
 
@@ -391,39 +389,41 @@ function AdminCustomersContent() {
       </div>
 
       {/* Main Customers Table */}
-      <div className="p-4 rounded-2xl bg-[#0b0d14] border border-white/5 space-y-3">
+      <div className="p-4 rounded-xl bg-[#0f121b] border border-white/[0.08] space-y-3 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-white">Customer Records ({customers.length})</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Customer Records ({customers.length})</h2>
         </div>
-        <ScrollableTableCard className="border-white/5">
+        <ScrollableTableCard className="border-white/[0.06]">
           <table className="w-full min-w-[950px] text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-white/5 bg-white/[0.01] text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4">Customer</th>
-                <th className="py-3 px-4">Type</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Risk Profile</th>
-                <th className="py-3 px-4">Orders</th>
-                <th className="py-3 px-4">Total Spent</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+              <tr className="border-b border-white/[0.06] bg-white/[0.01] text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                <th className="py-2.5 px-3.5">Customer</th>
+                <th className="py-2.5 px-3.5">Type</th>
+                <th className="py-2.5 px-3.5">Status</th>
+                <th className="py-2.5 px-3.5">Risk Profile</th>
+                <th className="py-2.5 px-3.5">Orders</th>
+                <th className="py-2.5 px-3.5">Total Spent</th>
+                <th className="py-2.5 px-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 text-slate-300">
+            <tbody className="divide-y divide-white/[0.04] text-slate-300">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">
                     <div className="inline-flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4 animate-spin text-purple-400" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
                       <span>Loading customer intelligence...</span>
                     </div>
                   </td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
-                    <Users className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                    <p className="font-semibold text-slate-400">No Customers Found</p>
-                    <p className="text-[11px]">Try adjusting your search criteria or filters.</p>
+                  <td colSpan={7} className="p-0">
+                    <AdminEmptyState
+                      icon={Users}
+                      title="No Customers Found"
+                      description="Try adjusting your search criteria or filters."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -434,7 +434,7 @@ function AdminCustomersContent() {
 
                   return (
                     <tr key={c.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-3.5">
                         <div className="flex items-center gap-3">
                           <img
                             src={c.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
@@ -444,7 +444,7 @@ function AdminCustomersContent() {
                           <div>
                             <button
                               onClick={() => openCustomerIntelligence(c)}
-                              className="font-bold text-white hover:text-purple-400 transition-colors text-left block"
+                              className="font-semibold text-white hover:text-amber-400 transition-colors text-left block"
                             >
                               {c.name}
                             </button>
@@ -453,36 +453,14 @@ function AdminCustomersContent() {
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        {isGuest ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            GUEST
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                            REGISTERED
-                          </span>
-                        )}
+                      <td className="py-3 px-3.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-white/5 text-slate-300 border border-white/10 uppercase">
+                          {isGuest ? "Guest" : "Registered"}
+                        </span>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        {c.status === "blocked" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                            <Ban className="w-3 h-3" /> BLOCKED
-                          </span>
-                        ) : c.status === "suspended" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            <Clock className="w-3 h-3" /> SUSPENDED
-                          </span>
-                        ) : c.status === "review" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                            <AlertTriangle className="w-3 h-3" /> REVIEW
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <CheckCircle2 className="w-3 h-3" /> ACTIVE
-                          </span>
-                        )}
+                      <td className="py-3 px-3.5">
+                        <AdminStatusBadge status={c.status || "active"} size="sm" />
                       </td>
 
                       <td className="py-3.5 px-4">
@@ -566,9 +544,9 @@ function AdminCustomersContent() {
       {/* Customer Intelligence Drawer / Modal */}
       {selectedCustomer && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0b0d14] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-[#0f121b] border border-white/[0.08] rounded-xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02] shrink-0">
+            <div className="flex items-center justify-between p-5 border-b border-white/[0.08] bg-white/[0.01] shrink-0">
               <div className="flex items-center gap-3">
                 <img
                   src={selectedCustomer.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
@@ -577,22 +555,15 @@ function AdminCustomersContent() {
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-white text-base">{selectedCustomer.name}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      selectedCustomer.customer_type === "guest" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                    <h3 className="font-semibold text-white text-base">{selectedCustomer.name}</h3>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                      selectedCustomer.customer_type === "guest" ? "bg-white/5 text-slate-300 border border-white/10" : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
                     }`}>
                       {selectedCustomer.customer_type === "guest" ? "GUEST" : "REGISTERED"}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      selectedCustomer.status === "blocked" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
-                      selectedCustomer.status === "suspended" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                      selectedCustomer.status === "review" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" :
-                      "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                    }`}>
-                      {selectedCustomer.status?.toUpperCase() || "ACTIVE"}
-                    </span>
+                    <AdminStatusBadge status={selectedCustomer.status || "active"} size="sm" />
                   </div>
-                  <p className="text-xs text-slate-400">{selectedCustomer.email} • {selectedCustomer.phone || "No phone recorded"}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{selectedCustomer.email} • {selectedCustomer.phone || "No phone recorded"}</p>
                 </div>
               </div>
 
@@ -607,7 +578,7 @@ function AdminCustomersContent() {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex items-center gap-1 px-5 pt-3 border-b border-white/5 bg-white/[0.01] shrink-0 text-xs font-semibold">
+            <div className="flex items-center gap-1 px-5 pt-3 border-b border-white/[0.08] bg-white/[0.01] shrink-0 text-xs font-medium">
               {[
                 { id: "overview", label: "Risk & KPIs", icon: Activity },
                 { id: "ips", label: `IP History (${selectedCustomer.ip_history?.length || 0})`, icon: Network },
@@ -617,9 +588,9 @@ function AdminCustomersContent() {
                 <button
                   key={t.id}
                   onClick={() => setActiveDrawerTab(t.id as any)}
-                  className={`flex items-center gap-2 py-2.5 px-4 border-b-2 transition-all ${
+                  className={`flex items-center gap-2 py-2 px-3.5 border-b-2 transition-all ${
                     activeDrawerTab === t.id
-                      ? "border-purple-500 text-purple-400 bg-purple-500/5 rounded-t-lg"
+                      ? "border-amber-400 text-amber-300 bg-amber-400/5 rounded-t-lg font-semibold"
                       : "border-transparent text-slate-400 hover:text-slate-200"
                   }`}
                 >

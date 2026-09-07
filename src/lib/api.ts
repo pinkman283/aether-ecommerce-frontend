@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Address, AdminAnalytics, Brand, Category, CouponValidation, Order, Product, User } from "@/types";
+import { Address, AdminAnalytics, Brand, Category, CouponValidation, HomepageBannersResponse, Order, Product, User } from "@/types";
 
 const API_BASE_URL = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api")
@@ -27,6 +27,21 @@ apiClient.interceptors.request.use((config) => {
 
 export const api = {
   client: apiClient,
+
+  // Storefront Homepage Banners
+  async getHomepageBanners(): Promise<HomepageBannersResponse> {
+    const res = await apiClient.get("/homepage/banners");
+    return res.data;
+  },
+
+  // Track Banner Click
+  async trackBannerClick(id: number): Promise<void> {
+    try {
+      await apiClient.post(`/banners/${id}/click`);
+    } catch {
+      // Non-blocking tracking
+    }
+  },
 
   // Storefront Featured
   async getFeatured(): Promise<{
@@ -256,6 +271,78 @@ export const api = {
     total_amount?: number;
   }): Promise<{ message: string; lead_id: number; status: string }> {
     const res = await apiClient.post("/leads/capture", data);
+    return res.data;
+  },
+
+  // ==========================================
+  // Storefront Promotions & Coupons
+  // ==========================================
+  async evaluatePromotions(payload: {
+    items: Array<{ product_id: number; variant_id?: number | null; quantity: number }>;
+    code?: string | null;
+    claimed_coupon_id?: number | null;
+    shipping_rate?: number;
+    payment_method?: string;
+    customer_email?: string;
+  }): Promise<import("@/types").PromotionEvaluationResult> {
+    const res = await apiClient.post("/promotions/evaluate", payload);
+    return res.data;
+  },
+
+  async getClaimablePromotions(): Promise<Array<{
+    id: number;
+    name: string;
+    slug: string;
+    description?: string;
+    discount_type: string;
+    discount_value: number;
+    min_order_amount: number;
+    max_discount_amount?: number | null;
+    claim_validity_days?: number | null;
+    expires_at?: string | null;
+    claim_deadline?: string | null;
+    badge_text?: string | null;
+    banner_image?: string | null;
+    thumbnail_image?: string | null;
+    cta_text?: string | null;
+    cta_destination?: string | null;
+    is_claimed: boolean;
+    claimed_id?: number;
+    claim_expires_at?: string | null;
+    can_claim: boolean;
+  }>> {
+    const res = await apiClient.get("/promotions/claimable");
+    return res.data;
+  },
+
+  async claimPromotion(promotionId: number): Promise<{ message: string; claim: import("@/types").PromotionClaim }> {
+    const res = await apiClient.post("/promotions/claim", { promotion_id: promotionId });
+    return res.data;
+  },
+
+  async getMyCoupons(): Promise<{
+    claimed: Array<any>;
+    available: Array<any>;
+    used: Array<any>;
+    expired: Array<any>;
+  }> {
+    const res = await apiClient.get("/promotions/my-coupons");
+    return res.data;
+  },
+
+  async getMyStoreCredit(): Promise<{
+    balance: number;
+    total_credited: number;
+    total_debited: number;
+    is_frozen: boolean;
+    transactions: {
+      data: import("@/types").StoreCreditTransaction[];
+      current_page: number;
+      last_page: number;
+      total: number;
+    };
+  }> {
+    const res = await apiClient.get("/promotions/store-credit");
     return res.data;
   },
 };
