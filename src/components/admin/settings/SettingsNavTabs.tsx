@@ -13,24 +13,33 @@ import {
   Puzzle, 
   Palette, 
   Store, 
-  LayoutTemplate 
+  LayoutTemplate,
+  FileText,
+  BookOpen,
+  Layers,
+  ExternalLink
 } from "lucide-react";
 
 export function SettingsNavTabs() {
   const pathname = usePathname();
 
   const tabs = [
-    { label: "General & Store", href: "/admin/settings", icon: Settings },
+    { label: "General Store", href: "/admin/settings", icon: Settings },
+    { label: "Theme & UI", href: "/admin/settings/appearance", icon: Palette },
+    { label: "Branding & Logo", href: "/admin/settings/branding", icon: Store },
+    { label: "Storefront Layout", href: "/admin/settings/storefront", icon: LayoutTemplate },
+    { label: "Homepage Sections", href: "/admin/settings/homepage", icon: Layers },
+    { label: "CMS Static Pages", href: "/admin/online-store/pages", icon: FileText },
+    { label: "Blog & Editorial", href: "/admin/blog", icon: BookOpen },
+    { label: "Navigation & Footer", href: "/admin/online-store/footer", icon: Layers },
+    { label: "Social Links", href: "/admin/online-store/social", icon: ExternalLink },
     { label: "Shipping Zones", href: "/admin/settings/shipping", icon: Truck },
     { label: "Order Pipeline", href: "/admin/settings/statuses", icon: GitCommit },
     { label: "SEO & Search", href: "/admin/settings/seo", icon: Search },
-    { label: "PWA Studio", href: "/admin/settings/pwa", icon: Smartphone },
-    { label: "Notification Templates", href: "/admin/settings/notifications", icon: Bell },
-    { label: "System & Cache", href: "/admin/settings/system", icon: Cpu },
+    { label: "Mobile & PWA", href: "/admin/settings/pwa", icon: Smartphone },
+    { label: "Notifications", href: "/admin/settings/notifications", icon: Bell },
     { label: "Integrations Hub", href: "/admin/integrations", icon: Puzzle },
-    { label: "Appearance", href: "/admin/settings/appearance", icon: Palette },
-    { label: "Branding", href: "/admin/settings/branding", icon: Store },
-    { label: "Hero Banner", href: "/admin/settings/storefront", icon: LayoutTemplate },
+    { label: "System & Cache", href: "/admin/settings/system", icon: Cpu },
   ];
 
   return (

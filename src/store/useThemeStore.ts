@@ -16,6 +16,7 @@ export interface ThemeSettings {
   theme_btn_secondary_text?: string;
   theme_tab_active_bg?: string;
   theme_tab_active_text?: string;
+  theme_view_all_color?: string;
   theme_hover_bg?: string;
   theme_hover_text?: string;
   theme_nav_btn_bg?: string;
@@ -26,6 +27,10 @@ export interface ThemeSettings {
   announcement_enabled: boolean;
   announcement_text: string;
   announcement_badge: string;
+  navbar_promo_enabled?: boolean;
+  navbar_promo_discount_text?: string;
+  navbar_promo_code?: string;
+  navbar_promo_link?: string;
   store_brand_name: string;
   store_brand_tagline: string;
   store_brand_logo?: string;
@@ -82,6 +87,7 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   theme_btn_secondary_text: "#0f172a",
   theme_tab_active_bg: "#005826",
   theme_tab_active_text: "#ffffff",
+  theme_view_all_color: "#005826",
   theme_hover_bg: "rgba(0, 88, 38, 0.08)",
   theme_hover_text: "#005826",
   theme_nav_btn_bg: "#ffffff",
@@ -92,6 +98,10 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   announcement_enabled: true,
   announcement_text: "Free Express Courier on orders over ৳2,000 • Code: AETHER10 (-10%)",
   announcement_badge: "Fast Dispatch: Daily Courier Active",
+  navbar_promo_enabled: true,
+  navbar_promo_discount_text: "20% OFF",
+  navbar_promo_code: "AETHER10",
+  navbar_promo_link: "/promotions",
   store_brand_name: "INHALIQ",
   store_brand_tagline: "ELEVATE EVERY INHALE",
   store_brand_logo: "",
@@ -239,10 +249,12 @@ export function applyThemeToDOM(theme: ThemeSettings) {
   root.style.setProperty("--theme-btn-bg", theme.theme_btn_primary_bg || theme.theme_primary_color);
 
   // Tabs & Navigation Tokens
-  const tabActiveBg = theme.theme_tab_active_bg || theme.theme_primary_color;
+  const tabActiveBg = theme.theme_tab_active_bg || theme.theme_view_all_color || theme.theme_primary_color;
   const tabActiveText = theme.theme_tab_active_text || (getHexLuminance(tabActiveBg) > 0.5 ? "#0f172a" : "#ffffff");
+  const viewAllColor = theme.theme_view_all_color || tabActiveBg;
   root.style.setProperty("--theme-tab-active-bg", tabActiveBg);
   root.style.setProperty("--theme-tab-active-text", tabActiveText);
+  root.style.setProperty("--theme-view-all-color", viewAllColor);
 
   // Carousel & Navigation Arrow Tokens
   const navBg = theme.theme_nav_btn_bg || (isLightMode ? "#ffffff" : theme.theme_card_bg_color || "#0c101d");

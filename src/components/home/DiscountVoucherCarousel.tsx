@@ -228,7 +228,8 @@ export function BottomBannerCarousel({ banners = [] }: BottomBannerCarouselProps
 
                 <Link
                   href="/promotions"
-                  className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-[#005826] dark:hover:text-white transition-colors pl-1"
+                  className="inline-flex items-center gap-1 text-xs font-bold transition-colors pl-1 hover:opacity-80"
+                  style={{ color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))" }}
                 >
                   <span>View All Offers</span>
                   <ArrowRight className="w-3 h-3" />

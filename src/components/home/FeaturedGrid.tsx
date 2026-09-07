@@ -79,7 +79,7 @@ export function FeaturedGrid({ featuredProducts, newArrivals, bestSellers }: Fea
         <div>
           <span
             className="text-[11px] font-black uppercase tracking-widest block mb-1"
-            style={{ color: "var(--theme-primary, #06b6d4)" }}
+            style={{ color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #06b6d4)))" }}
           >
             Studio Selection
           </span>
@@ -169,9 +169,9 @@ export function FeaturedGrid({ featuredProducts, newArrivals, bestSellers }: Fea
       <div className="text-center mt-6">
         <Link
           href="/products"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold uppercase tracking-wider text-slate-200 hover:text-white transition-all shadow-md hover:scale-[1.02]"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 theme-view-all-btn text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:scale-[1.02]"
         >
-          <span>Explore All</span> <ArrowRight className="w-3.5 h-3.5" style={{ color: "var(--theme-primary, #06b6d4)" }} />
+          <span>Explore All</span> <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
     </section>

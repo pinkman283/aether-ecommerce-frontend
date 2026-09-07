@@ -9,7 +9,11 @@ import {
   Split, 
   Upload, 
   Loader2,
-  Trash2
+  Trash2,
+  ShieldCheck,
+  Flame,
+  Tag,
+  CheckCircle2
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { useThemeStore, DEFAULT_THEME_SETTINGS } from "@/store/useThemeStore";
@@ -26,6 +30,12 @@ export default function AdminStorefrontPage() {
   const [announcementEnabled, setAnnouncementEnabled] = useState(DEFAULT_THEME_SETTINGS.announcement_enabled);
   const [announcementText, setAnnouncementText] = useState(DEFAULT_THEME_SETTINGS.announcement_text);
   const [announcementBadge, setAnnouncementBadge] = useState(DEFAULT_THEME_SETTINGS.announcement_badge);
+
+  // Navbar Category Micro Promo Badge State
+  const [navbarPromoEnabled, setNavbarPromoEnabled] = useState(DEFAULT_THEME_SETTINGS.navbar_promo_enabled ?? true);
+  const [navbarPromoDiscountText, setNavbarPromoDiscountText] = useState(DEFAULT_THEME_SETTINGS.navbar_promo_discount_text || "20% OFF");
+  const [navbarPromoCode, setNavbarPromoCode] = useState(DEFAULT_THEME_SETTINGS.navbar_promo_code || "AETHER10");
+  const [navbarPromoLink, setNavbarPromoLink] = useState(DEFAULT_THEME_SETTINGS.navbar_promo_link || "/promotions");
 
   // Hero Section State
   const [heroHeadline1, setHeroHeadline1] = useState(DEFAULT_THEME_SETTINGS.hero_headline_line1);
@@ -45,6 +55,22 @@ export default function AdminStorefrontPage() {
   const [splitRevealDim, setSplitRevealDim] = useState(DEFAULT_THEME_SETTINGS.split_reveal_dim);
   const [splitRevealDirection, setSplitRevealDirection] = useState(DEFAULT_THEME_SETTINGS.split_reveal_direction);
 
+  // Flash Deals State
+  const [flashDealsEnabled, setFlashDealsEnabled] = useState(DEFAULT_THEME_SETTINGS.flash_deals_enabled ?? true);
+  const [flashDealsTitle, setFlashDealsTitle] = useState(DEFAULT_THEME_SETTINGS.flash_deals_title || "Limited Time Deals");
+  const [flashDealsBadge, setFlashDealsBadge] = useState(DEFAULT_THEME_SETTINGS.flash_deals_badge || "Flash Deal Drop");
+
+  // Trust Ribbon State
+  const [trustRibbonEnabled, setTrustRibbonEnabled] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_enabled ?? true);
+  const [trustRibbonTitle1, setTrustRibbonTitle1] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_title_1 || "Fast Express Delivery");
+  const [trustRibbonDesc1, setTrustRibbonDesc1] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_desc_1 || "Dispatched within 24-48 hours");
+  const [trustRibbonTitle2, setTrustRibbonTitle2] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_title_2 || "Cash on Delivery (COD)");
+  const [trustRibbonDesc2, setTrustRibbonDesc2] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_desc_2 || "Pay safely upon product arrival");
+  const [trustRibbonTitle3, setTrustRibbonTitle3] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_title_3 || "100% Genuine & Authentic");
+  const [trustRibbonDesc3, setTrustRibbonDesc3] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_desc_3 || "Official manufacturer warranty coverage");
+  const [trustRibbonTitle4, setTrustRibbonTitle4] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_title_4 || "7-Day Easy Replacement");
+  const [trustRibbonDesc4, setTrustRibbonDesc4] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_desc_4 || "Hassle-free returns & replacement policy");
+
   const [initialSettings, setInitialSettings] = useState<any>(null);
   const splitFileInputRef = useRef<HTMLInputElement>(null);
   const splitLogoInputRef = useRef<HTMLInputElement>(null);
@@ -59,6 +85,11 @@ export default function AdminStorefrontPage() {
         if (s.announcement_enabled !== undefined) setAnnouncementEnabled(Boolean(s.announcement_enabled));
         if (s.announcement_text) setAnnouncementText(s.announcement_text);
         if (s.announcement_badge) setAnnouncementBadge(s.announcement_badge);
+
+        if (s.navbar_promo_enabled !== undefined) setNavbarPromoEnabled(Boolean(s.navbar_promo_enabled));
+        if (s.navbar_promo_discount_text !== undefined) setNavbarPromoDiscountText(s.navbar_promo_discount_text);
+        if (s.navbar_promo_code !== undefined) setNavbarPromoCode(s.navbar_promo_code);
+        if (s.navbar_promo_link !== undefined) setNavbarPromoLink(s.navbar_promo_link);
 
         if (s.hero_headline_line1) setHeroHeadline1(s.hero_headline_line1);
         if (s.hero_headline_line2_gradient) setHeroHeadline2Gradient(s.hero_headline_line2_gradient);
@@ -80,6 +111,22 @@ export default function AdminStorefrontPage() {
         if (s.split_reveal_mode) setSplitRevealMode(s.split_reveal_mode);
         if (s.split_reveal_dim) setSplitRevealDim(Number(s.split_reveal_dim));
         if (s.split_reveal_direction) setSplitRevealDirection(s.split_reveal_direction);
+
+        // Flash Deals
+        if (s.flash_deals_enabled !== undefined) setFlashDealsEnabled(Boolean(s.flash_deals_enabled));
+        if (s.flash_deals_title) setFlashDealsTitle(s.flash_deals_title);
+        if (s.flash_deals_badge) setFlashDealsBadge(s.flash_deals_badge);
+
+        // Trust Ribbon
+        if (s.trust_ribbon_enabled !== undefined) setTrustRibbonEnabled(Boolean(s.trust_ribbon_enabled));
+        if (s.trust_ribbon_title_1) setTrustRibbonTitle1(s.trust_ribbon_title_1);
+        if (s.trust_ribbon_desc_1) setTrustRibbonDesc1(s.trust_ribbon_desc_1);
+        if (s.trust_ribbon_title_2) setTrustRibbonTitle2(s.trust_ribbon_title_2);
+        if (s.trust_ribbon_desc_2) setTrustRibbonDesc2(s.trust_ribbon_desc_2);
+        if (s.trust_ribbon_title_3) setTrustRibbonTitle3(s.trust_ribbon_title_3);
+        if (s.trust_ribbon_desc_3) setTrustRibbonDesc3(s.trust_ribbon_desc_3);
+        if (s.trust_ribbon_title_4) setTrustRibbonTitle4(s.trust_ribbon_title_4);
+        if (s.trust_ribbon_desc_4) setTrustRibbonDesc4(s.trust_ribbon_desc_4);
       } catch (err) {
         console.error(err);
       } finally {
@@ -128,7 +175,7 @@ export default function AdminStorefrontPage() {
       const dataUrl = event.target?.result as string;
       setSplitRevealLogo(dataUrl);
       if (splitLogoInputRef.current) splitLogoInputRef.current.value = "";
-      toast.success("New split reveal logo uploaded! Previous logo replaced.");
+      toast.success("New split reveal logo uploaded!");
     };
     reader.readAsDataURL(file);
   };
@@ -146,6 +193,10 @@ export default function AdminStorefrontPage() {
       Boolean(announcementEnabled) !== Boolean(initialSettings.announcement_enabled) ||
       norm(announcementText) !== norm(initialSettings.announcement_text || DEFAULT_THEME_SETTINGS.announcement_text) ||
       norm(announcementBadge) !== norm(initialSettings.announcement_badge || DEFAULT_THEME_SETTINGS.announcement_badge) ||
+      Boolean(navbarPromoEnabled) !== Boolean(initialSettings.navbar_promo_enabled ?? true) ||
+      norm(navbarPromoDiscountText) !== norm(initialSettings.navbar_promo_discount_text || DEFAULT_THEME_SETTINGS.navbar_promo_discount_text) ||
+      norm(navbarPromoCode) !== norm(initialSettings.navbar_promo_code || DEFAULT_THEME_SETTINGS.navbar_promo_code) ||
+      norm(navbarPromoLink) !== norm(initialSettings.navbar_promo_link || DEFAULT_THEME_SETTINGS.navbar_promo_link) ||
       norm(heroHeadline1) !== norm(initialSettings.hero_headline_line1 || DEFAULT_THEME_SETTINGS.hero_headline_line1) ||
       norm(heroHeadline2Gradient) !== norm(initialSettings.hero_headline_line2_gradient || DEFAULT_THEME_SETTINGS.hero_headline_line2_gradient) ||
       norm(heroHeadline3) !== norm(initialSettings.hero_headline_line3 || DEFAULT_THEME_SETTINGS.hero_headline_line3) ||
@@ -159,13 +210,29 @@ export default function AdminStorefrontPage() {
       Number(splitRevealDuration) !== Number(initialSettings.split_reveal_duration || DEFAULT_THEME_SETTINGS.split_reveal_duration) ||
       norm(splitRevealMode) !== norm(initialSettings.split_reveal_mode || DEFAULT_THEME_SETTINGS.split_reveal_mode) ||
       Number(splitRevealDim) !== Number(initialSettings.split_reveal_dim || DEFAULT_THEME_SETTINGS.split_reveal_dim) ||
-      norm(splitRevealDirection) !== norm(initialSettings.split_reveal_direction || DEFAULT_THEME_SETTINGS.split_reveal_direction)
+      norm(splitRevealDirection) !== norm(initialSettings.split_reveal_direction || DEFAULT_THEME_SETTINGS.split_reveal_direction) ||
+      Boolean(flashDealsEnabled) !== Boolean(initialSettings.flash_deals_enabled ?? true) ||
+      norm(flashDealsTitle) !== norm(initialSettings.flash_deals_title || DEFAULT_THEME_SETTINGS.flash_deals_title) ||
+      norm(flashDealsBadge) !== norm(initialSettings.flash_deals_badge || DEFAULT_THEME_SETTINGS.flash_deals_badge) ||
+      Boolean(trustRibbonEnabled) !== Boolean(initialSettings.trust_ribbon_enabled ?? true) ||
+      norm(trustRibbonTitle1) !== norm(initialSettings.trust_ribbon_title_1 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_1) ||
+      norm(trustRibbonDesc1) !== norm(initialSettings.trust_ribbon_desc_1 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_1) ||
+      norm(trustRibbonTitle2) !== norm(initialSettings.trust_ribbon_title_2 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_2) ||
+      norm(trustRibbonDesc2) !== norm(initialSettings.trust_ribbon_desc_2 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_2) ||
+      norm(trustRibbonTitle3) !== norm(initialSettings.trust_ribbon_title_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_3) ||
+      norm(trustRibbonDesc3) !== norm(initialSettings.trust_ribbon_desc_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_3) ||
+      norm(trustRibbonTitle4) !== norm(initialSettings.trust_ribbon_title_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_4) ||
+      norm(trustRibbonDesc4) !== norm(initialSettings.trust_ribbon_desc_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_4)
     );
   }, [
     initialSettings,
     announcementEnabled,
     announcementText,
     announcementBadge,
+    navbarPromoEnabled,
+    navbarPromoDiscountText,
+    navbarPromoCode,
+    navbarPromoLink,
     heroHeadline1,
     heroHeadline2Gradient,
     heroHeadline3,
@@ -180,6 +247,18 @@ export default function AdminStorefrontPage() {
     splitRevealMode,
     splitRevealDim,
     splitRevealDirection,
+    flashDealsEnabled,
+    flashDealsTitle,
+    flashDealsBadge,
+    trustRibbonEnabled,
+    trustRibbonTitle1,
+    trustRibbonDesc1,
+    trustRibbonTitle2,
+    trustRibbonDesc2,
+    trustRibbonTitle3,
+    trustRibbonDesc3,
+    trustRibbonTitle4,
+    trustRibbonDesc4,
   ]);
 
   const handleReset = () => {
@@ -187,6 +266,10 @@ export default function AdminStorefrontPage() {
     setAnnouncementEnabled(initialSettings.announcement_enabled ?? DEFAULT_THEME_SETTINGS.announcement_enabled);
     setAnnouncementText(initialSettings.announcement_text || DEFAULT_THEME_SETTINGS.announcement_text);
     setAnnouncementBadge(initialSettings.announcement_badge || DEFAULT_THEME_SETTINGS.announcement_badge);
+    setNavbarPromoEnabled(initialSettings.navbar_promo_enabled ?? DEFAULT_THEME_SETTINGS.navbar_promo_enabled ?? true);
+    setNavbarPromoDiscountText(initialSettings.navbar_promo_discount_text || DEFAULT_THEME_SETTINGS.navbar_promo_discount_text || "20% OFF");
+    setNavbarPromoCode(initialSettings.navbar_promo_code || DEFAULT_THEME_SETTINGS.navbar_promo_code || "AETHER10");
+    setNavbarPromoLink(initialSettings.navbar_promo_link || DEFAULT_THEME_SETTINGS.navbar_promo_link || "/promotions");
     setHeroHeadline1(initialSettings.hero_headline_line1 || DEFAULT_THEME_SETTINGS.hero_headline_line1);
     setHeroHeadline2Gradient(initialSettings.hero_headline_line2_gradient || DEFAULT_THEME_SETTINGS.hero_headline_line2_gradient);
     setHeroHeadline3(initialSettings.hero_headline_line3 || DEFAULT_THEME_SETTINGS.hero_headline_line3);
@@ -201,6 +284,18 @@ export default function AdminStorefrontPage() {
     setSplitRevealMode(initialSettings.split_reveal_mode || DEFAULT_THEME_SETTINGS.split_reveal_mode);
     setSplitRevealDim(initialSettings.split_reveal_dim || DEFAULT_THEME_SETTINGS.split_reveal_dim);
     setSplitRevealDirection(initialSettings.split_reveal_direction || DEFAULT_THEME_SETTINGS.split_reveal_direction);
+    setFlashDealsEnabled(initialSettings.flash_deals_enabled ?? DEFAULT_THEME_SETTINGS.flash_deals_enabled ?? true);
+    setFlashDealsTitle(initialSettings.flash_deals_title || DEFAULT_THEME_SETTINGS.flash_deals_title || "Limited Time Deals");
+    setFlashDealsBadge(initialSettings.flash_deals_badge || DEFAULT_THEME_SETTINGS.flash_deals_badge || "Flash Deal Drop");
+    setTrustRibbonEnabled(initialSettings.trust_ribbon_enabled ?? DEFAULT_THEME_SETTINGS.trust_ribbon_enabled ?? true);
+    setTrustRibbonTitle1(initialSettings.trust_ribbon_title_1 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_1 || "Fast Express Delivery");
+    setTrustRibbonDesc1(initialSettings.trust_ribbon_desc_1 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_1 || "Dispatched within 24-48 hours");
+    setTrustRibbonTitle2(initialSettings.trust_ribbon_title_2 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_2 || "Cash on Delivery (COD)");
+    setTrustRibbonDesc2(initialSettings.trust_ribbon_desc_2 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_2 || "Pay safely upon product arrival");
+    setTrustRibbonTitle3(initialSettings.trust_ribbon_title_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_3 || "100% Genuine & Authentic");
+    setTrustRibbonDesc3(initialSettings.trust_ribbon_desc_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_3 || "Official manufacturer warranty coverage");
+    setTrustRibbonTitle4(initialSettings.trust_ribbon_title_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_4 || "7-Day Easy Replacement");
+    setTrustRibbonDesc4(initialSettings.trust_ribbon_desc_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_4 || "Hassle-free returns & replacement policy");
     toast.info("Storefront settings reverted.");
   };
 
@@ -215,6 +310,10 @@ export default function AdminStorefrontPage() {
       announcement_enabled: announcementEnabled,
       announcement_text: announcementText,
       announcement_badge: announcementBadge,
+      navbar_promo_enabled: navbarPromoEnabled,
+      navbar_promo_discount_text: navbarPromoDiscountText,
+      navbar_promo_code: navbarPromoCode,
+      navbar_promo_link: navbarPromoLink,
       hero_headline_line1: heroHeadline1,
       hero_headline_line2_gradient: heroHeadline2Gradient,
       hero_headline_line3: heroHeadline3,
@@ -229,6 +328,18 @@ export default function AdminStorefrontPage() {
       split_reveal_mode: splitRevealMode,
       split_reveal_dim: splitRevealDim,
       split_reveal_direction: splitRevealDirection,
+      flash_deals_enabled: flashDealsEnabled,
+      flash_deals_title: flashDealsTitle,
+      flash_deals_badge: flashDealsBadge,
+      trust_ribbon_enabled: trustRibbonEnabled,
+      trust_ribbon_title_1: trustRibbonTitle1,
+      trust_ribbon_desc_1: trustRibbonDesc1,
+      trust_ribbon_title_2: trustRibbonTitle2,
+      trust_ribbon_desc_2: trustRibbonDesc2,
+      trust_ribbon_title_3: trustRibbonTitle3,
+      trust_ribbon_desc_3: trustRibbonDesc3,
+      trust_ribbon_title_4: trustRibbonTitle4,
+      trust_ribbon_desc_4: trustRibbonDesc4,
     };
 
     try {
@@ -342,7 +453,83 @@ export default function AdminStorefrontPage() {
           )}
         </div>
 
-        {/* 2. Hero Section Typography & Copy */}
+        {/* 2. Navbar Category Micro Promo Badge */}
+        <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
+          <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-blue-400" />
+              <div>
+                <h3 className="text-sm font-bold text-white">Navbar Category Micro Promo Badge</h3>
+                <p className="text-[11px] text-slate-400">Coupon callout and discount badge on the sticky category navigation bar</p>
+              </div>
+            </div>
+
+            {/* Enable Toggle Switch */}
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={navbarPromoEnabled}
+                onChange={(e) => setNavbarPromoEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          {navbarPromoEnabled && (
+            <div className="space-y-4 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 block">Discount Callout Text</label>
+                  <input
+                    type="text"
+                    value={navbarPromoDiscountText}
+                    onChange={(e) => setNavbarPromoDiscountText(e.target.value)}
+                    placeholder="e.g. 20% OFF or LIMITED DEAL"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 block">Coupon Code</label>
+                  <input
+                    type="text"
+                    value={navbarPromoCode}
+                    onChange={(e) => setNavbarPromoCode(e.target.value)}
+                    placeholder="e.g. AETHER10"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white text-xs font-mono focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-300 block">Target Route / Link</label>
+                  <input
+                    type="text"
+                    value={navbarPromoLink}
+                    onChange={(e) => setNavbarPromoLink(e.target.value)}
+                    placeholder="e.g. /promotions"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white text-xs font-mono focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="p-3 rounded-lg bg-white/[0.03] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-slate-400">Live Navbar Appearance:</span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/5 border border-white/10">
+                  {navbarPromoDiscountText && (
+                    <span className="font-black text-white text-[11px]">{navbarPromoDiscountText}</span>
+                  )}
+                  {navbarPromoCode && (
+                    <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-mono text-[9px] font-bold shadow-xs">
+                      CODE: {navbarPromoCode}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Hero Section Typography & Copy */}
         <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
           <div className="flex items-center gap-2 pb-2.5 border-b border-white/5">
             <Sparkles className="w-4 h-4 text-cyan-400" />
@@ -586,6 +773,184 @@ export default function AdminStorefrontPage() {
                 </div>
               </div>
 
+            </div>
+          )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* SECTION 3: VALUE & REASSURANCE TRUST RIBBON */}
+        {/* ========================================================================= */}
+        <div className="rounded-2xl bg-[#0f121b] border border-white/[0.08] p-5 sm:p-6 space-y-5">
+          <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-tight">Trust & Reassurance Ribbon</h3>
+                <p className="text-xs text-slate-400">4 customer value cards displayed below category explore carousel</p>
+              </div>
+            </div>
+
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={trustRibbonEnabled}
+                onChange={(e) => setTrustRibbonEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500" />
+            </label>
+          </div>
+
+          {trustRibbonEnabled && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Item 1 */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Card 1: Delivery / Courier</span>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Title</label>
+                    <input
+                      type="text"
+                      value={trustRibbonTitle1}
+                      onChange={(e) => setTrustRibbonTitle1(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Subtitle</label>
+                    <input
+                      type="text"
+                      value={trustRibbonDesc1}
+                      onChange={(e) => setTrustRibbonDesc1(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Item 2 */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Card 2: Payment Security / COD</span>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Title</label>
+                    <input
+                      type="text"
+                      value={trustRibbonTitle2}
+                      onChange={(e) => setTrustRibbonTitle2(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Subtitle</label>
+                    <input
+                      type="text"
+                      value={trustRibbonDesc2}
+                      onChange={(e) => setTrustRibbonDesc2(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Item 3 */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Card 3: Authenticity & Warranty</span>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Title</label>
+                    <input
+                      type="text"
+                      value={trustRibbonTitle3}
+                      onChange={(e) => setTrustRibbonTitle3(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Subtitle</label>
+                    <input
+                      type="text"
+                      value={trustRibbonDesc3}
+                      onChange={(e) => setTrustRibbonDesc3(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Item 4 */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Card 4: Replacement Policy</span>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Title</label>
+                    <input
+                      type="text"
+                      value={trustRibbonTitle4}
+                      onChange={(e) => setTrustRibbonTitle4(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Subtitle</label>
+                    <input
+                      type="text"
+                      value={trustRibbonDesc4}
+                      onChange={(e) => setTrustRibbonDesc4(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* SECTION 4: FLASH DEALS SECTION */}
+        {/* ========================================================================= */}
+        <div className="rounded-2xl bg-[#0f121b] border border-white/[0.08] p-5 sm:p-6 space-y-5">
+          <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                <Flame className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-tight">Flash Deals Drop Section</h3>
+                <p className="text-xs text-slate-400">Homepage promotional countdown showcase section</p>
+              </div>
+            </div>
+
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={flashDealsEnabled}
+                onChange={(e) => setFlashDealsEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500" />
+            </label>
+          </div>
+
+          {flashDealsEnabled && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-200">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-300 block">Section Heading</label>
+                <input
+                  type="text"
+                  value={flashDealsTitle}
+                  onChange={(e) => setFlashDealsTitle(e.target.value)}
+                  placeholder="e.g. Limited Time Deals"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-300 block">Badge Tagline</label>
+                <input
+                  type="text"
+                  value={flashDealsBadge}
+                  onChange={(e) => setFlashDealsBadge(e.target.value)}
+                  placeholder="e.g. Flash Deal Drop"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
             </div>
           )}
         </div>

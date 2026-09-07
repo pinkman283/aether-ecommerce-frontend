@@ -107,7 +107,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 <span
                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shadow-xs"
                   style={{
-                    backgroundColor: "var(--theme-primary, #005826)",
+                    backgroundColor: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))",
                     color: "var(--theme-btn-primary-text, #ffffff)",
                   }}
                 >
@@ -144,7 +144,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="flex items-center justify-between gap-1">
             <span
               className="text-[9px] font-black uppercase tracking-wider block truncate max-w-[120px]"
-              style={{ color: "var(--theme-primary, #06b6d4)" }}
+              style={{ color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #06b6d4)))" }}
             >
               {product.category?.name || product.brand || "Studio Edition"}
             </span>

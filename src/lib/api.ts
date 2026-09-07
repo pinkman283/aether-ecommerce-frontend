@@ -345,4 +345,45 @@ export const api = {
     const res = await apiClient.get("/promotions/store-credit");
     return res.data;
   },
+
+  // Public Storefront CMS Pages
+  async getPage(slug: string): Promise<import("@/types").CmsPage> {
+    const res = await apiClient.get(`/pages/${slug}`);
+    return res.data;
+  },
+
+  // Public Storefront Blog
+  async getBlogPosts(params?: { page?: number; category?: string; tag?: string }): Promise<{
+    data: import("@/types").BlogPost[];
+    current_page: number;
+    last_page: number;
+    total: number;
+    per_page: number;
+  }> {
+    const res = await apiClient.get("/blog/posts", { params });
+    return res.data;
+  },
+
+  async getBlogPost(slug: string): Promise<import("@/types").BlogPost> {
+    const res = await apiClient.get(`/blog/posts/${slug}`);
+    return res.data;
+  },
+
+  async submitBlogComment(postId: number, data: { author_name: string; author_email: string; comment: string }): Promise<{ message: string }> {
+    const res = await apiClient.post(`/blog/posts/${postId}/comments`, data);
+    return res.data;
+  },
+
+  // Public Dynamic Homepage Sections
+  async getHomepageSections(): Promise<import("@/types").HomepageSection[]> {
+    const res = await apiClient.get("/homepage/sections");
+    return res.data.data;
+  },
+
+  async getSectionTabProducts(sectionId: number, tabId: string): Promise<import("@/types").Product[]> {
+    const res = await apiClient.get(`/homepage/sections/${sectionId}/tab-products`, {
+      params: { tab_id: tabId }
+    });
+    return res.data.products;
+  },
 };

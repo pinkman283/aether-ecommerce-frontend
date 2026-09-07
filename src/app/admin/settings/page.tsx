@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
   Settings, 
   Save, 
@@ -8,7 +9,21 @@ import {
   DollarSign, 
   Truck, 
   RotateCcw, 
-  Loader2
+  Loader2,
+  Palette,
+  GitCommit,
+  Search,
+  Smartphone,
+  Bell,
+  Cpu,
+  Puzzle,
+  LayoutTemplate,
+  ChevronRight,
+  ArrowUpRight,
+  FileText,
+  BookOpen,
+  Layers,
+  ExternalLink
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
@@ -288,6 +303,148 @@ export default function AdminSettingsPage() {
         </div>
 
       </form>
+
+      {/* Settings Hub Directory Grid */}
+      <div className="pt-6 border-t border-white/[0.08] space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-white tracking-tight">Configuration Workspaces</h3>
+          <p className="text-xs text-slate-400">Direct access to specialized store settings modules</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[
+            {
+              title: "Theme & UI Studio",
+              desc: "Color palette, dark/light mode, typography, button styles & radius",
+              href: "/admin/settings/appearance",
+              icon: Palette,
+              color: "text-amber-400",
+            },
+            {
+              title: "Branding & Store Logo",
+              desc: "Store mark, brand typography, favicon, and brand metadata",
+              href: "/admin/settings/branding",
+              icon: Store,
+              color: "text-cyan-400",
+            },
+            {
+              title: "Storefront & Hero Layout",
+              desc: "Announcement bar, hero headline, trust ribbon & flash deals",
+              href: "/admin/settings/storefront",
+              icon: LayoutTemplate,
+              color: "text-emerald-400",
+            },
+            {
+              title: "Homepage Showcase Sections",
+              desc: "Configure dynamic category & product show carousels, tabs, sorting, and ordering",
+              href: "/admin/settings/homepage",
+              icon: Layers,
+              color: "text-cyan-400",
+            },
+            {
+              title: "CMS Static Pages",
+              desc: "Manage legal notices, terms of service, privacy policy, FAQ & about pages",
+              href: "/admin/online-store/pages",
+              icon: FileText,
+              color: "text-cyan-400",
+            },
+            {
+              title: "Blog & Editorial",
+              desc: "Manage published articles, knowledge base, categories, tags & reader comments",
+              href: "/admin/blog",
+              icon: BookOpen,
+              color: "text-amber-400",
+            },
+            {
+              title: "Navigation & Footer",
+              desc: "Header navigation menus, footer link columns, copyright & badges",
+              href: "/admin/online-store/footer",
+              icon: Layers,
+              color: "text-violet-400",
+            },
+            {
+              title: "Social Links & Outreach",
+              desc: "Configure WhatsApp, Instagram, Facebook, Twitter & support channels",
+              href: "/admin/online-store/social",
+              icon: ExternalLink,
+              color: "text-pink-400",
+            },
+            {
+              title: "Shipping Zones & Rates",
+              desc: "Regional delivery fees, courier integrations, and free shipping triggers",
+              href: "/admin/settings/shipping",
+              icon: Truck,
+              color: "text-blue-400",
+            },
+            {
+              title: "Order Pipeline Statuses",
+              desc: "Lifecycle stages, notification triggers, and fulfillment states",
+              href: "/admin/settings/statuses",
+              icon: GitCommit,
+              color: "text-purple-400",
+            },
+            {
+              title: "SEO & Search Metadata",
+              desc: "Global meta titles, descriptions, Open Graph images & sitemap",
+              href: "/admin/settings/seo",
+              icon: Search,
+              color: "text-pink-400",
+            },
+            {
+              title: "Mobile & PWA Studio",
+              desc: "Progressive Web App manifest, offline caching, and app icons",
+              href: "/admin/settings/pwa",
+              icon: Smartphone,
+              color: "text-indigo-400",
+            },
+            {
+              title: "Notification Templates",
+              desc: "Transactional email & SMS customer notification templates",
+              href: "/admin/settings/notifications",
+              icon: Bell,
+              color: "text-yellow-400",
+            },
+            {
+              title: "Integrations & Tracking",
+              desc: "Google Tag Manager, Meta Pixel, webhooks, and analytics scripts",
+              href: "/admin/integrations",
+              icon: Puzzle,
+              color: "text-teal-400",
+            },
+            {
+              title: "System & Cache Hub",
+              desc: "Application cache purge, sitemap generation & health checks",
+              href: "/admin/settings/system",
+              icon: Cpu,
+              color: "text-slate-400",
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group p-4 rounded-xl bg-[#0f121b] hover:bg-[#131722] border border-white/[0.08] hover:border-amber-400/30 transition-all flex items-start gap-3.5"
+              >
+                <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Icon className={`w-4 h-4 ${item.color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
+                      {item.title}
+                    </span>
+                    <ArrowUpRight className="w-3 h-3 text-slate-500 group-hover:text-amber-400 transition-colors shrink-0" />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
 
     </div>
   );

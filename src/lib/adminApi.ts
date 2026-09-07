@@ -276,6 +276,12 @@ export const adminApi = {
     search?: string;
     status?: string;
     payment_status?: string;
+    source?: string;
+    carrier?: string;
+    date_from?: string;
+    date_to?: string;
+    min_total?: string;
+    max_total?: string;
     page?: number;
     per_page?: number;
   }): Promise<{ data: Order[]; total: number; current_page: number; last_page: number }> {
@@ -1737,6 +1743,67 @@ export const adminApi = {
     date_to?: string;
   }): Promise<PromotionAnalyticsData> {
     const res = await adminClient.get("/admin/promotions/analytics", { params });
+    return res.data;
+  },
+
+  // ==========================================
+  // HOMEPAGE SECTIONS BUILDER
+  // ==========================================
+  async getHomepageSections(): Promise<{ data: import("@/types").HomepageSection[] }> {
+    const res = await adminClient.get("/admin/homepage/sections");
+    return res.data;
+  },
+
+  async getHomepageSection(id: number): Promise<{
+    data: import("@/types").HomepageSection;
+    preview: any;
+  }> {
+    const res = await adminClient.get(`/admin/homepage/sections/${id}`);
+    return res.data;
+  },
+
+  async createHomepageSection(data: Partial<import("@/types").HomepageSection>): Promise<{
+    message: string;
+    data: import("@/types").HomepageSection;
+  }> {
+    const res = await adminClient.post("/admin/homepage/sections", data);
+    return res.data;
+  },
+
+  async updateHomepageSection(id: number, data: Partial<import("@/types").HomepageSection>): Promise<{
+    message: string;
+    data: import("@/types").HomepageSection;
+  }> {
+    const res = await adminClient.put(`/admin/homepage/sections/${id}`, data);
+    return res.data;
+  },
+
+  async deleteHomepageSection(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/homepage/sections/${id}`);
+    return res.data;
+  },
+
+  async reorderHomepageSections(sections: { id: number; sort_order: number }[]): Promise<{
+    message: string;
+    data: import("@/types").HomepageSection[];
+  }> {
+    const res = await adminClient.post("/admin/homepage/sections/reorder", { sections });
+    return res.data;
+  },
+
+  async toggleHomepageSection(id: number): Promise<{
+    message: string;
+    data: import("@/types").HomepageSection;
+  }> {
+    const res = await adminClient.patch(`/admin/homepage/sections/${id}/toggle`);
+    return res.data;
+  },
+
+  async duplicateHomepageSection(id: number): Promise<{
+    message: string;
+    data: import("@/types").HomepageSection;
+  }> {
+    const res = await adminClient.post(`/admin/homepage/sections/${id}/duplicate`);
     return res.data;
   },
 };

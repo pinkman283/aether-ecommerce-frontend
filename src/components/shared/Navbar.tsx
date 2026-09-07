@@ -31,6 +31,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
 import { formatPrice } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface NavbarProps {
   onOpenSearch: () => void;
@@ -472,10 +473,14 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
             <div className="flex items-center gap-2 shrink-0">
               <Link
                 href="/products"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#005826] hover:bg-[#007a3d] transition-all shadow-xs shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer all-categories-btn"
+                style={{
+                  backgroundColor: "var(--theme-btn-primary-bg, var(--theme-primary, #005826))",
+                  color: "var(--theme-btn-primary-text, #ffffff)",
+                }}
               >
-                <Menu className="w-3.5 h-3.5" />
-                <span>All Categories</span>
+                <Menu className="w-3.5 h-3.5" style={{ color: "var(--theme-btn-primary-text, #ffffff)" }} />
+                <span style={{ color: "var(--theme-btn-primary-text, #ffffff)" }}>All Categories</span>
               </Link>
             </div>
 
@@ -516,13 +521,28 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
               </Link>
             </div>
 
-            {/* Right: LuLu Style Micro Promo Badge with Coupon Code */}
-            <div className="hidden xl:flex items-center gap-1.5 shrink-0 text-xs">
-              <span className="font-black text-slate-900 dark:text-white text-[10.5px]">20% OFF</span>
-              <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-mono text-[9px] font-bold shadow-xs whitespace-nowrap">
-                CODE: AETHER10
-              </span>
-            </div>
+            {/* Right: LuLu Style Micro Promo Badge with Coupon Code (Admin Controllable) */}
+            {theme.navbar_promo_enabled !== false && (theme.navbar_promo_discount_text || theme.navbar_promo_code) && (
+              <div className="hidden xl:flex items-center gap-1.5 shrink-0 text-xs">
+                {theme.navbar_promo_discount_text && (
+                  <span className="font-black text-slate-900 dark:text-white text-[10.5px]">
+                    {theme.navbar_promo_discount_text}
+                  </span>
+                )}
+                {theme.navbar_promo_code && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(theme.navbar_promo_code || "");
+                      toast.success(`Coupon code "${theme.navbar_promo_code}" copied to clipboard!`);
+                    }}
+                    title="Click to copy coupon code"
+                    className="px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-mono text-[9px] font-bold shadow-xs whitespace-nowrap transition cursor-pointer"
+                  >
+                    CODE: {theme.navbar_promo_code}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Mobile Categories Bar */}
@@ -532,7 +552,8 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
             </span>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-[#005826] dark:text-cyan-400 hover:opacity-80 text-xs flex items-center gap-1"
+              className="hover:opacity-80 text-xs flex items-center gap-1 transition-colors"
+              style={{ color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))" }}
             >
               <span>{mobileMenuOpen ? "Close Menu" : "View All"}</span>
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mobileMenuOpen ? "rotate-180" : ""}`} />
@@ -580,7 +601,8 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                       <Link
                         href={activeCategoryData?.href || "/products"}
                         onClick={() => setActiveHoverCategory(null)}
-                        className="text-xs font-bold text-[#005826] dark:text-cyan-400 hover:opacity-80 flex items-center gap-1 group/viewall"
+                        className="text-xs font-bold hover:opacity-80 flex items-center gap-1 group/viewall transition-colors"
+                        style={{ color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))" }}
                       >
                         <span>View All {activeCategoryData.name}</span>
                         <ArrowRight className="w-3.5 h-3.5 group-hover/viewall:translate-x-1 transition-transform" />

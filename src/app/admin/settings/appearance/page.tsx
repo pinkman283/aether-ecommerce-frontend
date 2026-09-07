@@ -23,7 +23,9 @@ import {
   CheckCheck,
   ChevronRight,
   Layers,
-  Star
+  Star,
+  ArrowRight,
+  X
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { useAdminAuthStore } from "@/store/useAdminAuthStore";
@@ -56,6 +58,7 @@ export interface CustomThemeItem {
   btnSecondaryText?: string;
   tabActiveBg?: string;
   tabActiveText?: string;
+  viewAllColor?: string;
   hoverBg?: string;
   hoverText?: string;
   radius?: string;
@@ -82,6 +85,7 @@ interface ThemePreset {
   btnSecondaryText?: string;
   tabActiveBg?: string;
   tabActiveText?: string;
+  viewAllColor?: string;
   hoverBg?: string;
   hoverText?: string;
   radius?: string;
@@ -525,6 +529,7 @@ export default function AdminAppearancePage() {
   // Filter & Search
   const [presetFilter, setPresetFilter] = useState<"all" | "dark" | "light" | "custom">("all");
   const [customThemes, setCustomThemes] = useState<CustomThemeItem[]>([]);
+  const [deletedThemeIds, setDeletedThemeIds] = useState<string[]>([]);
 
   // Default Theme Tracking (One theme is default at a time)
   const [defaultThemeId, setDefaultThemeId] = useState<string>("cyan-indigo");
@@ -546,6 +551,7 @@ export default function AdminAppearancePage() {
   const [btnSecondaryText, setBtnSecondaryText] = useState(DEFAULT_THEME_SETTINGS.theme_btn_secondary_text || "#ffffff");
   const [tabActiveBg, setTabActiveBg] = useState(DEFAULT_THEME_SETTINGS.theme_tab_active_bg || "#06b6d4");
   const [tabActiveText, setTabActiveText] = useState(DEFAULT_THEME_SETTINGS.theme_tab_active_text || "#ffffff");
+  const [viewAllColor, setViewAllColor] = useState(DEFAULT_THEME_SETTINGS.theme_tab_active_bg || "#06b6d4");
   const [hoverBg, setHoverBg] = useState(DEFAULT_THEME_SETTINGS.theme_hover_bg || "rgba(6, 182, 212, 0.15)");
   const [hoverText, setHoverText] = useState(DEFAULT_THEME_SETTINGS.theme_hover_text || "#06b6d4");
   const [radius, setRadius] = useState<string>(DEFAULT_THEME_SETTINGS.theme_radius || "rounded-lg");
@@ -602,6 +608,11 @@ export default function AdminAppearancePage() {
         if (s.theme_btn_secondary_text) setBtnSecondaryText(s.theme_btn_secondary_text);
         if (s.theme_tab_active_bg) setTabActiveBg(s.theme_tab_active_bg);
         if (s.theme_tab_active_text) setTabActiveText(s.theme_tab_active_text);
+        if (s.theme_view_all_color) {
+          setViewAllColor(s.theme_view_all_color);
+        } else if (s.theme_tab_active_bg) {
+          setViewAllColor(s.theme_tab_active_bg);
+        }
         if (s.theme_hover_bg) setHoverBg(s.theme_hover_bg);
         if (s.theme_hover_text) setHoverText(s.theme_hover_text);
         if (s.theme_radius) setRadius(s.theme_radius);
@@ -610,6 +621,10 @@ export default function AdminAppearancePage() {
 
         if (s.custom_themes && Array.isArray(s.custom_themes)) {
           setCustomThemes(s.custom_themes);
+        }
+
+        if (s.deleted_theme_ids && Array.isArray(s.deleted_theme_ids)) {
+          setDeletedThemeIds(s.deleted_theme_ids);
         }
       } catch (err) {
         console.error(err);
@@ -649,6 +664,7 @@ export default function AdminAppearancePage() {
         setBtnSecondaryText(initialSettings.theme_btn_secondary_text || DEFAULT_THEME_SETTINGS.theme_btn_secondary_text || "#ffffff");
         setTabActiveBg(initialSettings.theme_tab_active_bg || DEFAULT_THEME_SETTINGS.theme_tab_active_bg || "#06b6d4");
         setTabActiveText(initialSettings.theme_tab_active_text || DEFAULT_THEME_SETTINGS.theme_tab_active_text || "#ffffff");
+        setViewAllColor(initialSettings.theme_view_all_color || initialSettings.theme_tab_active_bg || DEFAULT_THEME_SETTINGS.theme_tab_active_bg || "#06b6d4");
         setHoverBg(initialSettings.theme_hover_bg || DEFAULT_THEME_SETTINGS.theme_hover_bg || "rgba(6, 182, 212, 0.15)");
         setHoverText(initialSettings.theme_hover_text || DEFAULT_THEME_SETTINGS.theme_hover_text || "#06b6d4");
         setRadius(initialSettings.theme_radius || DEFAULT_THEME_SETTINGS.theme_radius || "rounded-lg");
@@ -680,6 +696,7 @@ export default function AdminAppearancePage() {
       setBtnSecondaryText(initialSettings.theme_btn_secondary_text || preset.btnSecondaryText || "#ffffff");
       setTabActiveBg(initialSettings.theme_tab_active_bg || preset.tabActiveBg || preset.primary);
       setTabActiveText(initialSettings.theme_tab_active_text || preset.tabActiveText || "#ffffff");
+      setViewAllColor(initialSettings.theme_view_all_color || initialSettings.theme_tab_active_bg || preset.viewAllColor || preset.tabActiveBg || preset.primary);
       setHoverBg(initialSettings.theme_hover_bg || preset.hoverBg || "rgba(6, 182, 212, 0.15)");
       setHoverText(initialSettings.theme_hover_text || preset.hoverText || preset.primary);
       setRadius(initialSettings.theme_radius || preset.radius || "rounded-lg");
@@ -701,7 +718,13 @@ export default function AdminAppearancePage() {
     if (preset.btnPrimaryText) setBtnPrimaryText(preset.btnPrimaryText);
     if (preset.btnSecondaryBg) setBtnSecondaryBg(preset.btnSecondaryBg);
     if (preset.btnSecondaryText) setBtnSecondaryText(preset.btnSecondaryText);
-    if (preset.tabActiveBg) setTabActiveBg(preset.tabActiveBg);
+    if (preset.tabActiveBg) {
+      setTabActiveBg(preset.tabActiveBg);
+      setViewAllColor(preset.viewAllColor || preset.tabActiveBg);
+    } else {
+      setTabActiveBg(preset.primary);
+      setViewAllColor(preset.viewAllColor || preset.primary);
+    }
     if (preset.tabActiveText) setTabActiveText(preset.tabActiveText);
     if (preset.hoverBg) setHoverBg(preset.hoverBg);
     if (preset.hoverText) setHoverText(preset.hoverText);
@@ -712,7 +735,30 @@ export default function AdminAppearancePage() {
     if (editingThemeId === preset.id) {
       setEditingThemeId(null);
     } else {
-      handleSelectPreset(preset);
+      setActiveThemeName(preset.name);
+      setPrimaryColor(preset.primary);
+      setSecondaryColor(preset.secondary);
+      setAccentGradient(preset.id);
+      setBgColor(preset.bg);
+      setCardBgColor(preset.card);
+      setCardBorderColor(preset.border || "rgba(255, 255, 255, 0.1)");
+      setTextHeadingColor(preset.heading || "#ffffff");
+      setTextBodyColor(preset.body || "#94a3b8");
+      setBtnPrimaryBg(preset.btnPrimaryBg || preset.primary);
+      setBtnPrimaryText(preset.btnPrimaryText || "#ffffff");
+      setBtnSecondaryBg(preset.btnSecondaryBg || "rgba(255, 255, 255, 0.05)");
+      setBtnSecondaryText(preset.btnSecondaryText || "#ffffff");
+      const isLive = livePublishedThemeId === preset.id;
+      const initialTabActiveBg = (isLive && initialSettings?.theme_tab_active_bg) ? initialSettings.theme_tab_active_bg : (preset.tabActiveBg || preset.primary);
+      const initialViewAllColor = (isLive && (initialSettings?.theme_view_all_color || initialSettings?.theme_tab_active_bg)) ? (initialSettings.theme_view_all_color || initialSettings.theme_tab_active_bg) : (preset.viewAllColor || preset.tabActiveBg || preset.primary);
+      setTabActiveBg(initialTabActiveBg);
+      setTabActiveText(preset.tabActiveText || "#ffffff");
+      setViewAllColor(initialViewAllColor);
+      setHoverBg(preset.hoverBg || "rgba(6, 182, 212, 0.15)");
+      setHoverText(preset.hoverText || preset.primary);
+      setRadius(preset.radius || "rounded-lg");
+      setFooterBgColor(preset.settings?.theme_footer_bg_color || (preset.category === "light" ? "#ffffff" : "#1f242e"));
+      setFooterTextColor(preset.settings?.theme_footer_text_color || (preset.category === "light" ? "#475569" : "#94a3b8"));
       setEditingThemeId(preset.id);
     }
   };
@@ -725,10 +771,240 @@ export default function AdminAppearancePage() {
       await adminApi.updateThemeSettings({
         ...initialSettings,
         theme_default_preset: preset.id,
+        deleted_theme_ids: deletedThemeIds,
       });
       toast.success(`"${preset.name}" is now the default theme!`);
     } catch (err) {
       toast.success(`"${preset.name}" marked as default.`);
+    }
+  };
+
+  // 1. Activate theme via switch (only one theme active at a time)
+  const handleActivateTheme = async (preset: ThemePreset | CustomThemeItem) => {
+    if (livePublishedThemeId === preset.id) {
+      toast.info(`"${preset.name}" is already the active theme on your storefront.`);
+      return;
+    }
+
+    setSaving(true);
+    const isLight = preset.category === "light" || getHexLuminance(preset.bg) > 0.45;
+    const payload: any = {
+      ...initialSettings,
+      theme_primary_color: preset.primary,
+      theme_secondary_color: preset.secondary,
+      theme_accent_gradient: preset.id,
+      theme_bg_color: preset.bg,
+      theme_card_bg_color: preset.card,
+      theme_card_border_color: preset.border || (isLight ? "#e2e8f0" : "rgba(255, 255, 255, 0.1)"),
+      theme_text_heading_color: preset.heading || (isLight ? "#0f172a" : "#ffffff"),
+      theme_text_body_color: preset.body || (isLight ? "#475569" : "#94a3b8"),
+      theme_btn_primary_bg: preset.btnPrimaryBg || preset.primary,
+      theme_btn_primary_text: preset.btnPrimaryText || "#ffffff",
+      theme_btn_secondary_bg: preset.btnSecondaryBg || (isLight ? "#f1f5f9" : "rgba(255, 255, 255, 0.05)"),
+      theme_btn_secondary_text: preset.btnSecondaryText || (isLight ? "#0f172a" : "#ffffff"),
+      theme_tab_active_bg: preset.tabActiveBg || preset.primary,
+      theme_tab_active_text: preset.tabActiveText || (getHexLuminance(preset.tabActiveBg || preset.primary) > 0.5 ? "#0f172a" : "#ffffff"),
+      theme_view_all_color: preset.viewAllColor || preset.tabActiveBg || preset.primary,
+      theme_hover_bg: preset.hoverBg || "rgba(6, 182, 212, 0.15)",
+      theme_hover_text: preset.hoverText || preset.primary,
+      theme_radius: preset.radius || "rounded-lg",
+      theme_footer_bg_color: preset.settings?.theme_footer_bg_color || (isLight ? "#f8fafc" : "#1f242e"),
+      theme_footer_text_color: preset.settings?.theme_footer_text_color || (isLight ? "#475569" : "#94a3b8"),
+      theme_default_preset: defaultThemeId,
+      custom_themes: customThemes,
+      deleted_theme_ids: deletedThemeIds,
+    };
+
+    try {
+      const res = await adminApi.updateThemeSettings(payload);
+      setInitialSettings(res.settings);
+      updateClientTheme(payload);
+
+      setActiveThemeName(preset.name);
+      setPrimaryColor(preset.primary);
+      setSecondaryColor(preset.secondary);
+      setAccentGradient(preset.id);
+      setBgColor(preset.bg);
+      setCardBgColor(preset.card);
+      if (preset.border) setCardBorderColor(preset.border);
+      if (preset.heading) setTextHeadingColor(preset.heading);
+      if (preset.body) setTextBodyColor(preset.body);
+      if (preset.btnPrimaryBg) setBtnPrimaryBg(preset.btnPrimaryBg);
+      if (preset.btnPrimaryText) setBtnPrimaryText(preset.btnPrimaryText);
+      if (preset.btnSecondaryBg) setBtnSecondaryBg(preset.btnSecondaryBg);
+      if (preset.btnSecondaryText) setBtnSecondaryText(preset.btnSecondaryText);
+      setTabActiveBg(preset.tabActiveBg || preset.primary);
+      setTabActiveText(preset.tabActiveText || (getHexLuminance(preset.tabActiveBg || preset.primary) > 0.5 ? "#0f172a" : "#ffffff"));
+      setViewAllColor(preset.viewAllColor || preset.tabActiveBg || preset.primary);
+      if (preset.hoverBg) setHoverBg(preset.hoverBg);
+      if (preset.hoverText) setHoverText(preset.hoverText);
+      if (preset.radius) setRadius(preset.radius);
+
+      toast.success(`Theme "${preset.name}" is now active on your storefront!`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to activate theme.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 2. Confirm and save changes directly to the theme being edited (without creating a duplicate theme)
+  const handleConfirmSaveThemeChanges = async () => {
+    if (!editingThemeId) return;
+    setSaving(true);
+
+    try {
+      const existingTheme = allAvailableThemes.find((t) => t.id === editingThemeId);
+      const isLight = getHexLuminance(bgColor) > 0.45;
+
+      const updatedTheme: CustomThemeItem = {
+        id: editingThemeId,
+        name: activeThemeName.trim() || existingTheme?.name || "Custom Theme",
+        category: isLight ? "light" : "dark",
+        tagline: existingTheme?.tagline || `Custom ${isLight ? "light" : "dark"} palette`,
+        primary: primaryColor,
+        secondary: secondaryColor,
+        bg: bgColor,
+        card: cardBgColor,
+        border: cardBorderColor,
+        heading: textHeadingColor,
+        body: textBodyColor,
+        btnPrimaryBg: btnPrimaryBg,
+        btnPrimaryText: btnPrimaryText,
+        btnSecondaryBg: btnSecondaryBg,
+        btnSecondaryText: btnSecondaryText,
+        tabActiveBg: tabActiveBg,
+        tabActiveText: tabActiveText || (getHexLuminance(tabActiveBg) > 0.5 ? "#0f172a" : "#ffffff"),
+        viewAllColor: tabActiveBg,
+        hoverBg: hoverBg,
+        hoverText: hoverText,
+        radius: radius,
+        settings: {
+          theme_footer_bg_color: footerBgColor,
+          theme_footer_text_color: footerTextColor,
+        },
+        isCustom: true,
+      };
+
+      let updatedCustomThemes = [...customThemes];
+      const existingIdx = updatedCustomThemes.findIndex((c) => c.id === editingThemeId);
+      if (existingIdx >= 0) {
+        updatedCustomThemes[existingIdx] = updatedTheme;
+      } else {
+        updatedCustomThemes.push(updatedTheme);
+      }
+
+      const isCurrentActive =
+        livePublishedThemeId === editingThemeId ||
+        accentGradient === editingThemeId ||
+        initialSettings?.theme_accent_gradient === editingThemeId ||
+        !livePublishedThemeId ||
+        livePublishedThemeId === "emerald-teal";
+
+      const payload: any = {
+        ...initialSettings,
+        custom_themes: updatedCustomThemes,
+        deleted_theme_ids: deletedThemeIds,
+      };
+
+      if (isCurrentActive) {
+        payload.theme_primary_color = primaryColor;
+        payload.theme_secondary_color = secondaryColor;
+        payload.theme_accent_gradient = editingThemeId;
+        payload.theme_bg_color = bgColor;
+        payload.theme_card_bg_color = cardBgColor;
+        payload.theme_card_border_color = cardBorderColor;
+        payload.theme_text_heading_color = textHeadingColor;
+        payload.theme_text_body_color = textBodyColor;
+        payload.theme_btn_primary_bg = btnPrimaryBg;
+        payload.theme_btn_primary_text = btnPrimaryText;
+        payload.theme_btn_secondary_bg = btnSecondaryBg;
+        payload.theme_btn_secondary_text = btnSecondaryText;
+        payload.theme_tab_active_bg = tabActiveBg;
+        payload.theme_tab_active_text = tabActiveText || (getHexLuminance(tabActiveBg) > 0.5 ? "#0f172a" : "#ffffff");
+        payload.theme_view_all_color = tabActiveBg;
+        payload.theme_hover_bg = hoverBg;
+        payload.theme_hover_text = hoverText;
+        payload.theme_radius = radius;
+        payload.theme_footer_bg_color = footerBgColor;
+        payload.theme_footer_text_color = footerTextColor;
+      }
+
+      const res = await adminApi.updateThemeSettings(payload);
+      setInitialSettings(res.settings);
+      setCustomThemes(updatedCustomThemes);
+      if (isCurrentActive) {
+        updateClientTheme(payload);
+      }
+
+      setEditingThemeId(null);
+      toast.success(`Theme "${updatedTheme.name}" updated and saved successfully!`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save theme changes.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 4. Delete button on all themes
+  const handleDeleteTheme = async (preset: ThemePreset | CustomThemeItem) => {
+    if (allAvailableThemes.length <= 1) {
+      toast.error("You cannot delete the only remaining theme.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const newDeletedIds = Array.from(new Set([...deletedThemeIds, preset.id]));
+      const newCustomThemes = customThemes.filter((c) => c.id !== preset.id);
+
+      let payloadUpdate: any = {
+        ...initialSettings,
+        custom_themes: newCustomThemes,
+        deleted_theme_ids: newDeletedIds,
+      };
+
+      if (livePublishedThemeId === preset.id) {
+        const fallbackTheme = allAvailableThemes.find((t) => t.id !== preset.id) || BUILTIN_PRESETS[0];
+        const isLight = fallbackTheme.category === "light" || getHexLuminance(fallbackTheme.bg) > 0.45;
+
+        payloadUpdate = {
+          ...payloadUpdate,
+          theme_primary_color: fallbackTheme.primary,
+          theme_secondary_color: fallbackTheme.secondary,
+          theme_accent_gradient: fallbackTheme.id,
+          theme_bg_color: fallbackTheme.bg,
+          theme_card_bg_color: fallbackTheme.card,
+          theme_card_border_color: fallbackTheme.border || (isLight ? "#e2e8f0" : "rgba(255, 255, 255, 0.1)"),
+          theme_text_heading_color: fallbackTheme.heading || (isLight ? "#0f172a" : "#ffffff"),
+          theme_text_body_color: fallbackTheme.body || (isLight ? "#475569" : "#94a3b8"),
+          theme_btn_primary_bg: fallbackTheme.btnPrimaryBg || fallbackTheme.primary,
+          theme_btn_primary_text: fallbackTheme.btnPrimaryText || "#ffffff",
+          theme_btn_secondary_bg: fallbackTheme.btnSecondaryBg || (isLight ? "#f1f5f9" : "rgba(255, 255, 255, 0.05)"),
+          theme_btn_secondary_text: fallbackTheme.btnSecondaryText || (isLight ? "#0f172a" : "#ffffff"),
+          theme_tab_active_bg: fallbackTheme.tabActiveBg || fallbackTheme.primary,
+          theme_tab_active_text: fallbackTheme.tabActiveText || "#ffffff",
+          theme_hover_bg: fallbackTheme.hoverBg || "rgba(6, 182, 212, 0.15)",
+          theme_hover_text: fallbackTheme.hoverText || fallbackTheme.primary,
+          theme_radius: fallbackTheme.radius || "rounded-lg",
+        };
+        updateClientTheme(payloadUpdate);
+      }
+
+      const res = await adminApi.updateThemeSettings(payloadUpdate);
+      setInitialSettings(res.settings);
+      setDeletedThemeIds(newDeletedIds);
+      setCustomThemes(newCustomThemes);
+
+      if (editingThemeId === preset.id) {
+        setEditingThemeId(null);
+      }
+
+      toast.success(`Theme "${preset.name}" deleted.`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to delete theme.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -768,20 +1044,13 @@ export default function AdminAppearancePage() {
     setCustomThemes(updated);
     setCreateModalOpen(false);
     setNewThemeName("");
-    handleSelectPreset(newTheme);
-    toast.success(`Theme "${newTheme.name}" created! Click "Publish Changes" to save.`);
-  };
-
-  const handleDeleteCustomTheme = (id: string, name: string) => {
-    const updated = customThemes.filter((t) => t.id !== id);
-    setCustomThemes(updated);
-    toast.info(`Theme "${name}" removed. Click "Publish Changes" to confirm.`);
+    handleToggleEditPreset(newTheme);
+    toast.success(`Theme "${newTheme.name}" created! You can now customize and save it.`);
   };
 
   const isDirty = useMemo(() => {
     if (!initialSettings) return false;
 
-    // Helper to normalize hex colors and strings for accurate comparison
     const norm = (val: any) => (val === undefined || val === null ? "" : String(val).trim().toLowerCase());
 
     const initPrimary = norm(initialSettings.theme_primary_color || DEFAULT_THEME_SETTINGS.theme_primary_color);
@@ -847,6 +1116,9 @@ export default function AdminAppearancePage() {
     const initCustomThemes = JSON.stringify(initialSettings.custom_themes || []);
     const currCustomThemes = JSON.stringify(customThemes || []);
 
+    const initDeletedIds = JSON.stringify(initialSettings.deleted_theme_ids || []);
+    const currDeletedIds = JSON.stringify(deletedThemeIds || []);
+
     return (
       currPrimary !== initPrimary ||
       currSecondary !== initSecondary ||
@@ -868,7 +1140,8 @@ export default function AdminAppearancePage() {
       currFooterBg !== initFooterBg ||
       currFooterText !== initFooterText ||
       currDefaultPreset !== initDefaultPreset ||
-      currCustomThemes !== initCustomThemes
+      currCustomThemes !== initCustomThemes ||
+      currDeletedIds !== initDeletedIds
     );
   }, [
     initialSettings,
@@ -893,6 +1166,7 @@ export default function AdminAppearancePage() {
     footerTextColor,
     defaultThemeId,
     customThemes,
+    deletedThemeIds,
   ]);
 
   const handleSaveTheme = async () => {
@@ -925,6 +1199,7 @@ export default function AdminAppearancePage() {
       theme_footer_text_color: footerTextColor,
       theme_default_preset: defaultThemeId,
       custom_themes: customThemes,
+      deleted_theme_ids: deletedThemeIds,
     };
 
     try {
@@ -939,9 +1214,16 @@ export default function AdminAppearancePage() {
     }
   };
 
-  // Ensure any custom active settings in database are never lost and always appear
+  // Ensure any legacy custom active settings in database are never lost unless explicitly deleted
   const activeCustomSynthesizedTheme: CustomThemeItem | null = useMemo(() => {
     if (!initialSettings || !initialSettings.theme_primary_color) return null;
+    if (
+      deletedThemeIds.includes("active-custom-live") ||
+      (initialSettings.theme_accent_gradient && deletedThemeIds.includes(initialSettings.theme_accent_gradient))
+    ) {
+      return null;
+    }
+
     const isBuiltin = BUILTIN_PRESETS.some(
       (b) =>
         b.id === initialSettings.theme_accent_gradient ||
@@ -974,6 +1256,7 @@ export default function AdminAppearancePage() {
         btnSecondaryText: initialSettings.theme_btn_secondary_text,
         tabActiveBg: initialSettings.theme_tab_active_bg,
         tabActiveText: initialSettings.theme_tab_active_text,
+        viewAllColor: initialSettings.theme_view_all_color || initialSettings.theme_tab_active_bg,
         hoverBg: initialSettings.theme_hover_bg,
         hoverText: initialSettings.theme_hover_text,
         radius: initialSettings.theme_radius,
@@ -981,17 +1264,50 @@ export default function AdminAppearancePage() {
       };
     }
     return null;
-  }, [initialSettings, customThemes]);
+  }, [initialSettings, customThemes, deletedThemeIds]);
 
   const allAvailableThemes = useMemo(() => {
-    const list: (ThemePreset | CustomThemeItem)[] = [];
-    if (activeCustomSynthesizedTheme) {
-      list.push(activeCustomSynthesizedTheme);
+    const customMap = new Map<string, CustomThemeItem>();
+    for (const c of customThemes) {
+      customMap.set(c.id, c);
     }
-    list.push(...customThemes.map((c) => ({ ...c, isCustom: true })));
-    list.push(...BUILTIN_PRESETS.map((b) => ({ ...b, isCustom: false })));
+
+    const list: (ThemePreset | CustomThemeItem)[] = [];
+
+    // Builtin presets (with custom overrides applied, filtered out if deleted)
+    for (const b of BUILTIN_PRESETS) {
+      if (deletedThemeIds.includes(b.id)) continue;
+      if (customMap.has(b.id)) {
+        const override = customMap.get(b.id)!;
+        list.push({ ...b, ...override, isCustom: false });
+        customMap.delete(b.id);
+      } else {
+        list.push({ ...b, isCustom: false });
+      }
+    }
+
+    // Custom themes
+    for (const [, c] of customMap) {
+      if (!deletedThemeIds.includes(c.id)) {
+        list.push({ ...c, isCustom: true });
+      }
+    }
+
+    // Synthesized legacy active theme if not already present
+    if (activeCustomSynthesizedTheme && !deletedThemeIds.includes(activeCustomSynthesizedTheme.id)) {
+      const alreadyHas = list.some(
+        (t) =>
+          t.id === activeCustomSynthesizedTheme.id ||
+          (t.primary?.toLowerCase() === activeCustomSynthesizedTheme.primary?.toLowerCase() &&
+           t.secondary?.toLowerCase() === activeCustomSynthesizedTheme.secondary?.toLowerCase())
+      );
+      if (!alreadyHas) {
+        list.unshift(activeCustomSynthesizedTheme);
+      }
+    }
+
     return list;
-  }, [customThemes, activeCustomSynthesizedTheme]);
+  }, [customThemes, deletedThemeIds, activeCustomSynthesizedTheme]);
 
   // Determine which theme is actually LIVE on the customer-facing frontend right now
   const livePublishedThemeId = useMemo(() => {
@@ -1006,7 +1322,7 @@ export default function AdminAppearancePage() {
         p.secondary?.toLowerCase() === initialSettings.theme_secondary_color?.toLowerCase()
     );
     if (matchByColors) return matchByColors.id;
-    return activeCustomSynthesizedTheme ? activeCustomSynthesizedTheme.id : "cyan-indigo";
+    return activeCustomSynthesizedTheme ? activeCustomSynthesizedTheme.id : (allAvailableThemes[0]?.id || "cyan-indigo");
   }, [initialSettings, allAvailableThemes, activeCustomSynthesizedTheme]);
 
   const displayedThemes = allAvailableThemes.filter((p) => {
@@ -1123,7 +1439,7 @@ export default function AdminAppearancePage() {
                   <div
                     key={preset.id}
                     onClick={() => handleSelectPreset(preset)}
-                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative group ${
+                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative group flex flex-col justify-between gap-3 ${
                       isLiveActive
                         ? "bg-emerald-500/[0.04] border-emerald-500/40 shadow-sm shadow-emerald-500/5 ring-1 ring-emerald-500/20"
                         : isDraftSelected
@@ -1131,8 +1447,28 @@ export default function AdminAppearancePage() {
                         : "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
+                    {/* Top Row: Switch, Swatch dots, Theme Title, and Badges/Delete */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {/* 1. Theme Active Toggle Switch */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleActivateTheme(preset);
+                          }}
+                          className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            isLiveActive ? "bg-emerald-500 shadow-sm shadow-emerald-500/40" : "bg-white/15 hover:bg-white/25"
+                          }`}
+                          title={isLiveActive ? "Active storefront theme" : "Click switch to activate this theme"}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out my-auto ${
+                              isLiveActive ? "translate-x-4" : "translate-x-0.5"
+                            }`}
+                          />
+                        </button>
+
                         <div className="flex items-center shrink-0">
                           <span
                             className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm"
@@ -1143,8 +1479,13 @@ export default function AdminAppearancePage() {
                             style={{ backgroundColor: preset.secondary }}
                           />
                         </div>
-                        <span className="text-xs font-bold text-white truncate">{preset.name}</span>
-                        
+
+                        <span className="text-xs font-bold text-white truncate" title={preset.name}>
+                          {preset.name}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {/* Live Active on Storefront Indicator */}
                         {isLiveActive && (
                           <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30 shrink-0 shadow-sm">
@@ -1167,10 +1508,32 @@ export default function AdminAppearancePage() {
                             <span>Default</span>
                           </span>
                         )}
-                      </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Make Default Button */}
+                        {/* 4. Delete button on ALL themes (icon-only) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTheme(preset);
+                          }}
+                          className="p-1 rounded bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/10 hover:border-rose-500/30 transition-all cursor-pointer shrink-0"
+                          title={`Delete theme "${preset.name}"`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Middle: Tagline */}
+                    <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">{preset.tagline}</p>
+
+                    {/* Bottom Row: Actions (Category, Make Default & Edit) */}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10 shrink-0">
+                          {preset.category}
+                        </span>
+
                         {!isDefault && (
                           <button
                             type="button"
@@ -1178,482 +1541,38 @@ export default function AdminAppearancePage() {
                               e.stopPropagation();
                               handleSetDefaultTheme(preset);
                             }}
-                            className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white/5 hover:bg-amber-500/15 text-slate-400 hover:text-amber-300 border border-white/10 hover:border-amber-500/30 transition-all flex items-center gap-1 cursor-pointer"
+                            className="px-2 py-1 rounded-md text-[10px] font-semibold bg-white/5 hover:bg-amber-500/15 text-slate-400 hover:text-amber-300 border border-white/10 hover:border-amber-500/30 transition-all flex items-center gap-1 cursor-pointer"
                             title="Set as Default Theme"
                           >
                             <Star className="w-2.5 h-2.5" />
                             <span>Make Default</span>
                           </button>
                         )}
-
-                        {/* Edit Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleEditPreset(preset);
-                          }}
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            editingThemeId === preset.id
-                              ? "bg-amber-500 text-slate-950 shadow-sm"
-                              : "bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 hover:border-amber-400/40"
-                          }`}
-                          title="Toggle palette and token editor"
-                        >
-                          <Edit3 className="w-3 h-3" />
-                          <span>{editingThemeId === preset.id ? "Close" : "Edit"}</span>
-                        </button>
-
-                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10 shrink-0">
-                          {preset.category}
-                        </span>
-
-                        {preset.isCustom && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteCustomTheme(preset.id, preset.name);
-                            }}
-                            className="p-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors cursor-pointer"
-                            title="Delete custom theme"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
                       </div>
-                    </div>
 
-                    <p className="text-[11px] text-slate-400 line-clamp-2">{preset.tagline}</p>
+                      {/* Edit Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleEditPreset(preset);
+                        }}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          editingThemeId === preset.id
+                            ? "bg-amber-500 text-slate-950 shadow-sm font-black"
+                            : "bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 hover:border-amber-400/40"
+                        }`}
+                        title="Open theme editor in right sidebar"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
-
-          {/* 2. Core Colors Calibrator & Geometry (Rendered when an Edit button is clicked) */}
-          {editingThemeId !== null && (
-            <div className="space-y-6 animate-in fade-in-50 duration-200">
-              
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                  <span className="text-xs font-bold text-slate-300">
-                    Editing Palette: <strong className="text-white">{activeThemeName}</strong>
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEditingThemeId(null)}
-                  className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
-                >
-                  Close Editor
-                </button>
-              </div>
-
-              {/* Core Color Palette */}
-              <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
-                <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
-                  <div className="flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-cyan-400" />
-                    <h3 className="text-sm font-bold text-white">Core Color Palette</h3>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-mono">Live Sync Active</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  
-                  {/* Primary Accent */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-slate-300 block">Primary Accent Color</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
-                      />
-                      <input
-                        type="text"
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Secondary Gradient */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-slate-300 block">Secondary Accent Color</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={secondaryColor}
-                        onChange={(e) => setSecondaryColor(e.target.value)}
-                        className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
-                      />
-                      <input
-                        type="text"
-                        value={secondaryColor}
-                        onChange={(e) => setSecondaryColor(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Store Background */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-slate-300 block">Store Background (Canvas)</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={bgColor.startsWith("#") ? bgColor : "#090a0f"}
-                        onChange={(e) => {
-                          setBgColor(e.target.value);
-                          const auto = getAutoSynchronizedTokens(e.target.value, primaryColor);
-                          if (auto.theme_card_bg_color) setCardBgColor(auto.theme_card_bg_color);
-                          if (auto.theme_text_heading_color) setTextHeadingColor(auto.theme_text_heading_color);
-                          if (auto.theme_text_body_color) setTextBodyColor(auto.theme_text_body_color);
-                        }}
-                        className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
-                      />
-                      <input
-                        type="text"
-                        value={bgColor}
-                        onChange={(e) => setBgColor(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Card Background */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-slate-300 block">Card & Modal Surface</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={cardBgColor.startsWith("#") ? cardBgColor : "#0c101d"}
-                        onChange={(e) => setCardBgColor(e.target.value)}
-                        className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
-                      />
-                      <input
-                        type="text"
-                        value={cardBgColor}
-                        onChange={(e) => setCardBgColor(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Advanced Color Tokens Toggle */}
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvancedColors(!showAdvancedColors)}
-                    className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>{showAdvancedColors ? "Hide" : "Show"} Advanced Design Tokens</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showAdvancedColors ? "rotate-90" : ""}`} />
-                  </button>
-                </div>
-
-                {/* Advanced Token Accordion */}
-                {showAdvancedColors && (
-                  <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                    
-                    {/* Heading Color */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 block">Text Heading Color</label>
-                      <input
-                        type="text"
-                        value={textHeadingColor}
-                        onChange={(e) => setTextHeadingColor(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white"
-                      />
-                    </div>
-
-                    {/* Body Text */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 block">Body Text Color</label>
-                      <input
-                        type="text"
-                        value={textBodyColor}
-                        onChange={(e) => setTextBodyColor(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white"
-                      />
-                    </div>
-
-                    {/* Primary Button Fill */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 block">Primary Button Background</label>
-                      <input
-                        type="text"
-                        value={btnPrimaryBg}
-                        onChange={(e) => setBtnPrimaryBg(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white"
-                      />
-                    </div>
-
-                    {/* Primary Button Text */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 block">Primary Button Text</label>
-                      <input
-                        type="text"
-                        value={btnPrimaryText}
-                        onChange={(e) => setBtnPrimaryText(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white"
-                      />
-                    </div>
-
-                  </div>
-                )}
-              </div>
-
-              {/* Footer Surface & Color Studio */}
-              <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-white/5">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-cyan-400" />
-                    <div>
-                      <h3 className="text-sm font-bold text-white">Footer Surface & Color Studio</h3>
-                      <p className="text-[11px] text-slate-400">
-                        Customize the storefront footer tone, reassurance ribbon, and typography contrast.
-                      </p>
-                    </div>
-                  </div>
-                  <span className="self-start sm:self-auto px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 text-[10px] font-semibold border border-cyan-500/20 whitespace-nowrap">
-                    Reassurance & Trust
-                  </span>
-                </div>
-
-                {/* 1-Click Curated Presets */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-300 block">Curated Ash & Surface Presets</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                    {[
-                      { name: "Slate Ash", bg: "#1f242e", text: "#94a3b8", desc: "Soothing Ash" },
-                      { name: "Deep Charcoal", bg: "#161922", text: "#94a3b8", desc: "Midnight Ash" },
-                      { name: "Cool Slate", bg: "#1e293b", text: "#cbd5e1", desc: "Slate Grey" },
-                      { name: "Warm Ash", bg: "#262a33", text: "#a1a1aa", desc: "Studio Warm" },
-                      { name: "Crisp White", bg: "#ffffff", text: "#475569", desc: "Clean Light" },
-                      { name: "Pure Obsidian", bg: "#07080c", text: "#94a3b8", desc: "Deep Black" },
-                    ].map((preset) => {
-                      const isSelected = footerBgColor.toLowerCase() === preset.bg.toLowerCase();
-                      return (
-                        <button
-                          key={preset.name}
-                          type="button"
-                          onClick={() => {
-                            setFooterBgColor(preset.bg);
-                            setFooterTextColor(preset.text);
-                          }}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 relative ${
-                            isSelected
-                              ? "bg-cyan-500/10 border-cyan-400 text-white shadow-sm"
-                              : "bg-white/5 border-white/10 hover:border-white/20 text-slate-300"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span
-                              className="w-4 h-4 rounded-full border border-white/30 shadow-inner shrink-0"
-                              style={{ backgroundColor: preset.bg }}
-                            />
-                            {isSelected && (
-                              <span className="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[9px] font-bold">
-                                ✓
-                              </span>
-                            )}
-                          </div>
-                          <div>
-                            <span className="text-[11px] font-bold block leading-tight truncate">{preset.name}</span>
-                            <span className="text-[9px] text-slate-400 block truncate">{preset.desc}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Custom Color Pickers */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                  {/* Background Color */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-slate-300">Footer Background Surface</label>
-                      <span className="text-[10px] text-slate-400 font-mono">{footerBgColor}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={footerBgColor.startsWith("#") ? footerBgColor : "#1f242e"}
-                        onChange={(e) => setFooterBgColor(e.target.value)}
-                        className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
-                      />
-                      <input
-                        type="text"
-                        value={footerBgColor}
-                        onChange={(e) => setFooterBgColor(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-cyan-400"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-500">
-                      Supports soothing ash (#1f242e), deep darks, or custom brand palettes.
-                    </p>
-                  </div>
-
-                  {/* Text Color */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-slate-300">Footer Text & Links Color</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const isLight = getHexLuminance(footerBgColor) > 0.45;
-                          setFooterTextColor(isLight ? "#475569" : "#94a3b8");
-                        }}
-                        className="text-[10px] text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
-                      >
-                        Auto Contrast
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={footerTextColor.startsWith("#") ? footerTextColor : "#94a3b8"}
-                        onChange={(e) => setFooterTextColor(e.target.value)}
-                        className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
-                      />
-                      <input
-                        type="text"
-                        value={footerTextColor}
-                        onChange={(e) => setFooterTextColor(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-cyan-400"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-500">
-                      Sets headings, links, and body contrast inside the footer container.
-                    </p>
-                  </div>
-                </div>
-
-                {/* In-Card Mini Live Preview */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-300">Live Surface Preview</label>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-[10px] text-slate-400">Real-Time Sync</span>
-                    </div>
-                  </div>
-
-                  {(() => {
-                    const isLight = getHexLuminance(footerBgColor) > 0.45;
-                    const previewHeading = isLight ? "#0f172a" : "#ffffff";
-                    const previewBorder = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.08)";
-                    const previewRibbon = isLight ? "rgba(0, 0, 0, 0.03)" : "rgba(255, 255, 255, 0.02)";
-                    const previewInputBg = isLight ? "#ffffff" : "rgba(255, 255, 255, 0.05)";
-                    const previewInputBorder = isLight ? "#cbd5e1" : "rgba(255, 255, 255, 0.12)";
-
-                    return (
-                      <div
-                        className="p-4 rounded-xl border transition-colors space-y-3"
-                        style={{
-                          backgroundColor: footerBgColor,
-                          borderColor: previewBorder,
-                          color: footerTextColor,
-                        }}
-                      >
-                        {/* Guarantees row mockup */}
-                        <div
-                          className="p-2 rounded-lg border flex flex-wrap items-center justify-between gap-2 text-[10px]"
-                          style={{
-                            backgroundColor: previewRibbon,
-                            borderColor: previewBorder,
-                          }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: primaryColor }} />
-                            <span className="font-bold" style={{ color: previewHeading }}>Free Express Shipping</span>
-                            <span className="opacity-75">Inside & outside Dhaka</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: primaryColor }} />
-                            <span className="font-bold" style={{ color: previewHeading }}>2-Year Studio Warranty</span>
-                            <span className="opacity-75">100% genuine hardware</span>
-                          </div>
-                        </div>
-
-                        {/* Brand & Newsletter row mockup */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                          <div>
-                            <span className="font-black text-sm block tracking-tight" style={{ color: previewHeading }}>
-                              {initialSettings?.store_brand_name || "AETHER"}
-                            </span>
-                            <span className="text-[10px] opacity-75">
-                              Next-gen acoustics, mechanical peripherals & studio hardware.
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            <div
-                              className="px-2.5 py-1 rounded-lg border text-[10px] opacity-80"
-                              style={{
-                                backgroundColor: previewInputBg,
-                                borderColor: previewInputBorder,
-                                color: footerTextColor,
-                              }}
-                            >
-                              newsletter@example.com
-                            </div>
-                            <span
-                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white shadow-sm"
-                              style={{ backgroundColor: primaryColor }}
-                            >
-                              Join
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {/* Corner Radius & Geometry */}
-              <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
-                <div className="flex items-center gap-2 pb-2.5 border-b border-white/5">
-                  <Layers className="w-4 h-4 text-emerald-400" />
-                  <h3 className="text-sm font-bold text-white">Corner Radius & Geometry</h3>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-                  {[
-                    { label: "Square (0px)", value: "rounded-none" },
-                    { label: "Subtle (6px)", value: "rounded-md" },
-                    { label: "Default (8px)", value: "rounded-lg" },
-                    { label: "Smooth (12px)", value: "rounded-xl" },
-                    { label: "Pill (16px)", value: "rounded-2xl" },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setRadius(opt.value)}
-                      className={`p-3 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
-                        radius === opt.value
-                          ? "bg-amber-500/15 border-amber-400 text-amber-300 shadow-sm"
-                          : "bg-white/5 text-slate-400 border-white/10 hover:text-white"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          )}
 
         </div>
 
@@ -1678,6 +1597,458 @@ export default function AdminAppearancePage() {
         )}
 
       </div>
+
+      {/* 3. Right-Side Sidebar Drawer for Theme Editing */}
+      {editingThemeId !== null && (
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setEditingThemeId(null)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen max-w-xl bg-[#0b0e17] border-l border-white/10 shadow-2xl flex flex-col animate-in slide-in-from-right duration-250">
+              
+              {/* Drawer Sticky Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0 bg-[#0e121e]">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                    <Edit3 className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-white truncate">
+                        Edit Theme: {activeThemeName}
+                      </h3>
+                      <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-white/10 text-slate-300 border border-white/10 shrink-0">
+                        {getHexLuminance(bgColor) > 0.45 ? "Light" : "Dark"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      Customize palette colors, design tokens, and geometry
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingThemeId(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+                  title="Close Drawer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Drawer Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 hover-scrollbar">
+                
+                {/* Theme Name input */}
+                <div className="p-4 rounded-xl bg-[#0f131f] border border-white/10 space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-300 block">Theme Name</label>
+                  <input
+                    type="text"
+                    value={activeThemeName}
+                    onChange={(e) => setActiveThemeName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-white focus:outline-none focus:border-amber-400"
+                    placeholder="Theme Name"
+                  />
+                </div>
+
+                {/* Core Color Palette */}
+                <div className="p-5 rounded-xl bg-[#0f131f] border border-white/10 space-y-4">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-cyan-400" />
+                      <h3 className="text-sm font-bold text-white">Core Color Palette</h3>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">Live Sync</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Primary Accent */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-slate-300 block">Primary Accent Color</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={primaryColor}
+                          onChange={(e) => setPrimaryColor(e.target.value)}
+                          className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={primaryColor}
+                          onChange={(e) => setPrimaryColor(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Secondary Accent */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-slate-300 block">Secondary Accent Color</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={secondaryColor}
+                          onChange={(e) => setSecondaryColor(e.target.value)}
+                          className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={secondaryColor}
+                          onChange={(e) => setSecondaryColor(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Store Background */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-slate-300 block">Store Background (Canvas)</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={bgColor.startsWith("#") ? bgColor : "#090a0f"}
+                          onChange={(e) => {
+                            setBgColor(e.target.value);
+                            const auto = getAutoSynchronizedTokens(e.target.value, primaryColor);
+                            if (auto.theme_card_bg_color) setCardBgColor(auto.theme_card_bg_color);
+                            if (auto.theme_text_heading_color) setTextHeadingColor(auto.theme_text_heading_color);
+                            if (auto.theme_text_body_color) setTextBodyColor(auto.theme_text_body_color);
+                          }}
+                          className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={bgColor}
+                          onChange={(e) => setBgColor(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Card Background */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-slate-300 block">Card & Modal Surface</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={cardBgColor.startsWith("#") ? cardBgColor : "#0c101d"}
+                          onChange={(e) => setCardBgColor(e.target.value)}
+                          className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={cardBgColor}
+                          onChange={(e) => setCardBgColor(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Advanced Color Tokens Toggle */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedColors(!showAdvancedColors)}
+                      className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{showAdvancedColors ? "Hide" : "Show"} Advanced Design Tokens</span>
+                      <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showAdvancedColors ? "rotate-90" : ""}`} />
+                    </button>
+                  </div>
+
+                  {/* Advanced Token Accordion */}
+                  {showAdvancedColors && (
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Text Heading Color</label>
+                        <input
+                          type="text"
+                          value={textHeadingColor}
+                          onChange={(e) => setTextHeadingColor(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Body Text Color</label>
+                        <input
+                          type="text"
+                          value={textBodyColor}
+                          onChange={(e) => setTextBodyColor(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Primary Button Background</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={btnPrimaryBg.startsWith("#") ? btnPrimaryBg : (primaryColor.startsWith("#") ? primaryColor : "#06b6d4")}
+                            onChange={(e) => setBtnPrimaryBg(e.target.value)}
+                            className="w-8 h-8 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                          />
+                          <input
+                            type="text"
+                            value={btnPrimaryBg}
+                            onChange={(e) => setBtnPrimaryBg(e.target.value)}
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Primary Button Text</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={btnPrimaryText.startsWith("#") ? btnPrimaryText : "#ffffff"}
+                            onChange={(e) => setBtnPrimaryText(e.target.value)}
+                            className="w-8 h-8 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                          />
+                          <input
+                            type="text"
+                            value={btnPrimaryText}
+                            onChange={(e) => setBtnPrimaryText(e.target.value)}
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Active Tabs, Badges &amp; &ldquo;View All&rdquo; Color</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={tabActiveBg.startsWith("#") ? tabActiveBg : (primaryColor.startsWith("#") ? primaryColor : "#06b6d4")}
+                            onChange={(e) => {
+                              setTabActiveBg(e.target.value);
+                              setViewAllColor(e.target.value);
+                            }}
+                            className="w-8 h-8 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                          />
+                          <input
+                            type="text"
+                            value={tabActiveBg}
+                            onChange={(e) => {
+                              setTabActiveBg(e.target.value);
+                              setViewAllColor(e.target.value);
+                            }}
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white"
+                            placeholder="#005826"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Live Synchronized Preview</label>
+                        <div className="flex items-center gap-2.5 h-8 px-2.5 rounded-lg bg-white/5 border border-white/10">
+                          <div
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold"
+                            style={{
+                              backgroundColor: tabActiveBg || primaryColor,
+                              color: getHexLuminance(tabActiveBg || primaryColor) > 0.5 ? "#0f172a" : "#ffffff",
+                            }}
+                          >
+                            <Sparkles className="w-2.5 h-2.5" />
+                            <span>Featured</span>
+                          </div>
+
+                          <div
+                            className="text-[10.5px] font-black uppercase tracking-wider flex items-center gap-1"
+                            style={{ color: tabActiveBg || primaryColor }}
+                          >
+                            <span>View All</span>
+                            <ArrowRight className="w-2.5 h-2.5" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Surface & Color Studio */}
+                <div className="p-5 rounded-xl bg-[#0f131f] border border-white/10 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-cyan-400" />
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Footer Surface & Color Studio</h3>
+                        <p className="text-[11px] text-slate-400">
+                          Customize the storefront footer tone and contrast.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="self-start sm:self-auto px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 text-[10px] font-semibold border border-cyan-500/20 whitespace-nowrap">
+                      Reassurance & Trust
+                    </span>
+                  </div>
+
+                  {/* Curated Presets */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-300 block">Curated Ash & Surface Presets</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { name: "Slate Ash", bg: "#1f242e", text: "#94a3b8", desc: "Soothing Ash" },
+                        { name: "Deep Charcoal", bg: "#161922", text: "#94a3b8", desc: "Midnight Ash" },
+                        { name: "Cool Slate", bg: "#1e293b", text: "#cbd5e1", desc: "Slate Grey" },
+                        { name: "Warm Ash", bg: "#262a33", text: "#a1a1aa", desc: "Studio Warm" },
+                        { name: "Crisp White", bg: "#ffffff", text: "#475569", desc: "Clean Light" },
+                        { name: "Pure Obsidian", bg: "#07080c", text: "#94a3b8", desc: "Deep Black" },
+                      ].map((preset) => {
+                        const isSelected = footerBgColor.toLowerCase() === preset.bg.toLowerCase();
+                        return (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            onClick={() => {
+                              setFooterBgColor(preset.bg);
+                              setFooterTextColor(preset.text);
+                            }}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 relative ${
+                              isSelected
+                                ? "bg-cyan-500/10 border-cyan-400 text-white shadow-sm"
+                                : "bg-white/5 border-white/10 hover:border-white/20 text-slate-300"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span
+                                className="w-4 h-4 rounded-full border border-white/30 shadow-inner shrink-0"
+                                style={{ backgroundColor: preset.bg }}
+                              />
+                              {isSelected && (
+                                <span className="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[9px] font-bold">
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-[11px] font-bold block leading-tight truncate">{preset.name}</span>
+                              <span className="text-[9px] text-slate-400 block truncate">{preset.desc}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Custom Color Pickers */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-300">Footer Background Surface</label>
+                        <span className="text-[10px] text-slate-400 font-mono">{footerBgColor}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={footerBgColor.startsWith("#") ? footerBgColor : "#1f242e"}
+                          onChange={(e) => setFooterBgColor(e.target.value)}
+                          className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={footerBgColor}
+                          onChange={(e) => setFooterBgColor(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-300">Footer Text & Links Color</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const isLight = getHexLuminance(footerBgColor) > 0.45;
+                            setFooterTextColor(isLight ? "#475569" : "#94a3b8");
+                          }}
+                          className="text-[10px] text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                        >
+                          Auto Contrast
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={footerTextColor.startsWith("#") ? footerTextColor : "#94a3b8"}
+                          onChange={(e) => setFooterTextColor(e.target.value)}
+                          className="w-9 h-9 rounded-lg border border-white/20 bg-transparent cursor-pointer p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={footerTextColor}
+                          onChange={(e) => setFooterTextColor(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Corner Radius & Geometry */}
+                <div className="p-5 rounded-xl bg-[#0f131f] border border-white/10 space-y-4">
+                  <div className="flex items-center gap-2 pb-2.5 border-b border-white/5">
+                    <Layers className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-sm font-bold text-white">Corner Radius & Geometry</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                    {[
+                      { label: "Square (0px)", value: "rounded-none" },
+                      { label: "Subtle (6px)", value: "rounded-md" },
+                      { label: "Default (8px)", value: "rounded-lg" },
+                      { label: "Smooth (12px)", value: "rounded-xl" },
+                      { label: "Pill (16px)", value: "rounded-2xl" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setRadius(opt.value)}
+                        className={`p-3 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                          radius === opt.value
+                            ? "bg-amber-500/15 border-amber-400 text-amber-300 shadow-sm"
+                            : "bg-white/5 text-slate-400 border-white/10 hover:text-white"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Drawer Sticky Footer: Cancel and Confirm & Save Changes */}
+              <div className="flex items-center justify-between px-6 py-3.5 border-t border-white/10 bg-[#0c101d] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEditingThemeId(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmSaveThemeChanges}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  <span>{saving ? "Saving Changes..." : "Confirm & Save Changes"}</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Theme Modal */}
       {createModalOpen && (

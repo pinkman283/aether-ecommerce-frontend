@@ -84,6 +84,7 @@ export interface Product {
   review_count: number;
   tags?: string[] | null;
   specifications?: Record<string, string> | null;
+  thumbnail?: string | null;
   primary_image?: ProductImage | null;
   images?: ProductImage[];
   variants?: ProductVariant[];
@@ -1689,4 +1690,63 @@ export interface PromotionAnalyticsData {
     revenue_sum: number;
   }[];
 }
+
+export type HomepageSectionSourceType = 'category' | 'brand' | 'manual' | 'dynamic';
+export type HomepageSectionSortBy = 
+  | 'featured' 
+  | 'newest' 
+  | 'best_selling' 
+  | 'price_asc' 
+  | 'price_desc' 
+  | 'rating' 
+  | 'new_arrivals' 
+  | 'best_sellers' 
+  | 'price_low_high' 
+  | 'price_high_low';
+
+export interface HomepageSectionTab {
+  id: string;
+  name: string;
+  source_type: HomepageSectionSourceType;
+  category_id?: number | null;
+  brand_id?: number | null;
+  sort_by?: HomepageSectionSortBy;
+  product_ids?: number[];
+  limit?: number;
+  products?: Product[];
+}
+
+export interface HomepageSection {
+  id: number;
+  title: string;
+  slug: string;
+  subtitle?: string | null;
+  badge_text?: string | null;
+  badge_icon?: string | null;
+  is_active: boolean;
+  sort_order: number;
+  product_count: number;
+  product_limit?: number;
+  display_style?: 'carousel' | 'grid';
+  view_all_label?: string | null;
+  view_all_url?: string | null;
+  view_all_type?: 'category' | 'brand' | 'all_products' | 'custom';
+  view_all_category_id?: number | null;
+  view_all_brand_id?: number | null;
+  view_all_category?: Category | null;
+  view_all_brand?: Brand | null;
+  has_tabs: boolean;
+  tabs?: HomepageSectionTab[] | null;
+  source_type?: HomepageSectionSourceType;
+  category_id?: number | null;
+  brand_id?: number | null;
+  sort_by?: HomepageSectionSortBy;
+  product_ids?: number[];
+  category?: Category | null;
+  brand?: Brand | null;
+  products?: Product[];
+  created_at?: string;
+  updated_at?: string;
+}
+
 

@@ -216,6 +216,31 @@ export default function AdminSalesPage() {
         }
       />
 
+      {/* Workspace Unification Banner */}
+      <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+            <ShoppingBag className="w-4 h-4 text-amber-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-bold text-white tracking-wide">Orders & Invoices Unified</h4>
+              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">Canonical Workspace</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Sales, commercial invoice generation, and POS/web channel fulfillment are unified into the main <strong>Orders & Fulfillment</strong> workspace.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/admin/orders"
+          className="px-3.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0 shadow-sm"
+        >
+          <span>Open Orders Workspace</span>
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+
       {/* KPI Sales Performance Ribbon */}
       <AdminStatStrip
         stats={[

@@ -78,7 +78,7 @@ export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectio
         <div className="flex items-center gap-3">
           <Link
             href="/products"
-            className="text-xs font-black uppercase tracking-wider text-[#005826] hover:underline flex items-center gap-1 transition-colors"
+            className="theme-view-all-btn text-xs font-black uppercase tracking-wider hover:underline flex items-center gap-1 transition-colors"
           >
             <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />

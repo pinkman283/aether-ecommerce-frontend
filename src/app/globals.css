@@ -109,6 +109,24 @@ p:not([class*="text-"]):not([style*="color"]),
   color: var(--theme-hover-text, var(--theme-primary, #06b6d4)) !important;
 }
 
+/* View All & Category Accent Links */
+.theme-view-all-text,
+.theme-view-all-btn {
+  color: var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #06b6d4))) !important;
+}
+
+.theme-view-all-text *,
+.theme-view-all-btn *,
+.theme-view-all-btn span,
+.theme-view-all-btn svg {
+  color: var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #06b6d4))) !important;
+}
+
+.theme-view-all-text:hover,
+.theme-view-all-btn:hover {
+  opacity: 0.85;
+}
+
 .theme-tab-pill-inactive:hover * {
   color: var(--theme-hover-text, var(--theme-primary, #06b6d4)) !important;
 }
@@ -278,11 +296,18 @@ body.theme-light-mode:not(.admin-body) .theme-sticky-subnav {
   border-bottom-color: rgba(0, 0, 0, 0.08) !important;
 }
 
-body.theme-light-mode:not(.admin-body) .theme-sticky-subnav a {
+body.theme-light-mode:not(.admin-body) .theme-sticky-subnav a:not(.all-categories-btn) {
   color: var(--theme-text-body, #334155) !important;
 }
 
-body.theme-light-mode:not(.admin-body) .theme-sticky-subnav a:hover {
+body.theme-light-mode:not(.admin-body) .theme-sticky-subnav a.all-categories-btn,
+body.theme-light-mode:not(.admin-body) .theme-sticky-subnav a.all-categories-btn *,
+.all-categories-btn,
+.all-categories-btn * {
+  color: #ffffff !important;
+}
+
+body.theme-light-mode:not(.admin-body) .theme-sticky-subnav a:not(.all-categories-btn):hover {
   color: var(--theme-hover-text, #0f172a) !important;
   background: var(--theme-hover-bg, rgba(0, 0, 0, 0.05)) !important;
 }

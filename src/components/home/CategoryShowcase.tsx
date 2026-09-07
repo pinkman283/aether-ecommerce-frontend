@@ -22,9 +22,10 @@ import {
   CarouselPrevious,
   type CarouselApi
 } from "@/components/ui/carousel";
-import { Banner, Category, Product } from "@/types";
+import { Banner, Category, Product, HomepageSection } from "@/types";
 import { api } from "@/lib/api";
 import { BottomBannerCarousel } from "./BottomBannerCarousel";
+import { HomepageProductSection } from "./HomepageProductSection";
 
 const ICON_MAP: Record<string, any> = {
   "audio-acoustics": Headphones,
@@ -228,10 +229,10 @@ function SingleCategoryRow({ section }: { section: CategorySectionData }) {
       <div className="text-center pt-1">
         <Link
           href={`/products?category=${section.category.slug}`}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md theme-btn-secondary text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:scale-[1.02]"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md theme-btn-secondary theme-view-all-btn text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:scale-[1.02]"
         >
           <span>View All</span>
-          <ArrowRight className="w-3.5 h-3.5" style={{ color: "var(--theme-primary, #06b6d4)" }} />
+          <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
     </section>
@@ -239,15 +240,26 @@ function SingleCategoryRow({ section }: { section: CategorySectionData }) {
 }
 
 export function CategoryShowcase({ categories = [], bottomBanners = [] }: CategoryShowcaseProps) {
-  const [sections, setSections] = useState<CategorySectionData[]>([]);
+  const [dynamicSections, setDynamicSections] = useState<HomepageSection[]>([]);
+  const [fallbackSections, setFallbackSections] = useState<CategorySectionData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadCategorySections() {
+    async function loadSections() {
       try {
         setLoading(true);
+        // 1. Try to fetch dynamic homepage sections from database/API
+        const sectionsData = await api.getHomepageSections().catch(() => []);
+
+        if (isMounted && sectionsData && sectionsData.length > 0) {
+          setDynamicSections(sectionsData);
+          setLoading(false);
+          return;
+        }
+
+        // 2. Fallback to category list if no dynamic sections configured yet
         let catList = categories;
         if (!catList || catList.length === 0) {
           catList = await api.getCategories();
@@ -257,7 +269,6 @@ export function CategoryShowcase({ categories = [], bottomBanners = [] }: Catego
           (c) => !c.slug.includes("test")
         );
 
-        // Fetch up to 14 products for each category
         const sectionPromises = validCatList.map(async (cat) => {
           try {
             const res = await api.getProducts({ 
@@ -278,7 +289,7 @@ export function CategoryShowcase({ categories = [], bottomBanners = [] }: Catego
 
         const results = await Promise.all(sectionPromises);
         if (isMounted) {
-          setSections(results.filter((s) => s.products.length > 0));
+          setFallbackSections(results.filter((s) => s.products.length > 0));
         }
       } catch (err) {
         console.error("Failed to load category sections:", err);
@@ -287,7 +298,7 @@ export function CategoryShowcase({ categories = [], bottomBanners = [] }: Catego
       }
     }
 
-    loadCategorySections();
+    loadSections();
 
     return () => {
       isMounted = false;
@@ -314,7 +325,37 @@ export function CategoryShowcase({ categories = [], bottomBanners = [] }: Catego
     );
   }
 
-  const hasSmartLiving = sections.some(
+  // Render Dynamic Sections (Database-backed)
+  if (dynamicSections.length > 0) {
+    const hasSmartLiving = dynamicSections.some(
+      (s) =>
+        s.title.toLowerCase().includes("smart living") ||
+        s.category?.slug?.includes("smart-living")
+    );
+
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+        {dynamicSections.map((section, idx) => {
+          const isTarget =
+            section.title.toLowerCase().includes("smart living") ||
+            section.category?.slug?.includes("smart-living") ||
+            (!hasSmartLiving && idx === Math.min(3, dynamicSections.length - 1));
+
+          return (
+            <div key={section.id} className="space-y-16">
+              {isTarget && bottomBanners.length > 0 && (
+                <BottomBannerCarousel banners={bottomBanners} />
+              )}
+              <HomepageProductSection section={section} />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Fallback to static category sections if dynamic sections not available
+  const hasSmartLiving = fallbackSections.some(
     (s) =>
       s.category.slug === "smart-living-lighting" ||
       s.category.slug.includes("smart-living") ||
@@ -323,16 +364,16 @@ export function CategoryShowcase({ categories = [], bottomBanners = [] }: Catego
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-      {sections.map((section, idx) => {
+      {fallbackSections.map((section, idx) => {
         const isTarget =
           section.category.slug === "smart-living-lighting" ||
           section.category.slug.includes("smart-living") ||
           section.category.name.toLowerCase().includes("smart living") ||
-          (!hasSmartLiving && idx === Math.min(3, sections.length - 1));
+          (!hasSmartLiving && idx === Math.min(3, fallbackSections.length - 1));
 
         return (
           <div key={section.category.id} className="space-y-16">
-            {isTarget && (
+            {isTarget && bottomBanners.length > 0 && (
               <BottomBannerCarousel banners={bottomBanners} />
             )}
             <SingleCategoryRow section={section} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
   Tag, 
   Plus, 
@@ -406,6 +407,39 @@ export default function AdminCouponsPage() {
         >
           <Plus className="w-4 h-4" /> Create Coupon
         </button>
+      </div>
+
+      {/* PromotionEngine Modern Bridge Banner */}
+      <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-purple-500/20 border border-purple-500/40 flex items-center justify-center shrink-0">
+            <Percent className="w-4 h-4 text-purple-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-bold text-white tracking-wide">Modern PromotionEngine Active</h4>
+              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">Authoritative Engine</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              For advanced BXGY, tiered discounts, claimable vouchers, customer rewards, and store credits, use the authoritative Promotion Engine. Existing legacy coupons remain active and manageable below.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/admin/promotions/new"
+            className="px-3.5 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-400 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Promotion Builder</span>
+          </Link>
+          <Link
+            href="/admin/promotions"
+            className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition flex items-center justify-center"
+          >
+            All Promotions
+          </Link>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

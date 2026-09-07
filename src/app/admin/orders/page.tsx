@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { 
   ShoppingBag, 
@@ -32,28 +32,50 @@ import {
   Lock,
   Shield,
   RefreshCw,
-  Loader2
+  Loader2,
+  Receipt,
+  BadgeDollarSign,
+  Printer
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
-import { Order, Product } from "@/types";
+import { Order, Product, SalesInvoice, SalesSummary } from "@/types";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
 import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
-import { AdminPageHeader, AdminStatusBadge, AdminEmptyState, FilterDrawer } from "@/components/admin/ui";
+import { AdminPageHeader, AdminStatusBadge, AdminEmptyState, FilterDrawer, AdminStatStrip } from "@/components/admin/ui";
+import { OrderInvoiceModal } from "@/components/admin/orders/OrderInvoiceModal";
 
 import { toast } from "sonner";
 
 
 export default function AdminOrdersPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-12 text-center text-slate-500">
+        <Loader2 className="w-6 h-6 animate-spin mx-auto text-amber-400 mb-2" />
+        Loading Orders & Fulfillment...
+      </div>
+    }>
+      <OrdersContent />
+    </Suspense>
+  );
+}
+
+function OrdersContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialChannel = searchParams.get("channel") || "all";
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Filters
   const [statusTab, setStatusTab] = useState("all");
+  const [channelTab, setChannelTab] = useState<string>(initialChannel);
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -61,6 +83,10 @@ export default function AdminOrdersPage() {
   const [minTotal, setMinTotal] = useState("");
   const [maxTotal, setMaxTotal] = useState("");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Commercial Invoice Modal State
+  const [selectedInvoice, setSelectedInvoice] = useState<SalesInvoice | null>(null);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
 
   // Inspect / Details Modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -127,21 +153,38 @@ export default function AdminOrdersPage() {
   const [restock, setRestock] = useState(true);
   const [refunding, setRefunding] = useState(false);
 
+  const openInvoiceModal = async (orderId: number) => {
+    setLoadingInvoice(true);
+    try {
+      const inv = await adminApi.getSalesInvoice(orderId);
+      setSelectedInvoice(inv);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to load commercial invoice.");
+    } finally {
+      setLoadingInvoice(false);
+    }
+  };
+
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const [ordRes, prodRes] = await Promise.all([
+      const [ordRes, prodRes, salesRes] = await Promise.all([
         adminApi.getOrders({
           status: statusTab !== "all" ? statusTab : undefined,
           payment_status: paymentStatusFilter !== "all" ? paymentStatusFilter : undefined,
+          source: channelTab !== "all" ? channelTab : undefined,
           search: search.trim() || undefined,
           page: 1,
           per_page: 50,
         }),
         adminApi.getProducts({ per_page: 100 }),
+        adminApi.getSales({ per_page: 1 }).catch(() => null),
       ]);
       setOrders(ordRes.data || []);
       setProducts(prodRes.data || []);
+      if (salesRes?.summary) {
+        setSalesSummary(salesRes.summary);
+      }
     } catch (err) {
       toast.error("Failed to load orders.");
     } finally {
@@ -151,7 +194,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     loadOrders();
-  }, [statusTab, paymentStatusFilter]);
+  }, [statusTab, paymentStatusFilter, channelTab]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -465,12 +508,12 @@ export default function AdminOrdersPage() {
     <div className="space-y-4 max-w-7xl mx-auto">
       {/* Unified Header */}
       <AdminPageHeader
-        title="Orders"
-        description="Customer orders, fulfillment status, and payment tracking"
+        title="Orders & Fulfillment"
+        description="Comprehensive workspace for online orders, POS sales receipts, fulfillment, and commercial invoices"
         badge={`${filteredOrders.length} orders`}
         breadcrumbs={[
-          { label: "Sales & CRM" },
-          { label: "Orders" },
+          { label: "Operations" },
+          { label: "Orders & Fulfillment" },
         ]}
         action={
           <button
@@ -482,6 +525,66 @@ export default function AdminOrdersPage() {
           </button>
         }
       />
+
+      {/* Sales & Revenue Stats Summary */}
+      {salesSummary && (
+        <AdminStatStrip
+          stats={[
+            {
+              label: "Total Sales",
+              value: formatPrice(salesSummary.total_sales),
+              change: `${salesSummary.total_transactions} transactions`,
+              trend: "up",
+              icon: BadgeDollarSign,
+            },
+            {
+              label: "Online Revenue",
+              value: formatPrice(salesSummary.online_sales),
+              change: "Web Checkout",
+              trend: "neutral",
+              icon: ShoppingBag,
+            },
+            {
+              label: "In-Store POS",
+              value: formatPrice(salesSummary.pos_sales),
+              change: "Terminal Registers",
+              trend: "neutral",
+              icon: Receipt,
+            },
+            {
+              label: "Average Order Value",
+              value: formatPrice(salesSummary.average_invoice_value),
+              change: "Gross Average",
+              trend: "neutral",
+              icon: DollarSign,
+            },
+          ]}
+        />
+      )}
+
+      {/* Channel Navigation Strip */}
+      <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] pb-2 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Channel:</span>
+          {[
+            { id: "all", label: "All Channels" },
+            { id: "web", label: "Online Store" },
+            { id: "pos", label: "POS Terminal" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setChannelTab(tab.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                channelTab === tab.id
+                  ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-xs"
+                  : "text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Filter & Search Bar */}
       <div className="p-2.5 rounded-xl bg-[#0f121b] border border-white/[0.08] space-y-2.5">
@@ -772,9 +875,16 @@ export default function AdminOrdersPage() {
                       <td className="p-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
                           <button
+                            onClick={() => openInvoiceModal(order.id)}
+                            className="p-1.5 rounded-md text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                            title="View & Print Commercial Invoice"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => setSelectedOrder(order)}
                             className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                            title="Inspect order"
+                            title="Inspect order details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -812,6 +922,13 @@ export default function AdminOrdersPage() {
                 <span className="text-[10.5px] text-slate-400">{formatDate(selectedOrder.created_at)}</span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => openInvoiceModal(selectedOrder.id)}
+                  className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold hover:bg-amber-500/25 transition-colors cursor-pointer flex items-center gap-1.5"
+                  title="Generate Commercial Invoice"
+                >
+                  <Receipt className="w-3.5 h-3.5" /> Commercial Invoice
+                </button>
                 {selectedOrder.payment_status === "paid" && (
                   <button
                     onClick={() => setIsRefundModalOpen(true)}
@@ -1148,6 +1265,13 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* COMMERCIAL SALES INVOICE MODAL */}
+      <OrderInvoiceModal
+        invoice={selectedInvoice}
+        loading={loadingInvoice}
+        onClose={() => setSelectedInvoice(null)}
+      />
 
     </div>
   );
