@@ -73,11 +73,11 @@ export function ProductCard({ product }: ProductCardProps) {
       initial={{ opacity: 0, y: 15 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="group relative w-full max-w-[230px] mx-auto rounded-xl theme-card p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-300 hover:shadow-lg hover:border-white/20"
+      className="group relative w-full rounded-2xl theme-card p-2 sm:p-2.5 lg:p-3 flex flex-col justify-between transition-all duration-300 hover:shadow-lg hover:border-white/20"
     >
       <div>
         {/* Image Container with Badges */}
-        <div className="relative aspect-square w-full rounded-lg overflow-hidden theme-img-bg bg-gray-50 dark:bg-slate-950 mb-2.5 border border-gray-100 dark:border-white/5">
+        <div className="relative aspect-square w-full rounded-xl overflow-hidden theme-img-bg bg-gray-50 dark:bg-slate-950 mb-2 sm:mb-2.5 border border-gray-100 dark:border-white/5">
           <Link href={`/products/${product.slug}`}>
             <img
               src={img}

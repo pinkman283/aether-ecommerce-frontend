@@ -468,62 +468,65 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* LuLu Style: Clean Single-Line Navigation with All Categories & Deals */}
-          <div className="hidden lg:flex items-center justify-between gap-2 xl:gap-3 flex-nowrap whitespace-nowrap">
-            {/* Left: Green "All Categories" Dropdown Button */}
-            <div className="flex items-center gap-2 shrink-0">
-              <Link
-                href="/products"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer all-categories-btn"
-                style={{
-                  backgroundColor: "var(--theme-btn-primary-bg, var(--theme-primary, #005826))",
-                  color: "var(--theme-btn-primary-text, #ffffff)",
-                }}
-              >
-                <Menu className="w-3.5 h-3.5" style={{ color: "var(--theme-btn-primary-text, #ffffff)" }} />
-                <span style={{ color: "var(--theme-btn-primary-text, #ffffff)" }}>All Categories</span>
-              </Link>
-            </div>
+          <div className="hidden lg:flex items-center justify-between gap-4 xl:gap-6 flex-nowrap whitespace-nowrap">
+            {/* Left & Center Group: "All Categories" + Category Nav Links + Deals Pill (Anchored) */}
+            <div className="flex items-center gap-4 sm:gap-6 xl:gap-8 min-w-0">
+              {/* Green "All Categories" Dropdown Button */}
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href="/products"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer all-categories-btn"
+                  style={{
+                    backgroundColor: "var(--theme-btn-primary-bg, var(--theme-primary, #005826))",
+                    color: "var(--theme-btn-primary-text, #ffffff)",
+                  }}
+                >
+                  <Menu className="w-3.5 h-3.5" style={{ color: "var(--theme-btn-primary-text, #ffffff)" }} />
+                  <span style={{ color: "var(--theme-btn-primary-text, #ffffff)" }}>All Categories</span>
+                </Link>
+              </div>
 
-            {/* Center: Clean Category Nav Links + Red Deals Pill */}
-            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 shrink-0">
-              {CATEGORY_NAV_ITEMS.map((cat) => {
-                const isHovered = activeHoverCategory === cat.slug;
-                return (
-                  <div
-                    key={cat.slug}
-                    onMouseEnter={() => handleMouseEnter(cat.slug)}
-                    className="relative shrink-0"
-                  >
-                    <Link
-                      href={cat?.href || "/products"}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-semibold transition-all cursor-pointer whitespace-nowrap ${isHovered
-                          ? "text-[#005826] dark:text-white bg-emerald-50 dark:bg-white/10"
-                          : "text-slate-700 dark:text-slate-300 hover:text-[#005826] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
-                        }`}
+              {/* Clean Category Nav Links + Red Deals Pill */}
+              <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 shrink-0">
+                {CATEGORY_NAV_ITEMS.map((cat) => {
+                  const isHovered = activeHoverCategory === cat.slug;
+                  return (
+                    <div
+                      key={cat.slug}
+                      onMouseEnter={() => handleMouseEnter(cat.slug)}
+                      className="relative shrink-0"
                     >
-                      <span>{cat.name}</span>
-                      <ChevronDown
-                        className={`w-3 h-3 text-slate-400 transition-transform duration-200 shrink-0 ${isHovered ? "rotate-180 text-[#005826] dark:text-cyan-400" : ""
+                      <Link
+                        href={cat?.href || "/products"}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-semibold transition-all cursor-pointer whitespace-nowrap ${isHovered
+                            ? "text-[#005826] dark:text-white bg-emerald-50 dark:bg-white/10"
+                            : "text-slate-700 dark:text-slate-300 hover:text-[#005826] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
                           }`}
-                      />
-                    </Link>
-                  </div>
-                );
-              })}
+                      >
+                        <span>{cat.name}</span>
+                        <ChevronDown
+                          className={`w-3 h-3 text-slate-400 transition-transform duration-200 shrink-0 ${isHovered ? "rotate-180 text-[#005826] dark:text-cyan-400" : ""
+                            }`}
+                        />
+                      </Link>
+                    </div>
+                  );
+                })}
 
-              {/* LuLu Inspired: Coral Red Deals Tab with Flame Icon */}
-              <Link
-                href="/promotions"
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-extrabold text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 transition-all shrink-0 cursor-pointer"
-              >
-                <Flame className="w-3.5 h-3.5 text-rose-600 fill-rose-600 animate-pulse" />
-                <span>Deals</span>
-              </Link>
+                {/* LuLu Inspired: Coral Red Deals Tab with Flame Icon */}
+                <Link
+                  href="/promotions"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-extrabold text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 transition-all shrink-0 cursor-pointer"
+                >
+                  <Flame className="w-3.5 h-3.5 text-rose-600 fill-rose-600 animate-pulse" />
+                  <span>Deals</span>
+                </Link>
+              </div>
             </div>
 
             {/* Right: LuLu Style Micro Promo Badge with Coupon Code (Admin Controllable) */}
-            {theme.navbar_promo_enabled !== false && (theme.navbar_promo_discount_text || theme.navbar_promo_code) && (
-              <div className="hidden xl:flex items-center gap-1.5 shrink-0 text-xs">
+            {theme.navbar_promo_enabled !== false && (theme.navbar_promo_discount_text || theme.navbar_promo_code) ? (
+              <div className="hidden xl:flex items-center gap-1.5 shrink-0 text-xs ml-auto">
                 {theme.navbar_promo_discount_text && (
                   <span className="font-black text-slate-900 dark:text-white text-[10.5px]">
                     {theme.navbar_promo_discount_text}
@@ -542,7 +545,7 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                   </button>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Mobile Categories Bar */}

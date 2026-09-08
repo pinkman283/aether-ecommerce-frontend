@@ -68,7 +68,10 @@ export const api = {
 
   // Products Catalog
   async getProducts(params?: {
-    category?: string;
+    category?: string | string[];
+    categories?: string | string[];
+    brand?: string | string[];
+    brands?: string | string[];
     search?: string;
     min_price?: number;
     max_price?: number;
@@ -76,8 +79,9 @@ export const api = {
     sort?: string;
     featured?: boolean;
     new_arrivals?: boolean;
-    best_sellers?: boolean;
     in_stock?: boolean;
+    discounted?: boolean;
+    discounted_items?: boolean;
     page?: number;
     per_page?: number;
   }): Promise<{
@@ -105,6 +109,7 @@ export const api = {
     const res = await apiClient.get("/categories");
     return res.data;
   },
+
 
   async getCategory(slug: string): Promise<Category> {
     const res = await apiClient.get(`/categories/${slug}`);
