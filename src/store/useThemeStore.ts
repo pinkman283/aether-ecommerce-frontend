@@ -72,6 +72,14 @@ export interface ThemeSettings {
   shipping_free_threshold?: number;
   // Product Reviews & Ratings Storefront Visibility
   reviews_enabled?: boolean;
+  // Deals & Promotional Quick Navigation Settings
+  nav_deals_enabled?: boolean;
+  nav_deals_text?: string;
+  nav_deals_link?: string;
+  category_deals_card_enabled?: boolean;
+  category_deals_card_title?: string;
+  category_deals_card_subtitle?: string;
+  category_deals_card_link?: string;
 }
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
@@ -104,6 +112,13 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   navbar_promo_discount_text: "20% OFF",
   navbar_promo_code: "AETHER10",
   navbar_promo_link: "/promotions",
+  nav_deals_enabled: true,
+  nav_deals_text: "Deals",
+  nav_deals_link: "/products?discounted=true",
+  category_deals_card_enabled: true,
+  category_deals_card_title: "Top Deals",
+  category_deals_card_subtitle: "Up to 20% Off",
+  category_deals_card_link: "/products?discounted=true",
   store_brand_name: "INHALIQ",
   store_brand_tagline: "ELEVATE EVERY INHALE",
   store_brand_logo: "",

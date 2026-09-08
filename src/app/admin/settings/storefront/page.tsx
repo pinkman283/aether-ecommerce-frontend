@@ -37,6 +37,15 @@ export default function AdminStorefrontPage() {
   const [navbarPromoCode, setNavbarPromoCode] = useState(DEFAULT_THEME_SETTINGS.navbar_promo_code || "AETHER10");
   const [navbarPromoLink, setNavbarPromoLink] = useState(DEFAULT_THEME_SETTINGS.navbar_promo_link || "/promotions");
 
+  // Deals & Promotional Quick Navigation State
+  const [navDealsEnabled, setNavDealsEnabled] = useState(DEFAULT_THEME_SETTINGS.nav_deals_enabled ?? true);
+  const [navDealsText, setNavDealsText] = useState(DEFAULT_THEME_SETTINGS.nav_deals_text || "Deals");
+  const [navDealsLink, setNavDealsLink] = useState(DEFAULT_THEME_SETTINGS.nav_deals_link || "/products?discounted=true");
+  const [categoryDealsCardEnabled, setCategoryDealsCardEnabled] = useState(DEFAULT_THEME_SETTINGS.category_deals_card_enabled ?? true);
+  const [categoryDealsCardTitle, setCategoryDealsCardTitle] = useState(DEFAULT_THEME_SETTINGS.category_deals_card_title || "Top Deals");
+  const [categoryDealsCardSubtitle, setCategoryDealsCardSubtitle] = useState(DEFAULT_THEME_SETTINGS.category_deals_card_subtitle || "Up to 20% Off");
+  const [categoryDealsCardLink, setCategoryDealsCardLink] = useState(DEFAULT_THEME_SETTINGS.category_deals_card_link || "/products?discounted=true");
+
   // Hero Section State
   const [heroHeadline1, setHeroHeadline1] = useState(DEFAULT_THEME_SETTINGS.hero_headline_line1);
   const [heroHeadline2Gradient, setHeroHeadline2Gradient] = useState(DEFAULT_THEME_SETTINGS.hero_headline_line2_gradient);
@@ -90,6 +99,14 @@ export default function AdminStorefrontPage() {
         if (s.navbar_promo_discount_text !== undefined) setNavbarPromoDiscountText(s.navbar_promo_discount_text);
         if (s.navbar_promo_code !== undefined) setNavbarPromoCode(s.navbar_promo_code);
         if (s.navbar_promo_link !== undefined) setNavbarPromoLink(s.navbar_promo_link);
+
+        if (s.nav_deals_enabled !== undefined) setNavDealsEnabled(Boolean(s.nav_deals_enabled));
+        if (s.nav_deals_text !== undefined) setNavDealsText(s.nav_deals_text);
+        if (s.nav_deals_link !== undefined) setNavDealsLink(s.nav_deals_link);
+        if (s.category_deals_card_enabled !== undefined) setCategoryDealsCardEnabled(Boolean(s.category_deals_card_enabled));
+        if (s.category_deals_card_title !== undefined) setCategoryDealsCardTitle(s.category_deals_card_title);
+        if (s.category_deals_card_subtitle !== undefined) setCategoryDealsCardSubtitle(s.category_deals_card_subtitle);
+        if (s.category_deals_card_link !== undefined) setCategoryDealsCardLink(s.category_deals_card_link);
 
         if (s.hero_headline_line1) setHeroHeadline1(s.hero_headline_line1);
         if (s.hero_headline_line2_gradient) setHeroHeadline2Gradient(s.hero_headline_line2_gradient);
@@ -197,6 +214,13 @@ export default function AdminStorefrontPage() {
       norm(navbarPromoDiscountText) !== norm(initialSettings.navbar_promo_discount_text || DEFAULT_THEME_SETTINGS.navbar_promo_discount_text) ||
       norm(navbarPromoCode) !== norm(initialSettings.navbar_promo_code || DEFAULT_THEME_SETTINGS.navbar_promo_code) ||
       norm(navbarPromoLink) !== norm(initialSettings.navbar_promo_link || DEFAULT_THEME_SETTINGS.navbar_promo_link) ||
+      Boolean(navDealsEnabled) !== Boolean(initialSettings.nav_deals_enabled ?? true) ||
+      norm(navDealsText) !== norm(initialSettings.nav_deals_text || DEFAULT_THEME_SETTINGS.nav_deals_text) ||
+      norm(navDealsLink) !== norm(initialSettings.nav_deals_link || DEFAULT_THEME_SETTINGS.nav_deals_link) ||
+      Boolean(categoryDealsCardEnabled) !== Boolean(initialSettings.category_deals_card_enabled ?? true) ||
+      norm(categoryDealsCardTitle) !== norm(initialSettings.category_deals_card_title || DEFAULT_THEME_SETTINGS.category_deals_card_title) ||
+      norm(categoryDealsCardSubtitle) !== norm(initialSettings.category_deals_card_subtitle || DEFAULT_THEME_SETTINGS.category_deals_card_subtitle) ||
+      norm(categoryDealsCardLink) !== norm(initialSettings.category_deals_card_link || DEFAULT_THEME_SETTINGS.category_deals_card_link) ||
       norm(heroHeadline1) !== norm(initialSettings.hero_headline_line1 || DEFAULT_THEME_SETTINGS.hero_headline_line1) ||
       norm(heroHeadline2Gradient) !== norm(initialSettings.hero_headline_line2_gradient || DEFAULT_THEME_SETTINGS.hero_headline_line2_gradient) ||
       norm(heroHeadline3) !== norm(initialSettings.hero_headline_line3 || DEFAULT_THEME_SETTINGS.hero_headline_line3) ||
@@ -233,6 +257,13 @@ export default function AdminStorefrontPage() {
     navbarPromoDiscountText,
     navbarPromoCode,
     navbarPromoLink,
+    navDealsEnabled,
+    navDealsText,
+    navDealsLink,
+    categoryDealsCardEnabled,
+    categoryDealsCardTitle,
+    categoryDealsCardSubtitle,
+    categoryDealsCardLink,
     heroHeadline1,
     heroHeadline2Gradient,
     heroHeadline3,
@@ -270,6 +301,13 @@ export default function AdminStorefrontPage() {
     setNavbarPromoDiscountText(initialSettings.navbar_promo_discount_text || DEFAULT_THEME_SETTINGS.navbar_promo_discount_text || "20% OFF");
     setNavbarPromoCode(initialSettings.navbar_promo_code || DEFAULT_THEME_SETTINGS.navbar_promo_code || "AETHER10");
     setNavbarPromoLink(initialSettings.navbar_promo_link || DEFAULT_THEME_SETTINGS.navbar_promo_link || "/promotions");
+    setNavDealsEnabled(initialSettings.nav_deals_enabled ?? DEFAULT_THEME_SETTINGS.nav_deals_enabled ?? true);
+    setNavDealsText(initialSettings.nav_deals_text || DEFAULT_THEME_SETTINGS.nav_deals_text || "Deals");
+    setNavDealsLink(initialSettings.nav_deals_link || DEFAULT_THEME_SETTINGS.nav_deals_link || "/products?discounted=true");
+    setCategoryDealsCardEnabled(initialSettings.category_deals_card_enabled ?? DEFAULT_THEME_SETTINGS.category_deals_card_enabled ?? true);
+    setCategoryDealsCardTitle(initialSettings.category_deals_card_title || DEFAULT_THEME_SETTINGS.category_deals_card_title || "Top Deals");
+    setCategoryDealsCardSubtitle(initialSettings.category_deals_card_subtitle || DEFAULT_THEME_SETTINGS.category_deals_card_subtitle || "Up to 20% Off");
+    setCategoryDealsCardLink(initialSettings.category_deals_card_link || DEFAULT_THEME_SETTINGS.category_deals_card_link || "/products?discounted=true");
     setHeroHeadline1(initialSettings.hero_headline_line1 || DEFAULT_THEME_SETTINGS.hero_headline_line1);
     setHeroHeadline2Gradient(initialSettings.hero_headline_line2_gradient || DEFAULT_THEME_SETTINGS.hero_headline_line2_gradient);
     setHeroHeadline3(initialSettings.hero_headline_line3 || DEFAULT_THEME_SETTINGS.hero_headline_line3);
@@ -314,6 +352,13 @@ export default function AdminStorefrontPage() {
       navbar_promo_discount_text: navbarPromoDiscountText,
       navbar_promo_code: navbarPromoCode,
       navbar_promo_link: navbarPromoLink,
+      nav_deals_enabled: navDealsEnabled,
+      nav_deals_text: navDealsText,
+      nav_deals_link: navDealsLink,
+      category_deals_card_enabled: categoryDealsCardEnabled,
+      category_deals_card_title: categoryDealsCardTitle,
+      category_deals_card_subtitle: categoryDealsCardSubtitle,
+      category_deals_card_link: categoryDealsCardLink,
       hero_headline_line1: heroHeadline1,
       hero_headline_line2_gradient: heroHeadline2Gradient,
       hero_headline_line3: heroHeadline3,
@@ -453,7 +498,150 @@ export default function AdminStorefrontPage() {
           )}
         </div>
 
-        {/* 2. Navbar Category Micro Promo Badge */}
+        {/* 2. Deals & Promotional Quick Navigation */}
+        <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
+          <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <Flame className="w-4 h-4 text-rose-400" />
+              <div>
+                <h3 className="text-sm font-bold text-white">Deals & Promotional Quick Navigation</h3>
+                <p className="text-[11px] text-slate-400">Configure or toggle the navbar Deals button and the Explore Categories Top Deals tile</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-1">
+            {/* Option 1: Navbar Deals Pill */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.07] space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                <div>
+                  <span className="text-xs font-bold text-white block">Navbar "Deals" Button</span>
+                  <span className="text-[10px] text-slate-400">Header category bar quick link button</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={navDealsEnabled}
+                    onChange={(e) => setNavDealsEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-8 h-4.5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-rose-500"></div>
+                </label>
+              </div>
+
+              {navDealsEnabled ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-300 block">Button Label</label>
+                      <input
+                        type="text"
+                        value={navDealsText}
+                        onChange={(e) => setNavDealsText(e.target.value)}
+                        placeholder="e.g. Deals"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-400"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-300 block">Target Link / Route</label>
+                      <input
+                        type="text"
+                        value={navDealsLink}
+                        onChange={(e) => setNavDealsLink(e.target.value)}
+                        placeholder="/products?discounted=true"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-rose-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-black/30 border border-white/5 flex items-center justify-between text-xs">
+                    <span className="text-[11px] text-slate-400">Live Preview:</span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-rose-500 bg-rose-500/10 border border-rose-500/20">
+                      <Flame className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                      {navDealsText || "Deals"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 italic py-2">Button is currently disabled and hidden from the navbar.</p>
+              )}
+            </div>
+
+            {/* Option 2: Explore Categories "Top Deals" Card */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.07] space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                <div>
+                  <span className="text-xs font-bold text-white block">Category Carousel "Top Deals" Tile</span>
+                  <span className="text-[10px] text-slate-400">First featured card in Explore Categories</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={categoryDealsCardEnabled}
+                    onChange={(e) => setCategoryDealsCardEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-8 h-4.5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-rose-500"></div>
+                </label>
+              </div>
+
+              {categoryDealsCardEnabled ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-300 block">Tile Title</label>
+                      <input
+                        type="text"
+                        value={categoryDealsCardTitle}
+                        onChange={(e) => setCategoryDealsCardTitle(e.target.value)}
+                        placeholder="e.g. Top Deals"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-400"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-300 block">Tile Subtitle / Discount</label>
+                      <input
+                        type="text"
+                        value={categoryDealsCardSubtitle}
+                        onChange={(e) => setCategoryDealsCardSubtitle(e.target.value)}
+                        placeholder="e.g. Up to 20% Off"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-300 block">Target Link / Route</label>
+                    <input
+                      type="text"
+                      value={categoryDealsCardLink}
+                      onChange={(e) => setCategoryDealsCardLink(e.target.value)}
+                      placeholder="/products?discounted=true"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-rose-400"
+                    />
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-black/30 border border-white/5 flex items-center justify-between text-xs">
+                    <span className="text-[11px] text-slate-400">Live Preview:</span>
+                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                      <div className="w-6 h-6 rounded-md bg-rose-500/20 flex items-center justify-center text-rose-500">
+                        <Flame className="w-3.5 h-3.5 fill-rose-500" />
+                      </div>
+                      <div className="text-left">
+                        <span className="block text-xs font-bold text-rose-500 leading-none">{categoryDealsCardTitle || "Top Deals"}</span>
+                        <span className="text-[9px] text-rose-400/80">{categoryDealsCardSubtitle || "Up to 20% Off"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 italic py-2">Tile is currently disabled and hidden from Explore Categories.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Navbar Category Micro Promo Badge */}
         <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
           <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
             <div className="flex items-center gap-2">

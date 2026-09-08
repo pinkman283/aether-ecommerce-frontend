@@ -15,6 +15,7 @@ import {
   Layers 
 } from "lucide-react";
 import { Category } from "@/types";
+import { useThemeStore } from "@/store/useThemeStore";
 
 interface ExploreCategoriesSectionProps {
   categories: Category[];
@@ -40,6 +41,7 @@ const ICON_MAP: Record<string, any> = {
 };
 
 export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectionProps) {
+  const { theme } = useThemeStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -60,7 +62,10 @@ export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectio
     });
   };
 
-  if (!categories || categories.length === 0) return null;
+  // Strictly filter to only main/parent categories (exclude subcategories)
+  const displayCategories = categories.filter((c) => !c.parent_id);
+
+  if (displayCategories.length === 0 && categories.length === 0) return null;
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
@@ -120,24 +125,26 @@ export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectio
         onScroll={checkScroll}
         className="flex items-start gap-3 sm:gap-4 overflow-x-auto no-scrollbar pb-3 pt-1 scroll-smooth"
       >
-        {/* Featured "Top Deals" Tile */}
-        <Link
-          href="/products?discounted=true"
-          className="shrink-0 w-auto min-w-[76px] sm:min-w-[84px] max-w-[130px] flex flex-col items-center text-center group cursor-pointer"
-        >
-          <div className="h-[64px] sm:h-[72px] w-[64px] sm:w-[72px] rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 p-2 flex flex-col items-center justify-center shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:border-rose-400">
-            <Flame className="w-7 h-7 sm:w-8 sm:h-8 text-rose-600 fill-rose-600 animate-pulse" />
-          </div>
-          <span className="mt-2 text-xs font-black text-rose-600 group-hover:underline line-clamp-1 max-w-full px-1">
-            Top Deals
-          </span>
-          <span className="text-[10px] font-bold text-rose-500 mt-0.5">
-            Up to 20% Off
-          </span>
-        </Link>
+        {/* Featured "Top Deals" Tile (Admin Configurable) */}
+        {theme.category_deals_card_enabled !== false && (
+          <Link
+            href={theme.category_deals_card_link || "/products?discounted=true"}
+            className="shrink-0 w-auto min-w-[76px] sm:min-w-[84px] max-w-[130px] flex flex-col items-center text-center group cursor-pointer"
+          >
+            <div className="h-[64px] sm:h-[72px] w-[64px] sm:w-[72px] rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 p-2 flex flex-col items-center justify-center shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:border-rose-400">
+              <Flame className="w-7 h-7 sm:w-8 sm:h-8 text-rose-600 fill-rose-600 animate-pulse" />
+            </div>
+            <span className="mt-2 text-xs font-black text-rose-600 group-hover:underline line-clamp-1 max-w-full px-1">
+              {theme.category_deals_card_title || "Top Deals"}
+            </span>
+            <span className="text-[10px] font-bold text-rose-500 mt-0.5">
+              {theme.category_deals_card_subtitle || "Up to 20% Off"}
+            </span>
+          </Link>
+        )}
 
         {/* Dynamic Aspect-Ratio Proportional Category Tiles */}
-        {categories.map((cat, idx) => {
+        {(displayCategories.length > 0 ? displayCategories : categories).map((cat, idx) => {
           const Icon = ICON_MAP[cat.icon || "Sparkles"] || Sparkles;
           const tint = PASTEL_TINTS[idx % PASTEL_TINTS.length];
 

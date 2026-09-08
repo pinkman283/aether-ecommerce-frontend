@@ -758,14 +758,16 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                 );
               })}
 
-              {/* LuLu Inspired: Coral Red Deals Tab with Flame Icon */}
-              <Link
-                href="/products?discounted=true"
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11.5px] font-extrabold text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 transition-all shrink-0 cursor-pointer ml-1"
-              >
-                <Flame className="w-3.5 h-3.5 text-rose-600 fill-rose-600 animate-pulse" />
-                <span>Deals</span>
-              </Link>
+              {/* LuLu Inspired: Coral Red Deals Tab with Flame Icon (Admin Configurable) */}
+              {theme.nav_deals_enabled !== false && (
+                <Link
+                  href={theme.nav_deals_link || "/products?discounted=true"}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11.5px] font-extrabold text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 transition-all shrink-0 cursor-pointer ml-1"
+                >
+                  <Flame className="w-3.5 h-3.5 text-rose-600 fill-rose-600 animate-pulse" />
+                  <span>{theme.nav_deals_text || "Deals"}</span>
+                </Link>
+              )}
             </div>
 
             {/* Right: LuLu Style Micro Promo Badge with Coupon Code (Admin Controllable) */}
