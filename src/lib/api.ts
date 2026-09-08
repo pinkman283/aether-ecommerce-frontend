@@ -11,7 +11,7 @@ export const apiClient = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 10000,
+  timeout: 30000,
 });
 
 // Attach bearer token dynamically if available in localStorage
@@ -25,13 +25,25 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+let inFlightHomepageBanners: Promise<HomepageBannersResponse> | null = null;
+
 export const api = {
   client: apiClient,
 
-  // Storefront Homepage Banners
+  // Storefront Homepage Banners (Deduplicated across concurrent callers)
   async getHomepageBanners(): Promise<HomepageBannersResponse> {
-    const res = await apiClient.get("/homepage/banners");
-    return res.data;
+    if (inFlightHomepageBanners) {
+      return inFlightHomepageBanners;
+    }
+    inFlightHomepageBanners = apiClient
+      .get("/homepage/banners")
+      .then((res) => res.data)
+      .finally(() => {
+        setTimeout(() => {
+          inFlightHomepageBanners = null;
+        }, 1500);
+      });
+    return inFlightHomepageBanners;
   },
 
   // Track Banner Click

@@ -422,12 +422,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                 onClick={() => toggleWishlist(product)}
                 className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                   inWishlist
-                    ? "bg-rose-600 border-rose-500 text-white shadow-sm"
-                    : "hover:border-rose-400 text-slate-400 hover:text-rose-500"
+                    ? "text-white shadow-sm shadow-[#fb2c5c]/25 hover:opacity-90 active:scale-95"
+                    : "hover:border-[#fb2c5c] text-slate-400 hover:text-[#fb2c5c]"
                 }`}
                 style={{
-                  backgroundColor: inWishlist ? undefined : "var(--theme-card-bg, #ffffff)",
-                  borderColor: inWishlist ? undefined : "var(--theme-card-border, #e5e7eb)"
+                  backgroundColor: inWishlist ? "#fb2c5c" : "var(--theme-card-bg, #ffffff)",
+                  borderColor: inWishlist ? "#fb2c5c" : "var(--theme-card-border, #e5e7eb)"
                 }}
                 aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
                 title={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
@@ -469,7 +469,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                   className="w-4 h-4" 
                   style={{ color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))" }} 
                 /> 
-                Nationwide Delivery Options
+                Delivery Options
               </span>
               <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20">
                 Cash on Delivery (COD)

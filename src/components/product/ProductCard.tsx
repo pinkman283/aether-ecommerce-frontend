@@ -132,12 +132,16 @@ export function ProductCard({ product }: ProductCardProps) {
             onClick={handleToggleWishlist}
             className={`absolute top-2 right-2 p-1.5 rounded-lg backdrop-blur-md border transition-all z-10 cursor-pointer ${
               inWishlist
-                ? "bg-rose-600 border-rose-500 text-white shadow-xs"
-                : "bg-white/85 dark:bg-black/50 border-gray-200 dark:border-white/10 text-slate-600 dark:text-white/80 hover:text-rose-500 hover:border-rose-400 shadow-xs"
+                ? "text-white shadow-xs shadow-[#fb2c5c]/25"
+                : "bg-white/85 dark:bg-black/50 border-gray-200 dark:border-white/10 text-slate-600 dark:text-white/80 hover:text-[#fb2c5c] hover:border-[#fb2c5c] shadow-xs"
             }`}
+            style={inWishlist ? {
+              backgroundColor: "#fb2c5c",
+              borderColor: "#fb2c5c"
+            } : undefined}
             title={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
           >
-            <Heart className={`w-3 h-3 ${inWishlist ? "fill-white" : ""}`} />
+            <Heart className={`w-3 h-3 ${inWishlist ? "fill-white text-white" : ""}`} />
           </button>
         </div>
 

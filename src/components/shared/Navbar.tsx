@@ -294,21 +294,21 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
             {/* Wishlist Icon */}
             <button
               onClick={openWishlist}
-              className="relative p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-[#005826] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent transition-all cursor-pointer group"
+              className="relative p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-[#fb2c5c] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent transition-all cursor-pointer group"
               title="Saved Wishlist"
             >
               <Heart
                 className="w-4 h-4 transition-all duration-200"
                 style={{
-                  color: mounted && wishlistCount > 0 ? "var(--theme-secondary, #2da54b)" : undefined,
-                  fill: mounted && wishlistCount > 0 ? "var(--theme-secondary, #2da54b)" : "none",
+                  color: mounted && wishlistCount > 0 ? "#fb2c5c" : undefined,
+                  fill: mounted && wishlistCount > 0 ? "#fb2c5c" : "none",
                 }}
               />
               {mounted && wishlistCount > 0 && (
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 font-black text-[10px] rounded-full flex items-center justify-center shadow-md bg-emerald-600 text-white ring-2 ring-white dark:ring-[#090b14]"
+                  className="absolute -top-1.5 -left-1.5 min-w-[18px] h-[18px] px-1 font-black text-[10px] rounded-full flex items-center justify-center shadow-md bg-[#fb2c5c] text-white ring-2 ring-white dark:ring-[#090b14] z-10"
                 >
                   {wishlistCount}
                 </motion.span>
