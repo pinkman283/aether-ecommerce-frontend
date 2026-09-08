@@ -54,6 +54,7 @@ interface ProductFormImage {
 interface ProductFormVariant {
   id?: number;
   name: string;
+  size?: string | null;
   color_name?: string | null;
   color_hex?: string | null;
   stock_quantity: number;
@@ -128,10 +129,11 @@ export default function AdminProductsPage() {
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Color Variants & Stock Inventory State
+  // Product Options & Variants State
   const [formVariants, setFormVariants] = useState<ProductFormVariant[]>([]);
   const [newVariantName, setNewVariantName] = useState("");
-  const [newVariantColorHex, setNewVariantColorHex] = useState("#0f172a");
+  const [newVariantSize, setNewVariantSize] = useState("");
+  const [newVariantColorHex, setNewVariantColorHex] = useState("");
   const [newVariantStock, setNewVariantStock] = useState("20");
   const [newVariantPriceMod, setNewVariantPriceMod] = useState("0");
 
@@ -199,7 +201,8 @@ export default function AdminProductsPage() {
     setIsBestSeller(false);
     setFormVariants([]);
     setNewVariantName("");
-    setNewVariantColorHex("#0f172a");
+    setNewVariantSize("");
+    setNewVariantColorHex("");
     setNewVariantStock("20");
     setNewVariantPriceMod("0");
     setIsModalOpen(true);
@@ -248,8 +251,9 @@ export default function AdminProductsPage() {
         product.variants.map((v) => ({
           id: v.id,
           name: v.name,
-          color_name: v.color_name || v.name,
-          color_hex: v.color_hex || "#0f172a",
+          size: v.size || null,
+          color_name: v.color_name || (v.color_hex ? v.name : null),
+          color_hex: v.color_hex || null,
           stock_quantity: v.stock_quantity ?? 0,
           price_modifier: Number(v.price_modifier || 0),
         }))
@@ -259,7 +263,8 @@ export default function AdminProductsPage() {
     }
 
     setNewVariantName("");
-    setNewVariantColorHex("#0f172a");
+    setNewVariantSize("");
+    setNewVariantColorHex("");
     setNewVariantStock("20");
     setNewVariantPriceMod("0");
 
@@ -273,16 +278,22 @@ export default function AdminProductsPage() {
   };
 
   const handleAddVariant = () => {
-    if (!newVariantName.trim()) {
-      toast.error("Please enter a variant / color name.");
+    const trimmedName = newVariantName.trim();
+    const trimmedSize = newVariantSize.trim();
+    if (!trimmedName && !trimmedSize && !newVariantColorHex) {
+      toast.error("Please enter an option name, size, or color.");
       return;
     }
+
     const stockQty = Math.max(0, parseInt(newVariantStock || "0", 10));
     const priceMod = parseFloat(newVariantPriceMod || "0") || 0;
 
+    const displayName = trimmedName || (trimmedSize ? `Size ${trimmedSize}` : (newVariantColorHex ? `Color ${newVariantColorHex}` : "Option"));
+
     const newVar: ProductFormVariant = {
-      name: newVariantName.trim(),
-      color_name: newVariantName.trim(),
+      name: displayName,
+      size: trimmedSize || null,
+      color_name: trimmedName || (newVariantColorHex ? displayName : null),
       color_hex: newVariantColorHex || null,
       stock_quantity: stockQty,
       price_modifier: priceMod,
@@ -295,10 +306,11 @@ export default function AdminProductsPage() {
     setStock(sumStock.toString());
 
     setNewVariantName("");
-    setNewVariantColorHex("#0f172a");
+    setNewVariantSize("");
+    setNewVariantColorHex("");
     setNewVariantStock("20");
     setNewVariantPriceMod("0");
-    toast.success(`Variant '${newVar.name}' added.`);
+    toast.success(`Option '${newVar.name}' added.`);
   };
 
   const handleRemoveVariant = (index: number) => {
@@ -308,7 +320,7 @@ export default function AdminProductsPage() {
       const sumStock = updated.reduce((sum, v) => sum + (Number(v.stock_quantity) || 0), 0);
       setStock(sumStock.toString());
     }
-    toast.info("Variant removed.");
+    toast.info("Option removed.");
   };
 
   const handleUpdateVariantStock = (index: number, stockVal: string) => {
@@ -317,6 +329,45 @@ export default function AdminProductsPage() {
     setFormVariants(updated);
     const sumStock = updated.reduce((sum, v) => sum + (Number(v.stock_quantity) || 0), 0);
     setStock(sumStock.toString());
+  };
+  const handleAddQuickSize = (sz: string) => {
+    if (formVariants.some((v) => v.size?.toLowerCase() === sz.toLowerCase())) {
+      toast.info(`Size ${sz} is already in the list.`);
+      return;
+    }
+    const newVar: ProductFormVariant = {
+      name: `Size ${sz}`,
+      size: sz,
+      color_name: null,
+      color_hex: null,
+      stock_quantity: 20,
+      price_modifier: 0,
+    };
+    const next = [...formVariants, newVar];
+    setFormVariants(next);
+    const sumStock = next.reduce((sum, v) => sum + (Number(v.stock_quantity) || 0), 0);
+    setStock(sumStock.toString());
+    toast.success(`Added Size ${sz}`);
+  };
+
+  const handleAddQuickColor = (preset: { name: string; hex: string }) => {
+    if (formVariants.some((v) => v.color_name?.toLowerCase() === preset.name.toLowerCase() || v.name.toLowerCase() === preset.name.toLowerCase())) {
+      toast.info(`${preset.name} is already in the list.`);
+      return;
+    }
+    const newVar: ProductFormVariant = {
+      name: preset.name,
+      size: null,
+      color_name: preset.name,
+      color_hex: preset.hex,
+      stock_quantity: 20,
+      price_modifier: 0,
+    };
+    const next = [...formVariants, newVar];
+    setFormVariants(next);
+    const sumStock = next.reduce((sum, v) => sum + (Number(v.stock_quantity) || 0), 0);
+    setStock(sumStock.toString());
+    toast.success(`Added ${preset.name}`);
   };
 
   const handleSaveQuickCategory = async (e: React.FormEvent) => {
@@ -504,8 +555,9 @@ export default function AdminProductsPage() {
       is_best_seller: isBestSeller,
       variants: formVariants.map((v) => ({
         name: v.name,
-        color_name: v.color_name || v.name,
-        color_hex: v.color_hex,
+        size: v.size || null,
+        color_name: v.color_name || (v.color_hex ? v.name : null),
+        color_hex: v.color_hex || null,
         stock_quantity: Number(v.stock_quantity || 0),
         price_modifier: Number(v.price_modifier || 0),
       })),
@@ -1222,94 +1274,144 @@ export default function AdminProductsPage() {
                 )}
               </div>
 
-              {/* Section 4: Color Variants */}
+              {/* Section 4: Product Options & Variants (Optional) */}
               <div className="pt-6 border-t border-white/[0.06] space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-white tracking-wide">
-                    Color Variants ({formVariants.length})
-                  </h4>
-                  <span className="text-[11px] text-slate-400">Inventory modifiers</span>
+                  <div>
+                    <h4 className="text-xs font-semibold text-white tracking-wide">
+                      Options & Variants ({formVariants.length})
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      Optional: add sizes, colors, or editions if required. Leave blank for standalone products.
+                    </p>
+                  </div>
+                  {formVariants.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setFormVariants([])}
+                      className="text-[10.5px] text-slate-400 hover:text-rose-400 transition cursor-pointer"
+                    >
+                      Clear all
+                    </button>
+                  )}
                 </div>
 
-                {/* Add variant row */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                {/* Minimal Add Option Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                   <input
                     type="text"
                     value={newVariantName || ""}
                     onChange={(e) => setNewVariantName(e.target.value)}
-                    placeholder="Variant name (e.g. Midnight Black)"
+                    placeholder="Option name (e.g. Midnight Black)"
+                    className="sm:col-span-4 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={newVariantSize || ""}
+                    onChange={(e) => setNewVariantSize(e.target.value)}
+                    placeholder="Size (e.g. S, M, L)"
                     className="sm:col-span-2 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
                   />
-                  <label className="relative flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-300 transition-all cursor-pointer">
-                    <div className="flex items-center gap-2">
+                  <div className="sm:col-span-2 flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 rounded-xl px-2.5 py-1.5 transition-all">
+                    <label className="relative flex items-center gap-1.5 cursor-pointer flex-1 min-w-0">
                       <span
                         className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 shadow-xs"
-                        style={{ backgroundColor: newVariantColorHex || "#000000" }}
+                        style={{ backgroundColor: newVariantColorHex || "transparent" }}
                       />
-                      <span className="font-mono text-[10.5px] text-slate-300">{newVariantColorHex || "#000000"}</span>
-                    </div>
-                    <input
-                      type="color"
-                      value={newVariantColorHex || "#000000"}
-                      onChange={(e) => setNewVariantColorHex(e.target.value)}
-                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                    />
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      value={newVariantStock || ""}
-                      onChange={(e) => setNewVariantStock(e.target.value)}
-                      placeholder="Stock"
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 transition-all outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddVariant}
-                      className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition cursor-pointer shrink-0"
-                    >
-                      Add
-                    </button>
+                      <span className="text-[10.5px] text-slate-400 truncate">
+                        {newVariantColorHex || "Color"}
+                      </span>
+                      <input
+                        type="color"
+                        value={newVariantColorHex || "#000000"}
+                        onChange={(e) => setNewVariantColorHex(e.target.value)}
+                        className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                      />
+                    </label>
+                    {newVariantColorHex && (
+                      <button
+                        type="button"
+                        onClick={() => setNewVariantColorHex("")}
+                        className="text-[10px] text-slate-500 hover:text-rose-400 ml-1"
+                        title="Remove color"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
+                  <input
+                    type="number"
+                    value={newVariantStock || ""}
+                    onChange={(e) => setNewVariantStock(e.target.value)}
+                    placeholder="Stock"
+                    className="sm:col-span-2 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 transition-all outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddVariant}
+                    className="sm:col-span-2 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 shadow-xs shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add
+                  </button>
                 </div>
 
-                {/* Presets */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] text-slate-500">Presets:</span>
-                  {COLOR_PRESETS.map((p) => (
+                {/* Quick Presets for Sizes & Colors */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span className="text-[10px] text-slate-500">Quick add:</span>
+                  {["XS", "S", "M", "L", "XL", "XXL"].map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => handleAddQuickSize(sz)}
+                      className="px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-[10.5px] text-slate-300 hover:text-white transition cursor-pointer font-medium"
+                    >
+                      +{sz}
+                    </button>
+                  ))}
+                  <span className="text-slate-600">|</span>
+                  {COLOR_PRESETS.slice(0, 5).map((p) => (
                     <button
                       key={p.name}
                       type="button"
-                      onClick={() => {
-                        setNewVariantName(p.name);
-                        setNewVariantColorHex(p.hex);
-                      }}
-                      className="px-2 py-0.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-[10.5px] text-slate-300 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
+                      onClick={() => handleAddQuickColor(p)}
+                      className="px-2 py-0.5 rounded-md bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-[10.5px] text-slate-300 hover:text-white flex items-center gap-1 transition cursor-pointer"
                     >
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.hex }} />
-                      <span>{p.name}</span>
+                      <span>+{p.name}</span>
                     </button>
                   ))}
                 </div>
 
-                {/* List of existing variants */}
-                {formVariants.length > 0 && (
+                {/* List of configured variants */}
+                {formVariants.length > 0 ? (
                   <div className="space-y-1.5 pt-1">
                     {formVariants.map((v, idx) => (
                       <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           {v.color_hex && (
                             <span
                               className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0"
                               style={{ backgroundColor: v.color_hex }}
                             />
                           )}
-                          <span className="font-medium text-white">{v.name}</span>
+                          <span className="font-medium text-white truncate">{v.name}</span>
+                          {v.size && (
+                            <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-slate-300 font-mono">
+                              {v.size}
+                            </span>
+                          )}
+                          {v.price_modifier && v.price_modifier > 0 ? (
+                            <span className="text-[10px] text-emerald-400 font-mono">
+                              (+${v.price_modifier.toFixed(2)})
+                            </span>
+                          ) : null}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <span className="text-[11px] text-slate-400">Stock:</span>
                           <input
                             type="number"
+                            min="0"
                             value={v.stock_quantity ?? 0}
                             onChange={(e) => handleUpdateVariantStock(idx, e.target.value)}
                             className="w-14 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-center focus:outline-none focus:border-amber-400/50"
@@ -1325,6 +1427,10 @@ export default function AdminProductsPage() {
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 italic py-1">
+                    No options configured. This product will be sold as a single standard item.
+                  </p>
                 )}
               </div>
 

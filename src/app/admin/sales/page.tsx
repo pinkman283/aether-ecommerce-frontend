@@ -269,7 +269,7 @@ export default function AdminSalesPage() {
             label: "Average Ticket (AOV)",
             value: formatPrice(summary.average_invoice_value),
             icon: Receipt,
-            helper: `Tax: ${formatPrice(summary.total_tax_collected)}`,
+            helper: `VAT: ${formatPrice(summary.total_tax_collected)}`,
           },
         ]}
       />
@@ -545,7 +545,7 @@ export default function AdminSalesPage() {
                         </span>
                         {parseFloat(order.tax_amount as any) > 0 && (
                           <span className="text-[10px] text-slate-500 font-mono">
-                            Incl. {formatPrice(order.tax_amount)} tax
+                            Incl. {formatPrice(order.tax_amount)} VAT
                           </span>
                         )}
                       </td>
@@ -792,7 +792,7 @@ export default function AdminSalesPage() {
                       )}
                       {selectedInvoice.financials.tax_amount > 0 && (
                         <div className="flex justify-between text-slate-400 print:text-black/70">
-                          <span>Sales Tax</span>
+                          <span>VAT</span>
                           <span className="font-mono">{formatPrice(selectedInvoice.financials.tax_amount)}</span>
                         </div>
                       )}

@@ -29,6 +29,8 @@ import { adminApi } from "@/lib/adminApi";
 import { Review, ReviewSummary, Product } from "@/types";
 import { AdminPageHeader, AdminStatStrip, AdminStatusBadge, AdminEmptyState, AdminPagination } from "@/components/admin/ui";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { useThemeStore } from "@/store/useThemeStore";
 import { toast } from "sonner";
 
 export default function AdminReviewsPage() {
@@ -36,6 +38,11 @@ export default function AdminReviewsPage() {
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Storefront Reviews Visibility
+  const { theme, setTheme: updateClientTheme } = useThemeStore();
+  const [reviewsEnabled, setReviewsEnabled] = useState<boolean>(true);
+  const [togglingVisibility, setTogglingVisibility] = useState(false);
 
   // Filters & Pagination
   const [search, setSearch] = useState("");
@@ -69,6 +76,10 @@ export default function AdminReviewsPage() {
     try {
       const data = await adminApi.getReviewSummary();
       setSummary(data);
+      if (typeof data?.reviews_enabled === "boolean") {
+        setReviewsEnabled(data.reviews_enabled);
+        updateClientTheme({ reviews_enabled: data.reviews_enabled });
+      }
     } catch (err) {
       // Non-blocking
     }
@@ -280,6 +291,22 @@ export default function AdminReviewsPage() {
     }
   };
 
+  const handleToggleReviewsVisibility = async (newVal: boolean) => {
+    setTogglingVisibility(true);
+    setReviewsEnabled(newVal);
+    updateClientTheme({ reviews_enabled: newVal });
+    try {
+      const res = await adminApi.toggleReviewsVisibility(newVal);
+      toast.success(res.message || (newVal ? "Storefront reviews & ratings enabled." : "Storefront reviews & ratings disabled."));
+    } catch (err) {
+      setReviewsEnabled(!newVal);
+      updateClientTheme({ reviews_enabled: !newVal });
+      toast.error("Failed to update storefront reviews visibility.");
+    } finally {
+      setTogglingVisibility(false);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -303,6 +330,49 @@ export default function AdminReviewsPage() {
           </button>
         }
       />
+
+      {/* Storefront Visibility Toggle Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-white/[0.08] bg-[#0c101d] shadow-sm">
+        <div className="flex items-start sm:items-center gap-3.5">
+          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
+            reviewsEnabled 
+              ? "bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)]" 
+              : "bg-slate-800/40 border-white/10 text-slate-500"
+          }`}>
+            <Star className={`w-5 h-5 ${reviewsEnabled ? "fill-amber-400 text-amber-400" : "text-slate-500"}`} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h3 className="text-sm font-bold text-white tracking-tight">
+                Storefront Reviews & Ratings Visibility
+              </h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                reviewsEnabled 
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+                  : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+              }`}>
+                {reviewsEnabled ? "Active on Storefront" : "Turned Off (Hidden)"}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {reviewsEnabled 
+                ? "Customer reviews, star rating scores, and review submission forms are visible across all product pages." 
+                : "Customer reviews, rating scores, and review submission forms are completely hidden and disabled on the storefront."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 self-end sm:self-center shrink-0 bg-white/[0.03] px-3.5 py-2 rounded-lg border border-white/[0.06]">
+          <span className="text-xs font-semibold text-slate-300 select-none">
+            {reviewsEnabled ? "Reviews Active" : "Reviews Disabled"}
+          </span>
+          <Switch
+            checked={reviewsEnabled}
+            disabled={togglingVisibility}
+            onCheckedChange={handleToggleReviewsVisibility}
+          />
+        </div>
+      </div>
 
       {/* Stats Strip */}
       <AdminStatStrip

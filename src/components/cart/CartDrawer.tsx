@@ -11,7 +11,7 @@ import {
   Minus, 
   ShoppingBag, 
   ArrowRight, 
-  Sparkles, 
+  Sparkles,
   Tag, 
   CheckCircle2, 
   AlertCircle 
@@ -54,11 +54,6 @@ export function CartDrawer() {
   const tax = getTax();
   const total = getTotal();
   const itemCount = getItemCount();
-
-  // Free shipping threshold from store settings (default: $100)
-  const freeShippingThreshold = theme.shipping_free_threshold || 100;
-  const freeShippingProgress = Math.min(100, (subtotal / freeShippingThreshold) * 100);
-  const amountToFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
 
   // Auto-evaluate promotions on cart change
   useEffect(() => {
@@ -144,7 +139,7 @@ export function CartDrawer() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeCart}
-            className="absolute inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
           />
 
           <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
@@ -154,17 +149,44 @@ export function CartDrawer() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="w-screen max-w-md theme-card border-l border-white/10 shadow-2xl flex flex-col justify-between"
+              className="w-screen max-w-md border-l shadow-2xl flex flex-col justify-between transition-colors"
+              style={{
+                backgroundColor: "var(--theme-card-bg, #ffffff)",
+                borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))",
+                color: "var(--theme-text-body, #64748b)"
+              }}
             >
               {/* Drawer Header */}
-              <div className="p-5 border-b border-white/10 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
-                    <ShoppingBag className="w-4 h-4 text-indigo-400" />
+              <div 
+                className="p-5 border-b flex items-center justify-between transition-colors"
+                style={{ borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))" }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div 
+                    className="w-8 h-8 rounded-lg border flex items-center justify-center transition-colors"
+                    style={{ 
+                      backgroundColor: "color-mix(in srgb, var(--theme-primary, #6366f1) 12%, transparent)", 
+                      borderColor: "color-mix(in srgb, var(--theme-primary, #6366f1) 28%, transparent)" 
+                    }}
+                  >
+                    <ShoppingBag 
+                      className="w-4 h-4" 
+                      style={{ color: "var(--theme-primary, #6366f1)" }} 
+                    />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white">Your Studio Cart</h3>
-                    <span className="text-[11px] text-slate-400">{itemCount} item{itemCount !== 1 ? "s" : ""}</span>
+                    <h3 
+                      className="text-sm font-bold leading-none mb-1"
+                      style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                    >
+                      Your Studio Cart
+                    </h3>
+                    <span 
+                      className="text-[11px]"
+                      style={{ color: "var(--theme-text-body, #64748b)" }}
+                    >
+                      {itemCount} item{itemCount !== 1 ? "s" : ""}
+                    </span>
                   </div>
                 </div>
 
@@ -172,57 +194,58 @@ export function CartDrawer() {
                   {items.length > 0 && (
                     <button
                       onClick={clearCart}
-                      className="text-[11px] text-slate-500 hover:text-rose-400 transition-colors mr-2 cursor-pointer"
+                      className="text-[11px] hover:text-rose-500 transition-colors mr-2 cursor-pointer font-medium"
+                      style={{ color: "var(--theme-text-body, #64748b)" }}
                     >
                       Clear
                     </button>
                   )}
                   <button
                     onClick={closeCart}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                    className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer"
+                    style={{ color: "var(--theme-text-body, #64748b)" }}
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              {/* Free Shipping Progress Meter */}
-              {items.length > 0 && (
-                <div className="bg-indigo-950/40 border-b border-indigo-500/20 px-5 py-3">
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                      {amountToFreeShipping === 0 ? (
-                        <span className="text-cyan-300 font-bold">Unlocked Free Express Shipping!</span>
-                      ) : (
-                        <span>Add <span className="text-white font-bold">{formatPrice(amountToFreeShipping)}</span> more for Free Shipping</span>
-                      )}
-                    </span>
-                    <span className="text-[11px] font-bold text-cyan-400">{Math.round(freeShippingProgress)}%</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all duration-500 rounded-full"
-                      style={{ width: `${freeShippingProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
               {/* Item List */}
               <div className="flex-1 overflow-y-auto p-5 space-y-4">
                 {items.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center py-16">
-                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                      <ShoppingBag className="w-8 h-8 text-slate-500" />
+                    <div 
+                      className="w-16 h-16 rounded-2xl border flex items-center justify-center mb-4 transition-colors"
+                      style={{ 
+                        backgroundColor: "color-mix(in srgb, var(--theme-primary, #6366f1) 10%, transparent)", 
+                        borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))" 
+                      }}
+                    >
+                      <ShoppingBag 
+                        className="w-8 h-8" 
+                        style={{ color: "var(--theme-text-body, #64748b)" }} 
+                      />
                     </div>
-                    <h4 className="text-base font-bold text-white mb-1">Your cart is empty</h4>
-                    <p className="text-xs text-slate-400 max-w-xs mb-6">
+                    <h4 
+                      className="text-base font-bold mb-1"
+                      style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                    >
+                      Your cart is empty
+                    </h4>
+                    <p 
+                      className="text-xs max-w-xs mb-6"
+                      style={{ color: "var(--theme-text-body, #64748b)" }}
+                    >
                       Explore our precision acoustic headphones, mechanical keyboards, and modular daily essentials.
                     </p>
                     <button
                       onClick={closeCart}
-                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-500/20 cursor-pointer"
+                      className="px-6 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-lg hover:brightness-105 active:scale-95"
+                      style={{ 
+                        backgroundColor: "var(--theme-btn-primary-bg, var(--theme-primary, #6366f1))", 
+                        color: "var(--theme-btn-primary-text, #ffffff)",
+                        boxShadow: "0 8px 24px -4px color-mix(in srgb, var(--theme-primary, #6366f1) 35%, transparent)"
+                      }}
                     >
                       Start Exploring
                     </button>
@@ -239,11 +262,21 @@ export function CartDrawer() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="flex gap-3.5 p-3 rounded-2xl theme-card transition-all"
+                        className="flex gap-3.5 p-3 rounded-2xl border transition-all"
+                        style={{
+                          backgroundColor: "color-mix(in srgb, var(--theme-card-bg, #ffffff) 92%, var(--theme-bg, #f8fafc))",
+                          borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.08))"
+                        }}
                       >
                         {/* Thumbnail */}
                         {img && (
-                          <div className="w-18 h-18 rounded-xl overflow-hidden bg-slate-900 border border-white/10 shrink-0 p-1 flex items-center justify-center">
+                          <div 
+                            className="w-18 h-18 rounded-xl overflow-hidden border shrink-0 p-1 flex items-center justify-center transition-colors"
+                            style={{
+                              backgroundColor: "var(--theme-card-bg, #ffffff)",
+                              borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))"
+                            }}
+                          >
                             <img
                               src={img}
                               alt={item.product.name}
@@ -256,12 +289,16 @@ export function CartDrawer() {
                         <div className="flex-1 min-w-0 flex flex-col justify-between">
                           <div>
                             <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-xs font-bold text-white truncate">
+                              <h4 
+                                className="text-xs font-bold truncate"
+                                style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                              >
                                 {item.product.name}
                               </h4>
                               <button
                                 onClick={() => removeItem(item.product.id, item.variant?.id)}
-                                className="text-slate-500 hover:text-rose-400 transition-colors p-1 cursor-pointer"
+                                className="hover:text-rose-500 transition-colors p-1 cursor-pointer"
+                                style={{ color: "var(--theme-text-body, #64748b)" }}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -275,7 +312,14 @@ export function CartDrawer() {
                                     style={{ backgroundColor: item.variant.color_hex }}
                                   />
                                 )}
-                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                                <span 
+                                  className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors"
+                                  style={{
+                                    backgroundColor: "color-mix(in srgb, var(--theme-primary, #6366f1) 12%, transparent)",
+                                    color: "var(--theme-primary, #6366f1)",
+                                    borderColor: "color-mix(in srgb, var(--theme-primary, #6366f1) 25%, transparent)"
+                                  }}
+                                >
                                   {item.variant.name}
                                 </span>
                               </div>
@@ -283,24 +327,41 @@ export function CartDrawer() {
                           </div>
 
                           {/* Price & Quantity Controls */}
-                          <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
-                            <span className="text-xs font-black text-cyan-400">
+                          <div 
+                            className="flex items-center justify-between mt-2 pt-1 border-t"
+                            style={{ borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.08))" }}
+                          >
+                            <span 
+                              className="text-xs font-black"
+                              style={{ color: "var(--theme-primary, #6366f1)" }}
+                            >
                               {formatPrice(itemPrice * item.quantity)}
                             </span>
 
-                            <div className="flex items-center gap-2 bg-white/5 rounded-lg p-1 border border-white/10">
+                            <div 
+                              className="flex items-center gap-2 rounded-lg p-1 border transition-colors"
+                              style={{
+                                backgroundColor: "color-mix(in srgb, var(--theme-card-bg, #ffffff) 70%, var(--theme-bg, #f8fafc))",
+                                borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))"
+                              }}
+                            >
                               <button
                                 onClick={() => updateQuantity(item.product.id, item.variant?.id, item.quantity - 1)}
-                                className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
+                                className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                style={{ color: "var(--theme-text-body, #64748b)" }}
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
-                              <span className="text-xs font-bold text-white w-4 text-center">
+                              <span 
+                                className="text-xs font-bold w-4 text-center"
+                                style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                              >
                                 {item.quantity}
                               </span>
                               <button
                                 onClick={() => updateQuantity(item.product.id, item.variant?.id, item.quantity + 1)}
-                                className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
+                                className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                style={{ color: "var(--theme-text-body, #64748b)" }}
                               >
                                 <Plus className="w-3 h-3" />
                               </button>
@@ -315,18 +376,31 @@ export function CartDrawer() {
 
               {/* Drawer Footer & Checkout Action */}
               {items.length > 0 && (
-                <div className="p-5 border-t border-white/10 theme-card space-y-4">
+                <div 
+                  className="p-5 border-t space-y-4 transition-colors"
+                  style={{
+                    backgroundColor: "var(--theme-card-bg, #ffffff)",
+                    borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))"
+                  }}
+                >
                   {/* Promo Code Input */}
                   {appliedCoupon ? (
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                    <div 
+                      className="flex items-center justify-between p-2.5 rounded-xl border text-xs"
+                      style={{
+                        backgroundColor: "color-mix(in srgb, #10b981 12%, transparent)",
+                        borderColor: "color-mix(in srgb, #10b981 25%, transparent)"
+                      }}
+                    >
                       <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span className="font-bold text-emerald-300">{appliedCoupon.code}</span>
-                        <span className="text-[11px] text-emerald-400/80">(-{formatPrice(discount)})</span>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{appliedCoupon.code}</span>
+                        <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80">(-{formatPrice(discount)})</span>
                       </div>
                       <button
                         onClick={removeCoupon}
-                        className="text-[11px] text-slate-400 hover:text-rose-400 font-semibold cursor-pointer"
+                        className="text-[11px] hover:text-rose-500 font-semibold cursor-pointer transition-colors"
+                        style={{ color: "var(--theme-text-body, #64748b)" }}
                       >
                         Remove
                       </button>
@@ -335,25 +409,38 @@ export function CartDrawer() {
                     <form onSubmit={handleApplyCoupon} className="space-y-1">
                       <div className="flex gap-2">
                         <div className="relative flex-1">
-                          <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <Tag 
+                            className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2" 
+                            style={{ color: "var(--theme-text-body, #64748b)" }}
+                          />
                           <input
                             type="text"
                             value={couponInput}
                             onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                             placeholder="Promo Code (e.g. WELCOME20)"
-                            className="w-full theme-input rounded-xl pl-8.5 pr-3 py-2 text-xs text-white placeholder:text-slate-500 uppercase tracking-wider focus:outline-none focus:border-indigo-500"
+                            className="w-full rounded-xl pl-8.5 pr-3 py-2 text-xs uppercase tracking-wider focus:outline-none transition-colors border"
+                            style={{
+                              backgroundColor: "color-mix(in srgb, var(--theme-bg, #f8fafc) 85%, var(--theme-card-bg, #ffffff))",
+                              borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.12))",
+                              color: "var(--theme-text-heading, #0f172a)"
+                            }}
                           />
                         </div>
                         <button
                           type="submit"
                           disabled={couponLoading || !couponInput.trim()}
-                          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-indigo-600/20"
+                          className="px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-md hover:brightness-110 active:scale-95"
+                          style={{
+                            backgroundColor: "var(--theme-primary, #6366f1)",
+                            color: "var(--theme-btn-primary-text, #ffffff)",
+                            boxShadow: "0 4px 14px -2px color-mix(in srgb, var(--theme-primary, #6366f1) 35%, transparent)"
+                          }}
                         >
                           {couponLoading ? "..." : "Apply"}
                         </button>
                       </div>
                       {couponError && (
-                        <p className="text-[11px] text-rose-400 flex items-center gap-1 pt-1">
+                        <p className="text-[11px] text-rose-500 flex items-center gap-1 pt-1 font-medium">
                           <AlertCircle className="w-3 h-3" /> {couponError}
                         </p>
                       )}
@@ -361,19 +448,30 @@ export function CartDrawer() {
                   )}
 
                   {/* Pricing Breakdown */}
-                  <div className="space-y-1.5 text-xs text-slate-400 pt-1">
+                  <div 
+                    className="space-y-1.5 text-xs pt-1"
+                    style={{ color: "var(--theme-text-body, #64748b)" }}
+                  >
                     <div className="flex justify-between">
                       <span>Subtotal</span>
-                      <span className="text-white font-medium">{formatPrice(subtotal)}</span>
+                      <span 
+                        className="font-medium"
+                        style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                      >
+                        {formatPrice(subtotal)}
+                      </span>
                     </div>
 
                     {/* Itemized Applied Promotions */}
                     {promotionEvaluation?.applied_promotions && promotionEvaluation.applied_promotions.length > 0 ? (
-                      <div className="space-y-1 py-1 border-t border-dashed border-white/10">
+                      <div 
+                        className="space-y-1 py-1 border-t border-dashed"
+                        style={{ borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))" }}
+                      >
                         {promotionEvaluation.applied_promotions.map((p, idx) => (
-                          <div key={idx} className="flex justify-between text-[11px] text-amber-300">
+                          <div key={idx} className="flex justify-between text-[11px] text-amber-500 dark:text-amber-300">
                             <span className="flex items-center gap-1">
-                              <Sparkles className="w-3 h-3 text-amber-400" />
+                              <Sparkles className="w-3 h-3 text-amber-500" />
                               {p.promotion_name} {p.code ? `(${p.code})` : ""}
                             </span>
                             <span className="font-mono font-bold">
@@ -383,7 +481,7 @@ export function CartDrawer() {
                         ))}
                       </div>
                     ) : discount > 0 ? (
-                      <div className="flex justify-between text-emerald-400 font-medium">
+                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                         <span>Discount</span>
                         <span>-{formatPrice(discount)}</span>
                       </div>
@@ -391,35 +489,79 @@ export function CartDrawer() {
 
                     <div className="flex justify-between">
                       <span>Estimated Shipping</span>
-                      <span className="text-white font-medium">
-                        {shipping === 0 ? <span className="text-cyan-400 font-bold">FREE</span> : formatPrice(shipping)}
+                      <span 
+                        className="font-medium"
+                        style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                      >
+                        {shipping === 0 ? (
+                          <span className="font-bold" style={{ color: "var(--theme-primary, #6366f1)" }}>FREE</span>
+                        ) : (
+                          formatPrice(shipping)
+                        )}
                       </span>
                     </div>
 
-                    <div className="flex justify-between text-sm font-black text-white pt-2 border-t border-white/10">
-                      <span>Subtotal & Shipping</span>
-                      <span className="text-cyan-400 text-base">{formatPrice(total)}</span>
+                    {promotionEvaluation?.valid && promotionEvaluation.tax_amount > 0 ? (
+                      <div className="flex justify-between">
+                        <span>VAT ({promotionEvaluation?.vat_rate ?? 8}%)</span>
+                        <span 
+                          className="font-medium font-mono"
+                          style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                        >
+                          +{formatPrice(promotionEvaluation.tax_amount)}
+                        </span>
+                      </div>
+                    ) : null}
+
+                    <div 
+                      className="flex justify-between text-sm font-black pt-2 border-t"
+                      style={{ borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))" }}
+                    >
+                      <span style={{ color: "var(--theme-text-heading, #0f172a)" }}>Estimated Total</span>
+                      <span className="text-base font-black" style={{ color: "var(--theme-primary, #6366f1)" }}>
+                        {formatPrice(total)}
+                      </span>
                     </div>
                   </div>
 
                   {/* Checkout CTA */}
                   <button
                     onClick={handleCheckout}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 text-white text-xs font-extrabold tracking-wide uppercase flex items-center justify-center gap-2 transition-all shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 cursor-pointer"
+                    className="w-full py-3.5 rounded-xl text-xs font-extrabold tracking-wide uppercase flex items-center justify-center gap-2 transition-all hover:brightness-105 active:scale-[0.99] cursor-pointer shadow-xl"
+                    style={{
+                      background: "linear-gradient(135deg, var(--theme-btn-primary-bg, var(--theme-primary, #6366f1)), var(--theme-secondary, var(--theme-primary, #6366f1)))",
+                      color: "var(--theme-btn-primary-text, #ffffff)",
+                      boxShadow: "0 10px 28px -4px color-mix(in srgb, var(--theme-primary, #6366f1) 40%, transparent)"
+                    }}
                   >
                     Proceed to Checkout <ArrowRight className="w-4 h-4" />
                   </button>
 
                   {/* Cart Trust Reassurance Strip */}
-                  <div className="pt-2 flex items-center justify-between text-[10px] text-slate-400 border-t border-white/5">
+                  <div 
+                    className="pt-2 flex items-center justify-between text-[10px] border-t"
+                    style={{ 
+                      color: "var(--theme-text-body, #64748b)",
+                      borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.08))"
+                    }}
+                  >
                     <span className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Cash on Delivery
+                      <span 
+                        className="w-1.5 h-1.5 rounded-full inline-block" 
+                        style={{ backgroundColor: "var(--theme-primary, #6366f1)" }}
+                      /> Cash on Delivery
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" /> Express Dispatch
+                      <span 
+                        className="w-1.5 h-1.5 rounded-full inline-block" 
+                        style={{ backgroundColor: "var(--theme-secondary, var(--theme-primary, #6366f1))" }}
+                      /> Express Dispatch
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> 100% Authentic
+                      <span 
+                        className="w-1.5 h-1.5 rounded-full inline-block" 
+                        style={{ backgroundColor: "color-mix(in srgb, var(--theme-primary, #6366f1) 65%, #10b981)" }}
+                      /> 100% Authentic
                     </span>
                   </div>
                 </div>
@@ -431,4 +573,3 @@ export function CartDrawer() {
     </AnimatePresence>
   );
 }
-

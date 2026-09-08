@@ -8,6 +8,7 @@ import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
+import { useThemeStore } from "@/store/useThemeStore";
 import { useState } from "react";
 
 interface ProductCardProps {
@@ -18,6 +19,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
   const { addItem, closeCart } = useCartStore();
   const { toggleWishlist, isInWishlist } = useWishlistStore();
+  const { theme } = useThemeStore();
   const [addedAnim, setAddedAnim] = useState(false);
 
   const img =
@@ -148,21 +150,23 @@ export function ProductCard({ product }: ProductCardProps) {
             >
               {product.category?.name || product.brand || "Studio Edition"}
             </span>
-            <div className="flex items-center gap-0.5 text-amber-400 shrink-0">
-              <Star className="w-2.5 h-2.5 fill-amber-400" />
-              <span
-                className="text-[9.5px] font-bold"
-                style={{ color: "var(--theme-text-heading, #0f172a)" }}
-              >
-                {Number(product.rating_average || 0).toFixed(1)}
-              </span>
-              <span
-                className="text-[8.5px]"
-                style={{ color: "var(--theme-text-body, #64748b)" }}
-              >
-                ({product.review_count || 0})
-              </span>
-            </div>
+            {theme.reviews_enabled !== false && (
+              <div className="flex items-center gap-0.5 text-amber-400 shrink-0">
+                <Star className="w-2.5 h-2.5 fill-amber-400" />
+                <span
+                  className="text-[9.5px] font-bold"
+                  style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                >
+                  {Number(product.rating_average || 0).toFixed(1)}
+                </span>
+                <span
+                  className="text-[8.5px]"
+                  style={{ color: "var(--theme-text-body, #64748b)" }}
+                >
+                  ({product.review_count || 0})
+                </span>
+              </div>
+            )}
           </div>
 
           <Link href={`/products/${product.slug}`} className="block transition-colors">

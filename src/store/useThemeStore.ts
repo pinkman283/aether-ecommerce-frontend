@@ -70,6 +70,8 @@ export interface ThemeSettings {
   shipping_inside_dhaka_rate?: number;
   shipping_outside_dhaka_rate?: number;
   shipping_free_threshold?: number;
+  // Product Reviews & Ratings Storefront Visibility
+  reviews_enabled?: boolean;
 }
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
@@ -137,14 +139,15 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   shipping_inside_dhaka_rate: 60,
   shipping_outside_dhaka_rate: 120,
   shipping_free_threshold: 100,
+  reviews_enabled: true,
 };
 
-export const RADIUS_MAP: Record<string, { root: string; lg: string; md: string; sm: string }> = {
-  "rounded-none": { root: "0px", lg: "0px", md: "0px", sm: "0px" },
-  "rounded-md": { root: "0.375rem", lg: "0.375rem", md: "0.25rem", sm: "0.125rem" },
-  "rounded-lg": { root: "0.5rem", lg: "0.5rem", md: "0.375rem", sm: "0.25rem" },
-  "rounded-xl": { root: "0.75rem", lg: "0.75rem", md: "0.5rem", sm: "0.375rem" },
-  "rounded-2xl": { root: "1rem", lg: "1rem", md: "0.75rem", sm: "0.5rem" },
+export const RADIUS_MAP: Record<string, { root: string; sm: string; md: string; lg: string; xl: string; "2xl": string; "3xl": string; "4xl": string }> = {
+  "rounded-none": { root: "0px", sm: "0px", md: "0px", lg: "0px", xl: "0px", "2xl": "0px", "3xl": "0px", "4xl": "0px" },
+  "rounded-md": { root: "0.375rem", sm: "0.125rem", md: "0.25rem", lg: "0.375rem", xl: "0.5rem", "2xl": "0.75rem", "3xl": "1rem", "4xl": "1.25rem" },
+  "rounded-lg": { root: "0.5rem", sm: "0.25rem", md: "0.375rem", lg: "0.5rem", xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "4xl": "2rem" },
+  "rounded-xl": { root: "0.75rem", sm: "0.375rem", md: "0.5rem", lg: "0.75rem", xl: "1rem", "2xl": "1.25rem", "3xl": "1.5rem", "4xl": "2rem" },
+  "rounded-2xl": { root: "1rem", sm: "0.5rem", md: "0.75rem", lg: "1rem", xl: "1.25rem", "2xl": "1.5rem", "3xl": "2rem", "4xl": "2.5rem" },
 };
 
 export function getHexLuminance(hex: string): number {
@@ -296,13 +299,13 @@ export function applyThemeToDOM(theme: ThemeSettings) {
   // Dynamic Radius tokens
   const radiusConfig = RADIUS_MAP[theme.theme_radius] || RADIUS_MAP["rounded-lg"];
   root.style.setProperty("--radius", radiusConfig.root);
-  root.style.setProperty("--radius-lg", radiusConfig.lg);
-  root.style.setProperty("--radius-md", radiusConfig.md);
   root.style.setProperty("--radius-sm", radiusConfig.sm);
-  root.style.setProperty("--radius-xl", radiusConfig.root);
-  root.style.setProperty("--radius-2xl", radiusConfig.root);
-  root.style.setProperty("--radius-3xl", radiusConfig.root);
-  root.style.setProperty("--radius-4xl", radiusConfig.root);
+  root.style.setProperty("--radius-md", radiusConfig.md);
+  root.style.setProperty("--radius-lg", radiusConfig.lg);
+  root.style.setProperty("--radius-xl", radiusConfig.xl);
+  root.style.setProperty("--radius-2xl", radiusConfig["2xl"]);
+  root.style.setProperty("--radius-3xl", radiusConfig["3xl"]);
+  root.style.setProperty("--radius-4xl", radiusConfig["4xl"]);
 }
 
 interface ThemeState {

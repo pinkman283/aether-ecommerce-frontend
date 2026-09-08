@@ -3,20 +3,14 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { 
   Star, 
   ShoppingBag, 
   Heart, 
-  ShieldCheck, 
   Truck, 
-  RotateCcw, 
   Check, 
   ChevronRight, 
-  Share2, 
   Zap, 
-  Sparkles,
-  Info,
   AlertCircle
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -39,11 +33,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [hasVariantError, setHasVariantError] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [quantityInput, setQuantityInput] = useState("1");
   const [loading, setLoading] = useState(true);
 
-  const { addItem, openCart } = useCartStore();
+  const { addItem } = useCartStore();
   const { toggleWishlist, isInWishlist } = useWishlistStore();
 
   useEffect(() => {
@@ -54,7 +51,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         setProduct(data.product);
         setRelated(data.related || []);
         
-        // Single color: auto-select (not mandatory to click). Multiple colors: require user to pick.
+        // Single color: auto-select. Multiple colors: prompt selection
         if (data.product.variants && data.product.variants.length === 1) {
           setSelectedVariant(data.product.variants[0]);
         } else {
@@ -72,9 +69,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   if (loading) {
     return (
       <div className="py-32 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
-        <div className="w-10 h-10 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs font-bold uppercase tracking-widest text-slate-300">
-          Loading Hardware Specifications...
+        <div 
+          className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: "var(--theme-primary, #005826)", borderTopColor: "transparent" }}
+        />
+        <span 
+          className="text-xs font-bold uppercase tracking-widest"
+          style={{ color: "var(--theme-text-body, #64748b)" }}
+        >
+          Loading Product Details...
         </span>
       </div>
     );
@@ -83,9 +86,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   if (!product) {
     return (
       <div className="max-w-xl mx-auto px-4 py-32 text-center space-y-4">
-        <h2 className="text-2xl font-black text-white">Product Not Found</h2>
-        <p className="text-xs text-slate-400">The hardware item you are looking for does not exist or has been retired.</p>
-        <Link href="/products" className="inline-block px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold">
+        <h2 
+          className="text-2xl font-black tracking-tight"
+          style={{ color: "var(--theme-text-heading, #0f172a)" }}
+        >
+          Product Not Found
+        </h2>
+        <p 
+          className="text-xs"
+          style={{ color: "var(--theme-text-body, #64748b)" }}
+        >
+          The hardware item you are looking for does not exist or has been retired.
+        </p>
+        <Link 
+          href="/products" 
+          className="inline-block px-6 py-2.5 rounded-xl theme-btn-primary text-xs font-bold"
+        >
           Return to Catalog
         </Link>
       </div>
@@ -94,12 +110,74 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
   const currentPrice = Number(product.price) + (selectedVariant ? Number(selectedVariant.price_modifier) : 0);
   const inWishlist = isInWishlist(product.id);
-  const isOutOfStock = product.stock_quantity !== undefined && product.stock_quantity <= 0;
-  const isLowStock = !isOutOfStock && product.stock_quantity !== undefined && product.stock_quantity <= 5;
+  const availableStock = (selectedVariant && selectedVariant.stock_quantity !== undefined)
+    ? Number(selectedVariant.stock_quantity)
+    : (product.stock_quantity !== undefined ? Number(product.stock_quantity) : 9999);
+  const isOutOfStock = availableStock <= 0;
+  const isLowStock = !isOutOfStock && availableStock <= 5;
+  const isStockExceeded = quantity > availableStock;
+
+  const handleQuantityInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const sanitized = e.target.value.replace(/\D/g, "");
+    setQuantityInput(sanitized);
+    if (sanitized === "") {
+      setQuantity(0);
+    } else {
+      const parsed = parseInt(sanitized, 10);
+      setQuantity(isNaN(parsed) ? 0 : parsed);
+    }
+  };
+
+  const handleQuantityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["Backspace", "Delete", "Tab", "ArrowLeft", "ArrowRight", "Home", "End", "Enter"].includes(e.key)) {
+      return;
+    }
+    if (e.ctrlKey || e.metaKey) {
+      return;
+    }
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleQuantityBlur = () => {
+    if (quantityInput === "" || isNaN(parseInt(quantityInput, 10))) {
+      setQuantity(1);
+      setQuantityInput("1");
+    } else {
+      const parsed = parseInt(quantityInput, 10);
+      setQuantity(parsed);
+      setQuantityInput(String(parsed));
+    }
+  };
+
+  const handleIncreaseQuantity = () => {
+    if (quantity < availableStock) {
+      const next = quantity + 1;
+      setQuantity(next);
+      setQuantityInput(String(next));
+    }
+  };
+
+  const handleDecreaseQuantity = () => {
+    if (quantity > 0) {
+      const next = quantity - 1;
+      setQuantity(next);
+      setQuantityInput(String(next));
+    }
+  };
 
   const handleAddToCart = () => {
     if (isOutOfStock) {
       toast.error("This product is currently out of stock.");
+      return;
+    }
+    if (quantity <= 0) {
+      toast.error("Please specify a quantity of at least 1.");
+      return;
+    }
+    if (isStockExceeded) {
+      toast.error(`Not enough stock available. Maximum available is ${availableStock}.`);
       return;
     }
     if (product.variants && product.variants.length > 1 && !selectedVariant) {
@@ -117,6 +195,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       toast.error("This product is currently out of stock.");
       return;
     }
+    if (quantity <= 0) {
+      toast.error("Please specify a quantity of at least 1.");
+      return;
+    }
+    if (isStockExceeded) {
+      toast.error(`Not enough stock available. Maximum available is ${availableStock}.`);
+      return;
+    }
     if (product.variants && product.variants.length > 1 && !selectedVariant) {
       setHasVariantError(true);
       toast.error("Please select a color finish before proceeding to checkout.");
@@ -128,252 +214,343 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
-      {/* Breadcrumb Navigation */}
-      <nav className="flex items-center gap-2 text-xs text-slate-400">
-        <Link href="/" className="hover:text-white transition-colors">Home</Link>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <Link href="/products" className="hover:text-white transition-colors">Catalog</Link>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 sm:space-y-10">
+      {/* Minimalist Breadcrumb Navigation */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 overflow-x-auto whitespace-nowrap pb-1">
+        <Link href="/" className="hover:text-slate-900 dark:hover:text-white transition-colors">Home</Link>
+        <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-40" />
+        <Link href="/products" className="hover:text-slate-900 dark:hover:text-white transition-colors">Catalog</Link>
         {product.category && (
           <>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <Link href={`/products?category=${product.category.slug}`} className="hover:text-white transition-colors">
+            <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-40" />
+            <Link 
+              href={`/products?category=${product.category.slug}`} 
+              className="hover:text-slate-900 dark:hover:text-white transition-colors"
+            >
               {product.category.name}
             </Link>
           </>
         )}
-        <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-slate-200 font-medium truncate max-w-xs">{product.name}</span>
+        <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-40" />
+        <span 
+          className="font-semibold truncate max-w-xs"
+          style={{ color: "var(--theme-text-heading, #0f172a)" }}
+        >
+          {product.name}
+        </span>
       </nav>
 
-      {/* Main Product Showcase Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-        
-        {/* Left Image Gallery (Balanced 6 cols) */}
-        <div className="lg:col-span-6">
+      {/* Main Product Showcase Section (Redesigned Reference Layout) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        {/* Left Column: Image Gallery */}
+        <div className="lg:col-span-6 max-w-[530px] w-full mx-auto lg:mx-0">
           <ProductGallery images={product.images} productName={product.name} />
         </div>
 
-        {/* Right Info & Actions Panel (Balanced 6 cols) */}
-        <div className="lg:col-span-6 space-y-4">
-          <div>
-            {/* Top Brand & Category Tag */}
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <span className="text-xs font-black uppercase tracking-widest text-indigo-400">
-                {product.brand || `${theme.store_brand_name || "AETHER"} Studio`}
+        {/* Right Info & Actions Panel */}
+        <div className="lg:col-span-6 space-y-4 sm:space-y-5">
+          <div className="space-y-2">
+            {/* 1. Pill Badge (NEW ARRIVAL) */}
+            <div>
+              <span 
+                className="inline-flex items-center px-2.5 py-1 rounded-md text-[10.5px] font-bold tracking-wider uppercase shadow-2xs"
+                style={{
+                  backgroundColor: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))",
+                  color: "var(--theme-btn-primary-text, #ffffff)"
+                }}
+              >
+                {product.is_new_arrival ? "NEW ARRIVAL" : (product.is_best_seller ? "BEST SELLER" : (product.category?.name || "NEW ARRIVAL"))}
               </span>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-amber-400">
-                <Star className="w-3.5 h-3.5 fill-amber-400" />
-                <span>{Number(product.rating_average || 0).toFixed(1)}</span>
-                <span className="text-slate-500 font-normal">({product.review_count || 0} reviews)</span>
-              </div>
             </div>
 
-            {/* Title */}
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-snug">
+            {/* 2. Product Title (Clean, modern sans typography) */}
+            <h1 
+              className="text-2xl sm:text-3xl lg:text-4xl font-normal sm:font-medium tracking-tight text-slate-900 dark:text-white leading-tight"
+              style={{ color: "var(--theme-text-heading, #0f172a)" }}
+            >
               {product.name}
             </h1>
 
-            {/* Short Description */}
-            {product.short_description && (
-              <p className="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
-                {product.short_description}
-              </p>
-            )}
-          </div>
+            {/* 3. Ratings Bar (Shown only when reviews/ratings are enabled in admin panel) */}
+            {theme.reviews_enabled !== false && (
+              <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs sm:text-sm">
+                <div className="flex items-center gap-0.5 text-amber-400">
+                  {[...Array(5)].map((_, i) => (
+                    <Star 
+                      key={i} 
+                      className={`w-4 h-4 ${i < Math.round(product.rating_average || 5) ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-600"}`} 
+                    />
+                  ))}
+                  <span className="font-bold text-slate-800 dark:text-slate-200 ml-1.5">
+                    ({Number(product.rating_average || 5).toFixed(1)})
+                  </span>
+                </div>
 
-          {/* Pricing Header & Stock Indicator */}
-          <div className="p-3.5 rounded-2xl theme-card border border-white/5 flex items-baseline justify-between">
-            <div className="flex items-baseline gap-3">
-              <span className="text-2xl sm:text-3xl font-black text-cyan-400">
+                {product.review_count !== undefined && product.review_count > 0 && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <a 
+                      href="#reviews-section" 
+                      className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      {product.review_count} {product.review_count === 1 ? "review" : "reviews"}
+                    </a>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* 4. Price Display */}
+            <div className="pt-2 pb-1 flex items-baseline gap-3">
+              <span 
+                className="text-3xl sm:text-4xl font-semibold tracking-tight"
+                style={{ color: "var(--theme-text-heading, #0f172a)" }}
+              >
                 {formatPrice(currentPrice)}
               </span>
               {product.compare_at_price && product.compare_at_price > product.price && (
-                <span className="text-xs sm:text-sm text-slate-500 line-through">
+                <span className="text-base text-slate-400 line-through font-normal">
                   {formatPrice(product.compare_at_price)}
                 </span>
               )}
             </div>
-
-            {isOutOfStock ? (
-              <div className="flex items-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-full">
-                <AlertCircle className="w-3.5 h-3.5" /> Out of Stock
-              </div>
-            ) : isLowStock ? (
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
-                <AlertCircle className="w-3.5 h-3.5" /> Only {product.stock_quantity} left
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-                <Check className="w-4 h-4" /> In Stock & Ready to Ship
-              </div>
-            )}
           </div>
 
-          {/* Compact Variant Selector */}
-          <VariantPicker
-            variants={product.variants}
-            selectedVariant={selectedVariant}
-            hasError={hasVariantError}
-            onSelectVariant={(v) => {
-              setSelectedVariant(v);
-              setHasVariantError(false);
-            }}
-          />
+          {/* 5. SELECT COLOR & SELECT SIZE (Only if product has variants configured) */}
+          {product.variants && product.variants.length > 0 && (
+            <VariantPicker
+              variants={product.variants}
+              selectedVariant={selectedVariant}
+              selectedColor={selectedColor}
+              onSelectColor={setSelectedColor}
+              selectedSize={selectedSize}
+              onSelectSize={setSelectedSize}
+              availableStock={availableStock}
+              hasError={hasVariantError}
+              onSelectVariant={(v) => {
+                setSelectedVariant(v);
+                if (v) {
+                  if (v.color_name) setSelectedColor(v.color_name);
+                  if (v.size) setSelectedSize(v.size);
+                }
+                setHasVariantError(false);
+              }}
+            />
+          )}
 
-          {/* Quantity & CTA Buttons */}
-          <div className="space-y-2.5 pt-1">
-            <div className="flex gap-2.5">
+          {/* 6. Action Row: Quantity + Add to Cart + Wishlist */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-start gap-2.5">
               {/* Quantity Selector */}
-              <div className={`flex items-center theme-card border border-white/15 rounded-2xl p-1 shrink-0 ${isOutOfStock ? "opacity-50 pointer-events-none" : ""}`}>
-                <button
-                  type="button"
-                  disabled={isOutOfStock}
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm flex items-center justify-center cursor-pointer disabled:opacity-50"
+              <div className="flex flex-col items-center">
+                <div 
+                  className={`flex items-center rounded-xl p-1 shrink-0 transition-colors shadow-2xs ${
+                    isOutOfStock ? "opacity-50 pointer-events-none" : ""
+                  } ${
+                    isStockExceeded ? "border border-rose-500 ring-1 ring-rose-500/20" : "border border-gray-200 dark:border-white/10"
+                  }`}
+                  style={{
+                    backgroundColor: "#ffffff",
+                  }}
                 >
-                  -
-                </button>
-                <span className="w-8 text-center text-xs font-extrabold text-white">{quantity}</span>
-                <button
-                  type="button"
-                  disabled={isOutOfStock}
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm flex items-center justify-center cursor-pointer disabled:opacity-50"
-                >
-                  +
-                </button>
+                  <button
+                    type="button"
+                    disabled={isOutOfStock || quantity <= 0}
+                    onClick={handleDecreaseQuantity}
+                    className="w-8 h-8 rounded-lg border-0 hover:bg-gray-100 font-bold text-sm flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed bg-transparent"
+                    style={{ color: "#0f172a" }}
+                    aria-label="Decrease quantity"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={quantityInput}
+                    onChange={handleQuantityInputChange}
+                    onKeyDown={handleQuantityKeyDown}
+                    onBlur={handleQuantityBlur}
+                    disabled={isOutOfStock}
+                    aria-label="Product quantity"
+                    className="quantity-counter-input w-10 text-center text-xs font-black bg-white select-all appearance-none"
+                    style={{ 
+                      backgroundColor: "#ffffff",
+                      border: "0",
+                      borderWidth: "0",
+                      outline: "none",
+                      boxShadow: "none",
+                      color: isStockExceeded ? "#f43f5e" : "#0f172a" 
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={isOutOfStock || quantity >= availableStock}
+                    onClick={handleIncreaseQuantity}
+                    className="w-8 h-8 rounded-lg border-0 hover:bg-gray-100 font-bold text-sm flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed bg-transparent"
+                    style={{ color: "#0f172a" }}
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
+                {isStockExceeded && (
+                  <span className="text-[10.5px] font-bold text-rose-500 dark:text-rose-400 mt-1 whitespace-nowrap animate-in fade-in slide-in-from-top-1">
+                    not enough stock
+                  </span>
+                )}
               </div>
 
-              {/* Add to Cart Button */}
+              {/* Add to Cart Button (White) */}
               <button
                 type="button"
-                disabled={isOutOfStock}
+                disabled={isOutOfStock || quantity <= 0 || isStockExceeded}
                 onClick={handleAddToCart}
-                className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
-                  isOutOfStock
-                    ? "bg-white/5 border border-white/10 text-slate-500 cursor-not-allowed shadow-none"
-                    : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30 hover:scale-[1.01] cursor-pointer"
+                className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer border ${
+                  isOutOfStock || quantity <= 0 || isStockExceeded
+                    ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-white/5 text-slate-400 border-gray-200 dark:border-white/10"
+                    : "bg-white hover:bg-gray-50 active:bg-gray-100 text-slate-900 border-gray-300 dark:border-gray-200 shadow-sm active:scale-95"
                 }`}
               >
-                <ShoppingBag className="w-4 h-4" /> {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+                <ShoppingBag className="w-4 h-4 text-slate-900" /> 
+                <span className="text-slate-900 font-extrabold">{isOutOfStock ? "Out of Stock" : "Add to Cart"}</span>
               </button>
 
-              {/* Wishlist Heart */}
+              {/* Wishlist Heart Button */}
               <button
                 type="button"
                 onClick={() => toggleWishlist(product)}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                   inWishlist
-                    ? "bg-pink-600 border-pink-500 text-white"
-                    : "bg-white/5 border-white/10 text-slate-300 hover:text-pink-400"
+                    ? "bg-rose-600 border-rose-500 text-white shadow-sm"
+                    : "hover:border-rose-400 text-slate-400 hover:text-rose-500"
                 }`}
+                style={{
+                  backgroundColor: inWishlist ? undefined : "var(--theme-card-bg, #ffffff)",
+                  borderColor: inWishlist ? undefined : "var(--theme-card-border, #e5e7eb)"
+                }}
+                aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                title={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
               >
-                <Heart className={`w-4 h-4 ${inWishlist ? "fill-white" : ""}`} />
+                <Heart className={`w-4 h-4 ${inWishlist ? "fill-white text-white" : ""}`} />
               </button>
             </div>
 
             {/* Instant Buy Now Button */}
             <button
               type="button"
-              disabled={isOutOfStock}
+              disabled={isOutOfStock || quantity <= 0 || isStockExceeded}
               onClick={handleBuyNow}
-              className={`w-full py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                isOutOfStock
-                  ? "bg-white/5 border border-white/5 text-slate-500 cursor-not-allowed"
-                  : "bg-gradient-to-r from-cyan-500 to-indigo-600 hover:opacity-95 text-slate-950 shadow-md shadow-cyan-500/20 cursor-pointer"
+              className={`w-full py-3 px-6 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
+                isOutOfStock || quantity <= 0 || isStockExceeded
+                  ? "opacity-50 cursor-not-allowed bg-gray-200 dark:bg-white/5 text-slate-400"
+                  : "theme-btn-primary hover:opacity-95 hover:scale-[1.005] active:scale-95"
               }`}
             >
-              <Zap className="w-4 h-4 fill-current" /> {isOutOfStock ? "Currently Unavailable" : "Instant Checkout"}
+              <Zap className="w-4 h-4" /> 
+              <span>{isOutOfStock ? "Out of Stock" : "Instant Checkout"}</span>
             </button>
           </div>
 
-          {/* Delivery & Shipping Information Card (Admin Controlled) */}
-          <div className="p-4 rounded-2xl theme-card border border-white/10 space-y-3 bg-[#0c101d]/60 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-white/5">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-                <Truck className="w-3.5 h-3.5 text-cyan-400" /> Nationwide Delivery Options
+          {/* Delivery & Shipping Information Card */}
+          <div 
+            className="p-4 rounded-2xl border space-y-3 shadow-2xs"
+            style={{
+              backgroundColor: "var(--theme-card-bg, #ffffff)",
+              borderColor: "var(--theme-card-border, #e5e7eb)"
+            }}
+          >
+            <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-white/5">
+              <span 
+                className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+                style={{ color: "var(--theme-text-heading, #0f172a)" }}
+              >
+                <Truck 
+                  className="w-4 h-4" 
+                  style={{ color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))" }} 
+                /> 
+                Nationwide Delivery Options
               </span>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20">
                 Cash on Delivery (COD)
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-gray-50/80 dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-white block">Inside Dhaka</span>
-                  <span className="text-[10px] text-slate-400">24 – 48 Hours Express</span>
+                  <span 
+                    className="font-bold block"
+                    style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                  >
+                    Inside Dhaka
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                    24 – 48 Hours Express
+                  </span>
                 </div>
-                <span className="font-black text-cyan-400 font-mono">
+                <span 
+                  className="font-black font-mono"
+                  style={{ color: "var(--theme-primary, #005826)" }}
+                >
                   {formatPrice(theme.shipping_inside_dhaka_rate || 60)}
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-gray-50/80 dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-white block">Outside Dhaka</span>
-                  <span className="text-[10px] text-slate-400">2 – 3 Working Days</span>
+                  <span 
+                    className="font-bold block"
+                    style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                  >
+                    Outside Dhaka
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                    2 – 3 Working Days
+                  </span>
                 </div>
-                <span className="font-black text-cyan-400 font-mono">
+                <span 
+                  className="font-black font-mono"
+                  style={{ color: "var(--theme-primary, #005826)" }}
+                >
                   {formatPrice(theme.shipping_outside_dhaka_rate || 120)}
                 </span>
               </div>
             </div>
           </div>
-
-          {/* 4-Pillar Trust Guarantees Box (Admin Controlled) */}
-          <div className="p-3.5 rounded-2xl theme-card border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-            <div className="space-y-0.5 p-1.5 rounded-lg bg-white/[0.02]">
-              <Truck className="w-4 h-4 text-cyan-400 mx-auto" />
-              <p className="text-[11px] font-bold text-white">
-                {theme.trust_ribbon_title_1 || "Fast Delivery"}
-              </p>
-              <p className="text-[9px] text-slate-400">All 64 Districts</p>
-            </div>
-            <div className="space-y-0.5 p-1.5 rounded-lg bg-white/[0.02]">
-              <ShieldCheck className="w-4 h-4 text-indigo-400 mx-auto" />
-              <p className="text-[11px] font-bold text-white">
-                {theme.trust_ribbon_title_3 || "100% Genuine"}
-              </p>
-              <p className="text-[9px] text-slate-400">Official Warranty</p>
-            </div>
-            <div className="space-y-0.5 p-1.5 rounded-lg bg-white/[0.02]">
-              <RotateCcw className="w-4 h-4 text-pink-400 mx-auto" />
-              <p className="text-[11px] font-bold text-white">
-                {theme.trust_ribbon_title_4 || "7-Day Return"}
-              </p>
-              <p className="text-[9px] text-slate-400">Easy Exchange</p>
-            </div>
-            <div className="space-y-0.5 p-1.5 rounded-lg bg-white/[0.02]">
-              <Zap className="w-4 h-4 text-amber-400 mx-auto" />
-              <p className="text-[11px] font-bold text-white">
-                {theme.trust_ribbon_title_2 || "Pay on Delivery"}
-              </p>
-              <p className="text-[9px] text-slate-400">Inspect & Receive</p>
-            </div>
-          </div>
-
         </div>
-
       </div>
 
       {/* Description & Technical Specifications */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 border-t border-white/10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-8 border-t border-gray-200 dark:border-white/10">
         
+        {/* Left: Product Description */}
         <div className="lg:col-span-7 space-y-3">
-          <h3 className="text-lg font-black text-white">Product Overview</h3>
-          <div className="prose prose-invert text-xs sm:text-sm text-slate-300 leading-relaxed space-y-3">
+          <h3 
+            className="text-lg sm:text-xl font-black tracking-tight"
+            style={{ color: "var(--theme-text-heading, #0f172a)" }}
+          >
+            Product Description
+          </h3>
+          <div 
+            className="text-xs sm:text-sm leading-relaxed space-y-3 whitespace-pre-line"
+            style={{ color: "var(--theme-text-body, #475569)" }}
+          >
             <p>{product.description}</p>
           </div>
 
           {/* Tags */}
           {product.tags && product.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-3">
+            <div className="flex flex-wrap gap-1.5 pt-4">
               {product.tags.map((t) => (
                 <span
                   key={t}
-                  className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 border border-white/10 text-slate-300"
+                  className="px-2.5 py-1 rounded-lg text-[10.5px] font-semibold border"
+                  style={{
+                    backgroundColor: "var(--theme-card-bg, #ffffff)",
+                    borderColor: "var(--theme-card-border, #e5e7eb)",
+                    color: "var(--theme-text-body, #475569)"
+                  }}
                 >
                   #{t}
                 </span>
@@ -382,23 +559,49 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           )}
         </div>
 
-        {/* Specifications Table */}
+        {/* Right: Technical Specifications */}
         <div className="lg:col-span-5 space-y-3">
-          <h3 className="text-lg font-black text-white">Technical Specifications</h3>
-          <div className="rounded-2xl theme-card border border-white/10 overflow-hidden divide-y divide-white/5 text-xs">
-            <div className="flex justify-between p-3">
-              <span className="text-slate-400">SKU</span>
-              <span className="text-white font-mono font-bold">{product.sku || "N/A"}</span>
+          <h3 
+            className="text-lg sm:text-xl font-black tracking-tight"
+            style={{ color: "var(--theme-text-heading, #0f172a)" }}
+          >
+            Technical Specifications
+          </h3>
+          <div 
+            className="rounded-2xl border overflow-hidden divide-y divide-gray-100 dark:divide-white/5 text-xs shadow-2xs"
+            style={{
+              backgroundColor: "var(--theme-card-bg, #ffffff)",
+              borderColor: "var(--theme-card-border, #e5e7eb)"
+            }}
+          >
+            <div className="flex justify-between p-3.5">
+              <span className="text-slate-500 dark:text-slate-400">SKU</span>
+              <span 
+                className="font-mono font-bold"
+                style={{ color: "var(--theme-text-heading, #0f172a)" }}
+              >
+                {product.sku || "N/A"}
+              </span>
             </div>
-            <div className="flex justify-between p-3">
-              <span className="text-slate-400">Brand</span>
-              <span className="text-white font-bold">{product.brand || theme.store_brand_name || "AETHER"}</span>
+            <div className="flex justify-between p-3.5">
+              <span className="text-slate-500 dark:text-slate-400">Brand</span>
+              <span 
+                className="font-bold"
+                style={{ color: "var(--theme-text-heading, #0f172a)" }}
+              >
+                {product.brand || theme.store_brand_name || "AETHER"}
+              </span>
             </div>
             {product.specifications &&
               Object.entries(product.specifications).map(([key, val]) => (
-                <div key={key} className="flex justify-between p-3">
-                  <span className="text-slate-400">{key}</span>
-                  <span className="text-white font-medium text-right">{val}</span>
+                <div key={key} className="flex justify-between p-3.5">
+                  <span className="text-slate-500 dark:text-slate-400">{key}</span>
+                  <span 
+                    className="font-medium text-right"
+                    style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                  >
+                    {val}
+                  </span>
                 </div>
               ))}
           </div>
@@ -406,20 +609,30 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
       </div>
 
-      {/* Reviews Section */}
-      <ReviewSummary
-        productId={product.id}
-        ratingAverage={product.rating_average}
-        reviewCount={product.review_count}
-        reviews={product.reviews}
-      />
+      {/* Reviews Section (Configurable via Admin Panel) */}
+      {theme.reviews_enabled !== false && (
+        <ReviewSummary
+          productId={product.id}
+          ratingAverage={product.rating_average}
+          reviewCount={product.review_count}
+          reviews={product.reviews}
+        />
+      )}
 
-      {/* Related Products Grid */}
+      {/* Frequently Paired Gear Grid */}
       {related.length > 0 && (
-        <div className="pt-12 border-t border-white/10 space-y-6">
+        <div className="pt-10 border-t border-gray-200 dark:border-white/10 space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-black text-white">Frequently Paired Gear</h3>
-            <Link href="/products" className="text-xs font-bold text-cyan-400 hover:text-cyan-300">
+            <h3 
+              className="text-xl sm:text-2xl font-black tracking-tight"
+              style={{ color: "var(--theme-text-heading, #0f172a)" }}
+            >
+              Frequently Paired Gear
+            </h3>
+            <Link 
+              href="/products" 
+              className="text-xs font-bold theme-view-all-text hover:underline transition-colors"
+            >
               View Entire Collection →
             </Link>
           </div>
@@ -432,35 +645,52 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       )}
 
       {/* Mobile Sticky Add-to-Cart Action Bar */}
-      <div className="lg:hidden fixed bottom-12 sm:bottom-0 inset-x-0 z-40 p-2.5 sm:p-3 bg-[#080a12]/95 backdrop-blur-md border-t border-white/10 flex items-center justify-between gap-2 shadow-2xl">
+      <div 
+        className="lg:hidden fixed bottom-12 sm:bottom-0 inset-x-0 z-40 p-2.5 sm:p-3 border-t flex items-center justify-between gap-2 shadow-2xl backdrop-blur-xl"
+        style={{
+          backgroundColor: "var(--theme-card-bg, #ffffff)",
+          borderColor: "var(--theme-card-border, #e5e7eb)"
+        }}
+      >
         <div className="min-w-0 flex-1">
-          <span className="text-[10px] text-slate-400 block truncate">{product.name}</span>
-          <span className="text-sm font-black text-cyan-400">{formatPrice(currentPrice)}</span>
+          <span 
+            className="text-[10px] block truncate font-medium"
+            style={{ color: "var(--theme-text-body, #64748b)" }}
+          >
+            {product.name}
+          </span>
+          <span 
+            className="text-sm font-black"
+            style={{ color: "var(--theme-primary, #005826)" }}
+          >
+            {formatPrice(currentPrice)}
+          </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            disabled={isOutOfStock}
+            disabled={isOutOfStock || quantity <= 0 || isStockExceeded}
             onClick={handleAddToCart}
-            className={`px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-1 ${
-              isOutOfStock
-                ? "bg-white/5 border border-white/10 text-slate-500 cursor-not-allowed"
-                : "bg-white/10 hover:bg-white/15 text-white border border-white/15 cursor-pointer"
+            className={`px-3 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 border ${
+              isOutOfStock || quantity <= 0 || isStockExceeded
+                ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-white/5 text-slate-400 border-gray-200 dark:border-white/10"
+                : "bg-white hover:bg-gray-50 active:bg-gray-100 text-slate-900 border-gray-300 dark:border-gray-200 shadow-xs cursor-pointer active:scale-95"
             }`}
           >
-            <ShoppingBag className="w-3.5 h-3.5" /> Cart
+            <ShoppingBag className="w-3.5 h-3.5 text-slate-900" /> 
+            <span className="text-slate-900 font-extrabold">Cart</span>
           </button>
           <button
             type="button"
-            disabled={isOutOfStock}
+            disabled={isOutOfStock || quantity <= 0 || isStockExceeded}
             onClick={handleBuyNow}
             className={`px-3.5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-1 ${
-              isOutOfStock
-                ? "bg-white/5 border border-white/10 text-slate-500 cursor-not-allowed"
-                : "theme-btn-primary cursor-pointer shadow-md"
+              isOutOfStock || quantity <= 0 || isStockExceeded
+                ? "opacity-50 cursor-not-allowed bg-gray-200 dark:bg-white/5 text-slate-400"
+                : "theme-btn-primary cursor-pointer shadow-md active:scale-95"
             }`}
           >
-            <Zap className="w-3.5 h-3.5 fill-current" /> Buy Now
+            <Zap className="w-3.5 h-3.5" /> Buy Now
           </button>
         </div>
       </div>
@@ -488,7 +718,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                 ? "https://schema.org/OutOfStock"
                 : "https://schema.org/InStock",
             },
-            ...(product.rating_average && product.review_count
+            ...(theme.reviews_enabled !== false && product.rating_average && product.review_count
               ? {
                   aggregateRating: {
                     "@type": "AggregateRating",

@@ -55,7 +55,8 @@ export default function AdminPosPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [discountType, setDiscountType] = useState<"fixed" | "percentage">("fixed");
   const [discountValue, setDiscountValue] = useState<number>(0);
-  const [taxRate] = useState<number>(0.08); // 8% standard tax
+  const [vatEnabled, setVatEnabled] = useState<boolean>(true);
+  const [vatRate, setVatRate] = useState<number>(8.0);
   const [notes, setNotes] = useState("");
 
   // Modals
@@ -103,14 +104,24 @@ export default function AdminPosPage() {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const [regs, currentSessionRes, catRes] = await Promise.all([
+      const [regs, currentSessionRes, catRes, settingsRes] = await Promise.all([
         adminApi.getPosRegisters(),
         adminApi.getCurrentPosSession(),
         adminApi.getCategories(),
+        adminApi.getSettings().catch(() => ({} as Record<string, any>)),
       ]);
       setRegisters(regs);
       setSession(currentSessionRes.session);
       setCategories(catRes);
+      if (settingsRes && typeof settingsRes === "object") {
+        const s = settingsRes as Record<string, any>;
+        if (s.vat_enabled !== undefined) {
+          setVatEnabled(s.vat_enabled.value === "1" || s.vat_enabled.value === true);
+        }
+        if (s.vat_rate?.value !== undefined) {
+          setVatRate(parseFloat(s.vat_rate.value) || 0);
+        }
+      }
       if (regs.length > 0 && !selectedRegisterId) {
         setSelectedRegisterId(regs[0].id);
       }
@@ -228,7 +239,7 @@ export default function AdminPosPage() {
   const orderDiscount = discountType === "percentage"
     ? Math.min(subtotal, (subtotal * Math.min(100, Math.max(0, discountValue))) / 100)
     : Math.min(subtotal, Math.max(0, discountValue));
-  const taxAmount = Math.max(0, (subtotal - orderDiscount) * taxRate);
+  const taxAmount = vatEnabled ? Math.max(0, (subtotal - orderDiscount) * (vatRate / 100)) : 0;
   const totalAmount = Math.max(0, subtotal - orderDiscount) + taxAmount;
   const changeDue = Math.max(0, cashReceived - totalAmount);
 
@@ -749,7 +760,7 @@ export default function AdminPosPage() {
                 </div>
               </div>
               <div className="flex justify-between text-slate-400">
-                <span>Sales Tax (8%)</span>
+                <span>VAT {vatEnabled ? `(${vatRate}%)` : "(Disabled)"}</span>
                 <span className="font-mono text-slate-200">${taxAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-white/10">
@@ -1227,8 +1238,8 @@ export default function AdminPosPage() {
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span>Tax (8%):</span>
-                  <span>${completedReceipt.tax?.toFixed(2)}</span>
+                  <span>VAT {completedReceipt.tax > 0 ? `(${vatRate}%)` : ""}:</span>
+                  <span>${completedReceipt.tax?.toFixed(2) || "0.00"}</span>
                 </div>
                 <div className="flex justify-between font-bold text-sm pt-1 border-t border-black">
                   <span>TOTAL PAID:</span>

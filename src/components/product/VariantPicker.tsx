@@ -1,13 +1,18 @@
 "use client";
 
+import { useMemo } from "react";
 import { ProductVariant } from "@/types";
 import { formatPrice } from "@/lib/utils";
-import { Check, Sparkles, AlertCircle } from "lucide-react";
 
 interface VariantPickerProps {
   variants?: ProductVariant[];
   selectedVariant?: ProductVariant | null;
   onSelectVariant: (variant: ProductVariant | null) => void;
+  selectedColor?: string | null;
+  onSelectColor?: (color: string | null) => void;
+  selectedSize?: string | null;
+  onSelectSize?: (size: string | null) => void;
+  availableStock?: number;
   hasError?: boolean;
 }
 
@@ -15,96 +20,250 @@ export function VariantPicker({
   variants = [],
   selectedVariant,
   onSelectVariant,
+  selectedColor,
+  onSelectColor,
+  selectedSize,
+  onSelectSize,
+  availableStock = 0,
   hasError = false,
 }: VariantPickerProps) {
-  if (variants.length === 0) return null;
+  // If product has no variants configured, render nothing
+  if (!variants || variants.length === 0) {
+    return null;
+  }
+
+  // Extract distinct colors from variants
+  const distinctColors = useMemo(() => {
+    const map = new Map<string, { name: string; hex?: string | null; inStock: boolean; minPriceMod: number }>();
+    variants.forEach((v) => {
+      const colorKey = v.color_name?.trim();
+      if (colorKey) {
+        const existing = map.get(colorKey);
+        const inStock = v.stock_quantity > 0;
+        if (!existing) {
+          map.set(colorKey, {
+            name: colorKey,
+            hex: v.color_hex,
+            inStock,
+            minPriceMod: Number(v.price_modifier || 0),
+          });
+        } else if (inStock) {
+          existing.inStock = true;
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [variants]);
+
+  // Extract distinct sizes from variants
+  const distinctSizes = useMemo(() => {
+    const map = new Map<string, { size: string; inStock: boolean }>();
+    variants.forEach((v) => {
+      const sizeKey = v.size?.trim();
+      if (sizeKey) {
+        const inStock = v.stock_quantity > 0;
+        const existing = map.get(sizeKey);
+        if (!existing) {
+          map.set(sizeKey, { size: sizeKey, inStock });
+        } else if (inStock) {
+          existing.inStock = true;
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [variants]);
+
+  // If no explicit color or size attributes were specified, treat each variant as a distinct option
+  const isGenericVariantList = distinctColors.length === 0 && distinctSizes.length === 0;
+
+  // Track active color & size
+  const activeColor = selectedColor || selectedVariant?.color_name || (distinctColors[0]?.name ?? null);
+  const activeSize = selectedSize || selectedVariant?.size || (distinctSizes[0]?.size ?? null);
+
+  // Helper to match the variant given current color + size selections
+  const findMatchingVariant = (color: string | null, size: string | null) => {
+    if (isGenericVariantList) return selectedVariant;
+
+    let match = variants.find((v) => {
+      const matchColor = !color || (v.color_name && v.color_name.toLowerCase() === color.toLowerCase());
+      const matchSize = !size || (v.size && v.size.toLowerCase() === size.toLowerCase());
+      return matchColor && matchSize;
+    });
+
+    if (!match && color) {
+      match = variants.find((v) => v.color_name && v.color_name.toLowerCase() === color.toLowerCase());
+    }
+    if (!match && size) {
+      match = variants.find((v) => v.size && v.size.toLowerCase() === size.toLowerCase());
+    }
+    return match || variants[0] || null;
+  };
+
+  const handleSelectColor = (colorName: string) => {
+    onSelectColor?.(colorName);
+    const matched = findMatchingVariant(colorName, activeSize);
+    if (matched) {
+      onSelectVariant(matched);
+    }
+  };
+
+  const handleSelectSize = (sizeValue: string) => {
+    onSelectSize?.(sizeValue);
+    const matched = findMatchingVariant(activeColor, sizeValue);
+    if (matched) {
+      onSelectVariant(matched);
+    }
+  };
+
+  const handleSelectGenericVariant = (v: ProductVariant) => {
+    onSelectVariant(v);
+    if (v.color_name) onSelectColor?.(v.color_name);
+    if (v.size) onSelectSize?.(v.size);
+  };
 
   return (
-    <div
-      className={`space-y-3 py-3.5 px-4 rounded-2xl border transition-all ${
-        hasError
-          ? "border-rose-500/80 bg-rose-500/5 shadow-lg shadow-rose-500/15 animate-pulse"
-          : "theme-card border-white/10"
-      }`}
-    >
-      {/* Header with Title and Selected Color info */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-            Color Finish
-          </span>
-          {variants.length > 1 && !selectedVariant && (
-            <span className="text-[10px] text-amber-400 font-semibold flex items-center gap-1">
-              (Choose an edition)
-            </span>
-          )}
-        </div>
-
-        {selectedVariant && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-cyan-400 font-extrabold flex items-center gap-1.5">
-              {selectedVariant.color_hex && (
-                <span
-                  className="w-2.5 h-2.5 rounded-full border border-white/40 shadow-sm"
-                  style={{ backgroundColor: selectedVariant.color_hex }}
-                />
-              )}
-              {selectedVariant.name}
-              {selectedVariant.price_modifier > 0 && ` (+${formatPrice(selectedVariant.price_modifier)})`}
-            </span>
-            <span className="text-[10px] text-slate-400 font-medium">
-              ({selectedVariant.stock_quantity > 0 ? `${selectedVariant.stock_quantity} left` : "Sold out"})
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Swatches & Chips Row */}
-      <div className="flex flex-wrap gap-2.5 items-center">
-        {variants.map((v) => {
-          const isSelected = selectedVariant?.id === v.id;
-          const isOutOfStock = v.stock_quantity <= 0;
-
-          return (
-            <button
-              key={v.id}
-              type="button"
-              disabled={isOutOfStock}
-              onClick={() => onSelectVariant(isSelected ? null : v)}
-              className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                isSelected
-                  ? "bg-indigo-600/20 border-cyan-400 text-cyan-300 shadow-md shadow-cyan-400/15 ring-2 ring-cyan-400/30"
-                  : isOutOfStock
-                  ? "opacity-40 border-dashed border-white/10 bg-white/[0.02] text-slate-500 cursor-not-allowed"
-                  : "bg-white/5 border-white/10 text-slate-300 hover:text-white hover:border-white/25 hover:bg-white/10"
-              }`}
-            >
-              {/* Color Swatch Dot */}
-              {v.color_hex ? (
-                <span
-                  className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-inner shrink-0"
-                  style={{ backgroundColor: v.color_hex }}
-                />
-              ) : (
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0" />
-              )}
-
-              {/* Variant Name */}
-              <span>{v.name}</span>
-
-              {/* Stock Indicator */}
-              <span className={`text-[10px] font-normal ${isSelected ? "text-cyan-400/80" : "text-slate-400"}`}>
-                {isOutOfStock ? "Out" : `${v.stock_quantity}`}
+    <div className={`space-y-4 pt-1 ${hasError ? "animate-pulse" : ""}`}>
+      {/* 1. SELECT COLOR (Only rendered if product has colors configured) */}
+      {distinctColors.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+              SELECT COLOR
+            </label>
+            {activeColor && (
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {activeColor}
               </span>
+            )}
+          </div>
 
-              {/* Selected Check icon */}
-              {isSelected && (
-                <Check className="w-3.5 h-3.5 text-cyan-400 stroke-[3] ml-0.5 shrink-0" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            {distinctColors.map((color) => {
+              const isSelected = activeColor?.toLowerCase() === color.name.toLowerCase();
+              const isOutOfStock = !color.inStock;
+
+              return (
+                <button
+                  key={color.name}
+                  type="button"
+                  disabled={isOutOfStock}
+                  onClick={() => handleSelectColor(color.name)}
+                  className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+                    isSelected
+                      ? "border-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-500/10 shadow-xs font-semibold"
+                      : isOutOfStock
+                      ? "opacity-40 border-dashed border-gray-200 dark:border-white/10 bg-transparent text-slate-400 cursor-not-allowed"
+                      : "border-gray-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-gray-300 dark:hover:border-white/20 bg-white dark:bg-white/[0.03]"
+                  }`}
+                >
+                  {color.hex && (
+                    <span
+                      className="w-3.5 h-3.5 rounded-full border border-black/15 dark:border-white/30 shadow-2xs shrink-0"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                  )}
+                  <span>{color.name}</span>
+                  {color.minPriceMod > 0 && (
+                    <span className="text-[10px] opacity-75">
+                      (+{formatPrice(color.minPriceMod)})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 2. SELECT SIZE (Only rendered if product has sizes configured) */}
+      {distinctSizes.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+              SELECT SIZE
+            </label>
+            {availableStock <= 8 && availableStock > 0 && (
+              <span className="text-[11px] font-bold text-rose-500 dark:text-rose-400 flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                Only {availableStock} Stocks Left!
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            {distinctSizes.map((s, idx) => {
+              const isSelected = activeSize?.toLowerCase() === s.size.toLowerCase();
+              const isOutOfStock = !s.inStock;
+              const isLowStock = availableStock <= 8 && idx === 0 && !isOutOfStock;
+
+              return (
+                <button
+                  key={s.size}
+                  type="button"
+                  disabled={isOutOfStock}
+                  onClick={() => handleSelectSize(s.size)}
+                  className={`relative min-w-[42px] h-10 px-3.5 rounded-lg border text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center ${
+                    isSelected
+                      ? "border-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-500/10 shadow-xs font-bold"
+                      : isOutOfStock
+                      ? "opacity-40 border-dashed border-gray-200 dark:border-white/10 bg-transparent text-slate-400 cursor-not-allowed"
+                      : "border-gray-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-gray-300 dark:hover:border-white/20 bg-white dark:bg-white/[0.03] font-medium"
+                  }`}
+                >
+                  {s.size}
+                  {isLowStock && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-[#0b0e17]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 3. GENERIC OPTIONS (Rendered when variants exist without explicit color/size keys) */}
+      {isGenericVariantList && variants.length > 0 && (
+        <div className="space-y-2">
+          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+            SELECT OPTION
+          </label>
+          <div className="flex flex-wrap gap-2 items-center">
+            {variants.map((v) => {
+              const isSelected = selectedVariant?.id === v.id;
+              const isOutOfStock = v.stock_quantity <= 0;
+
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  disabled={isOutOfStock}
+                  onClick={() => handleSelectGenericVariant(v)}
+                  className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+                    isSelected
+                      ? "border-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-500/10 shadow-xs font-semibold"
+                      : isOutOfStock
+                      ? "opacity-40 border-dashed border-gray-200 dark:border-white/10 bg-transparent text-slate-400 cursor-not-allowed"
+                      : "border-gray-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-gray-300 dark:hover:border-white/20 bg-white dark:bg-white/[0.03]"
+                  }`}
+                >
+                  {v.color_hex && (
+                    <span
+                      className="w-3.5 h-3.5 rounded-full border border-black/15 dark:border-white/30 shadow-2xs shrink-0"
+                      style={{ backgroundColor: v.color_hex }}
+                    />
+                  )}
+                  <span>{v.name}</span>
+                  {v.price_modifier > 0 && (
+                    <span className="text-[10px] opacity-75 font-mono">
+                      (+{formatPrice(v.price_modifier)})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

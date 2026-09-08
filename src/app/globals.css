@@ -406,7 +406,7 @@ body.theme-light-mode:not(.admin-body) .theme-promo-banner {
 
 /* Form Controls & Inputs Synchronization in Light Mode */
 body.theme-light-mode:not(.admin-body) .theme-input,
-body.theme-light-mode:not(.admin-body) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+body.theme-light-mode:not(.admin-body) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(.quantity-counter-input),
 body.theme-light-mode:not(.admin-body) select,
 body.theme-light-mode:not(.admin-body) textarea {
   background-color: #f8fafc !important;
@@ -415,22 +415,36 @@ body.theme-light-mode:not(.admin-body) textarea {
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
 }
 
+.quantity-counter-input,
+.quantity-counter-input:hover,
+.quantity-counter-input:focus,
+body.theme-light-mode:not(.admin-body) .quantity-counter-input,
+body.theme-light-mode:not(.admin-body) .quantity-counter-input:hover,
+body.theme-light-mode:not(.admin-body) .quantity-counter-input:focus {
+  background-color: #ffffff !important;
+  border: 0 !important;
+  border-width: 0 !important;
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 body.theme-light-mode:not(.admin-body) .theme-input::placeholder,
-body.theme-light-mode:not(.admin-body) input::placeholder,
+body.theme-light-mode:not(.admin-body) input:not(.quantity-counter-input)::placeholder,
 body.theme-light-mode:not(.admin-body) textarea::placeholder {
   color: #64748b !important;
   opacity: 0.85 !important;
 }
 
 body.theme-light-mode:not(.admin-body) .theme-input:hover,
-body.theme-light-mode:not(.admin-body) input:hover,
+body.theme-light-mode:not(.admin-body) input:not(.quantity-counter-input):hover,
 body.theme-light-mode:not(.admin-body) select:hover {
   background-color: #ffffff !important;
   border-color: #94a3b8 !important;
 }
 
 body.theme-light-mode:not(.admin-body) .theme-input:focus,
-body.theme-light-mode:not(.admin-body) input:focus,
+body.theme-light-mode:not(.admin-body) input:not(.quantity-counter-input):focus,
 body.theme-light-mode:not(.admin-body) select:focus {
   background-color: #ffffff !important;
   border-color: var(--theme-primary, #2563eb) !important;

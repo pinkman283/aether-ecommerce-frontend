@@ -131,6 +131,10 @@ export const useCartStore = create<CartState>()(
       },
 
       getTax: () => {
+        const { promotionEvaluation } = get();
+        if (promotionEvaluation?.valid && typeof promotionEvaluation.tax_amount === "number") {
+          return Number(promotionEvaluation.tax_amount);
+        }
         return 0;
       },
 
@@ -142,7 +146,8 @@ export const useCartStore = create<CartState>()(
         const subtotal = get().getSubtotal();
         const discount = get().getDiscount();
         const shipping = get().getShipping();
-        return Math.max(0, subtotal - discount) + shipping;
+        const tax = get().getTax();
+        return Math.max(0, subtotal - discount) + shipping + tax;
       },
 
       getItemCount: () => {

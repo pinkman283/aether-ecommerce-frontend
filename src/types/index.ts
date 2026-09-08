@@ -1266,6 +1266,7 @@ export interface ReviewSummary {
   pending_reviews: number;
   average_rating: number;
   rating_distribution: Record<number, number>;
+  reviews_enabled?: boolean;
 }
 
 export type BannerDestinationType = 'product' | 'category' | 'brand' | 'collection' | 'promotion' | 'page' | 'custom';
@@ -1654,6 +1655,9 @@ export interface PromotionEvaluationResult {
   shipping_amount: number;
   base_shipping_rate: number;
   tax_amount: number;
+  vat_amount?: number;
+  vat_rate?: number;
+  vat_enabled?: boolean;
   grand_total: number;
   applied_promotions: AppliedPromotionItem[];
   message?: string | null;

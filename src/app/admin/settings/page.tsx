@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 export default function AdminSettingsPage() {
@@ -37,7 +38,8 @@ export default function AdminSettingsPage() {
   const [storeName, setStoreName] = useState("AETHER Hardware Labs");
   const [supportEmail, setSupportEmail] = useState("ops@aether-audio.test");
   const [currency, setCurrency] = useState("USD");
-  const [taxRate, setTaxRate] = useState("8.0");
+  const [vatEnabled, setVatEnabled] = useState(true);
+  const [vatRate, setVatRate] = useState("8.0");
   const [freeShippingThreshold, setFreeShippingThreshold] = useState("100.0");
   const [standardShippingRate, setStandardShippingRate] = useState("15.0");
   const [priorityShippingRate, setPriorityShippingRate] = useState("25.0");
@@ -48,11 +50,19 @@ export default function AdminSettingsPage() {
     async function loadSettings() {
       try {
         const data = await adminApi.getSettings();
+        const isVatOn = data.vat_enabled !== undefined
+          ? (data.vat_enabled?.value === "true" || data.vat_enabled?.value === "1" || data.vat_enabled?.value === true)
+          : (data.tax_enabled !== undefined
+              ? (data.tax_enabled?.value === "true" || data.tax_enabled?.value === "1" || data.tax_enabled?.value === true)
+              : true);
+        const loadedVatRate = data.vat_rate?.value || data.tax_rate?.value || "8.0";
+
         const init = {
           store_name: data.store_name?.value || "AETHER Sound Systems",
           support_email: data.support_email?.value || "support@aether-audio.test",
           currency: data.currency?.value || "USD",
-          tax_rate: data.tax_rate?.value || "8.5",
+          vat_enabled: isVatOn,
+          vat_rate: loadedVatRate,
           free_shipping_threshold: data.free_shipping_threshold?.value || "150",
           standard_shipping_rate: data.standard_shipping_rate?.value || "15",
           priority_shipping_rate: data.priority_shipping_rate?.value || "35",
@@ -61,7 +71,8 @@ export default function AdminSettingsPage() {
         if (data.store_name?.value) setStoreName(data.store_name.value);
         if (data.support_email?.value) setSupportEmail(data.support_email.value);
         if (data.currency?.value) setCurrency(data.currency.value);
-        if (data.tax_rate?.value) setTaxRate(data.tax_rate.value);
+        setVatEnabled(isVatOn);
+        setVatRate(loadedVatRate);
         if (data.free_shipping_threshold?.value) setFreeShippingThreshold(data.free_shipping_threshold.value);
         if (data.standard_shipping_rate?.value) setStandardShippingRate(data.standard_shipping_rate.value);
         if (data.priority_shipping_rate?.value) setPriorityShippingRate(data.priority_shipping_rate.value);
@@ -79,7 +90,8 @@ export default function AdminSettingsPage() {
       storeName !== initialSettings.store_name ||
       supportEmail !== initialSettings.support_email ||
       currency !== initialSettings.currency ||
-      taxRate !== initialSettings.tax_rate ||
+      vatEnabled !== initialSettings.vat_enabled ||
+      vatRate !== initialSettings.vat_rate ||
       freeShippingThreshold !== initialSettings.free_shipping_threshold ||
       standardShippingRate !== initialSettings.standard_shipping_rate ||
       priorityShippingRate !== initialSettings.priority_shipping_rate
@@ -91,7 +103,8 @@ export default function AdminSettingsPage() {
     setStoreName(initialSettings.store_name);
     setSupportEmail(initialSettings.support_email);
     setCurrency(initialSettings.currency);
-    setTaxRate(initialSettings.tax_rate);
+    setVatEnabled(initialSettings.vat_enabled);
+    setVatRate(initialSettings.vat_rate);
     setFreeShippingThreshold(initialSettings.free_shipping_threshold);
     setStandardShippingRate(initialSettings.standard_shipping_rate);
     setPriorityShippingRate(initialSettings.priority_shipping_rate);
@@ -110,7 +123,10 @@ export default function AdminSettingsPage() {
       store_name: storeName,
       support_email: supportEmail,
       currency,
-      tax_rate: taxRate,
+      vat_enabled: vatEnabled ? "true" : "false",
+      vat_rate: vatRate,
+      tax_rate: vatRate,
+      tax_enabled: vatEnabled ? "true" : "false",
       free_shipping_threshold: freeShippingThreshold,
       standard_shipping_rate: standardShippingRate,
       priority_shipping_rate: priorityShippingRate,
@@ -118,7 +134,10 @@ export default function AdminSettingsPage() {
 
     try {
       await adminApi.updateSettings(payload);
-      setInitialSettings(payload);
+      setInitialSettings({
+        ...payload,
+        vat_enabled: vatEnabled,
+      });
       toast.success("Store configurations updated successfully.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to update settings.");
@@ -148,7 +167,7 @@ export default function AdminSettingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">General Store Settings</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Configure official store identity, currency, financial taxes, and default shipping rates</p>
+          <p className="text-xs text-slate-400 mt-0.5">Configure official store identity, currency, VAT policies, and default shipping rates</p>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -213,9 +232,18 @@ export default function AdminSettingsPage() {
 
         {/* 2. Financial & Currency */}
         <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
-          <div className="flex items-center gap-2 pb-2.5 border-b border-white/5">
-            <DollarSign className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-sm font-bold text-white">Currency & Tax Policies</h3>
+          <div className="flex items-center justify-between gap-3 pb-3 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <div>
+                <h3 className="text-sm font-bold text-white">Currency & VAT Policies</h3>
+                <p className="text-[11px] text-slate-400">Configure store operating currency and VAT calculations</p>
+              </div>
+            </div>
+            <Switch
+              checked={vatEnabled}
+              onCheckedChange={(checked) => setVatEnabled(checked)}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -231,17 +259,39 @@ export default function AdminSettingsPage() {
                 <option value="EUR" className="bg-[#0e121e]">EUR (€) - Euro</option>
                 <option value="GBP" className="bg-[#0e121e]">GBP (£) - British Pound</option>
               </select>
+              <p className="text-[11px] text-slate-500">Primary currency for product pricing and transactions</p>
             </div>
+
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-300 block">Default Sales Tax Rate (%)</label>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-300 block">Default VAT Rate (%)</label>
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                  vatEnabled 
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                    : "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                }`}>
+                  {vatEnabled ? `Charging ${vatRate || 0}%` : "Turned Off (0% applied)"}
+                </span>
+              </div>
               <input
                 type="number"
                 step="0.1"
-                required
-                value={taxRate}
-                onChange={(e) => setTaxRate(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white font-mono focus:outline-none focus:border-amber-400"
+                min="0"
+                max="100"
+                required={vatEnabled}
+                disabled={!vatEnabled}
+                value={vatRate}
+                onChange={(e) => setVatRate(e.target.value)}
+                className={`w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white font-mono focus:outline-none focus:border-amber-400 transition-all ${
+                  !vatEnabled ? "opacity-40 cursor-not-allowed bg-white/[0.02] border-white/5" : ""
+                }`}
+                placeholder="e.g. 8.0"
               />
+              <p className="text-[11px] text-slate-400">
+                {vatEnabled
+                  ? "Automatically calculated and added to customer orders during checkout."
+                  : "VAT is turned off. Orders will NOT add any VAT to the order price."}
+              </p>
             </div>
           </div>
         </div>

@@ -773,6 +773,11 @@ export const adminApi = {
     return res.data;
   },
 
+  async toggleReviewsVisibility(enabled: boolean): Promise<{ success: boolean; reviews_enabled: boolean; message: string }> {
+    const res = await adminClient.patch("/admin/reviews/visibility", { enabled });
+    return res.data;
+  },
+
   // ==========================================
   // STAFF & RBAC
   // ==========================================

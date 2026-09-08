@@ -176,7 +176,11 @@ export default function CheckoutPage() {
     ? promotionEvaluation.total_discount
     : getDiscount();
 
-  const intermediateTotal = Math.max(0, subtotal - totalDiscount) + effectiveShipping;
+  const vatAmount = promotionEvaluation?.valid && typeof promotionEvaluation.tax_amount === "number"
+    ? promotionEvaluation.tax_amount
+    : 0;
+
+  const intermediateTotal = Math.max(0, subtotal - totalDiscount) + effectiveShipping + vatAmount;
   const storeCreditDeduction = useStoreCredit ? Math.min(storeCreditBalance, intermediateTotal) : 0;
   const total = Math.max(0, intermediateTotal - storeCreditDeduction);
 
@@ -1008,6 +1012,21 @@ export default function CheckoutPage() {
                     )}
                   </span>
                 </div>
+
+                {vatAmount > 0 && (
+                  <div 
+                    className="flex justify-between"
+                    style={{ color: "var(--theme-text-body, #64748b)" }}
+                  >
+                    <span>VAT ({promotionEvaluation?.vat_rate ?? 8}%)</span>
+                    <span 
+                      className="font-bold font-mono"
+                      style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                    >
+                      +{formatPrice(vatAmount)}
+                    </span>
+                  </div>
+                )}
 
                 {useStoreCredit && storeCreditDeduction > 0 && (
                   <div className="flex justify-between text-cyan-400 font-bold font-mono">

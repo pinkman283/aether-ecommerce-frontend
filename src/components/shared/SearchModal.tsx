@@ -7,6 +7,7 @@ import { Search, X, ArrowRight, Sparkles, Tag, Star } from "lucide-react";
 import { api } from "@/lib/api";
 import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
+import { useThemeStore } from "@/store/useThemeStore";
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface SearchModalProps {
 
 export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const router = useRouter();
+  const { theme } = useThemeStore();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -156,11 +158,11 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                             <span className="text-[11px] text-slate-400">{product.brand}</span>
                             <span className="text-slate-600">•</span>
                             <span className="text-xs font-extrabold text-cyan-400">{formatPrice(product.price)}</span>
-                            {product.rating_average && (
+                            {theme.reviews_enabled !== false && product.rating_average ? (
                               <span className="text-[10px] text-amber-400 flex items-center gap-0.5 ml-auto">
                                 <Star className="w-3 h-3 fill-amber-400" /> {product.rating_average}
                               </span>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                         <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all shrink-0" />
