@@ -231,6 +231,17 @@ export const adminApi = {
     return res.data;
   },
 
+  async uploadCategoryImage(file: File): Promise<{ message: string; image_url: string; path: string; filename: string }> {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await adminClient.post("/admin/categories/upload-image", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  },
+
   async bulkDeleteCategories(ids: number[]): Promise<{ message: string; deleted_count: number; skipped_count?: number }> {
     const res = await adminClient.post("/admin/categories/bulk-delete", { ids });
     return res.data;

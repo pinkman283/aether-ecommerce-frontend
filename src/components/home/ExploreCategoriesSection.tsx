@@ -64,7 +64,7 @@ export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectio
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-      {/* Section Header: LuLu Style Clean Hierarchy */}
+      {/* Section Header */}
       <div className="flex items-end justify-between gap-4 mb-4 sm:mb-5">
         <div>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
@@ -114,29 +114,29 @@ export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectio
         </div>
       </div>
 
-      {/* Horizontal Carousel Track */}
+      {/* Horizontal Carousel Track with Aspect-Ratio Adaptive Tiles */}
       <div
         ref={scrollRef}
         onScroll={checkScroll}
         className="flex items-start gap-3 sm:gap-4 overflow-x-auto no-scrollbar pb-3 pt-1 scroll-smooth"
       >
-        {/* Featured "Top Deals" Tile (LuLu Red Flame Special) */}
+        {/* Featured "Top Deals" Tile */}
         <Link
-          href="/promotions"
-          className="shrink-0 w-[110px] sm:w-[124px] flex flex-col items-center text-center group cursor-pointer"
+          href="/products?discounted=true"
+          className="shrink-0 w-auto min-w-[76px] sm:min-w-[84px] max-w-[130px] flex flex-col items-center text-center group cursor-pointer"
         >
-          <div className="w-[84px] h-[84px] sm:w-[94px] sm:h-[94px] rounded-full sm:rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 p-3 flex flex-col items-center justify-center shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:border-rose-400">
-            <Flame className="w-8 h-8 sm:w-9 sm:h-9 text-rose-600 fill-rose-600 animate-pulse" />
+          <div className="h-[64px] sm:h-[72px] w-[64px] sm:w-[72px] rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 p-2 flex flex-col items-center justify-center shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:border-rose-400">
+            <Flame className="w-7 h-7 sm:w-8 sm:h-8 text-rose-600 fill-rose-600 animate-pulse" />
           </div>
-          <span className="mt-2.5 text-xs font-black text-rose-600 group-hover:underline line-clamp-1">
+          <span className="mt-2 text-xs font-black text-rose-600 group-hover:underline line-clamp-1 max-w-full px-1">
             Top Deals
           </span>
-          <span className="text-[10px] font-bold text-rose-500">
+          <span className="text-[10px] font-bold text-rose-500 mt-0.5">
             Up to 20% Off
           </span>
         </Link>
 
-        {/* Categories List */}
+        {/* Dynamic Aspect-Ratio Proportional Category Tiles */}
         {categories.map((cat, idx) => {
           const Icon = ICON_MAP[cat.icon || "Sparkles"] || Sparkles;
           const tint = PASTEL_TINTS[idx % PASTEL_TINTS.length];
@@ -145,31 +145,33 @@ export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectio
             <Link
               key={cat.id || idx}
               href={`/products?category=${cat.slug}`}
-              className="shrink-0 w-[110px] sm:w-[124px] flex flex-col items-center text-center group cursor-pointer"
+              className="shrink-0 w-auto min-w-[76px] sm:min-w-[84px] max-w-[150px] sm:max-w-[170px] flex flex-col items-center text-center group cursor-pointer"
             >
-              {/* Avatar Container: Circular / Rounded Square on Soft Tint */}
-              <div
-                className={`w-[84px] h-[84px] sm:w-[94px] sm:h-[94px] rounded-full sm:rounded-2xl border p-2 sm:p-2.5 flex items-center justify-center shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:shadow-md ${tint}`}
-              >
-                {cat.image ? (
+              {/* Content-Driven Card: Takes exact shape and size of image without border padding frame */}
+              {cat.image ? (
+                <div className="h-[64px] sm:h-[72px] w-auto max-w-[140px] sm:max-w-[160px] rounded-2xl overflow-hidden shadow-xs border border-gray-100/80 dark:border-white/10 flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
                   <img
                     src={cat.image}
                     alt={cat.name}
-                    className="w-full h-full object-contain rounded-full sm:rounded-xl transition-transform duration-300 group-hover:scale-110"
+                    className="h-full w-auto max-w-[140px] sm:max-w-[160px] object-contain rounded-2xl block"
                     loading="lazy"
                   />
-                ) : (
-                  <Icon className="w-8 h-8 sm:w-9 sm:h-9 transition-transform duration-300 group-hover:scale-110" />
-                )}
-              </div>
+                </div>
+              ) : (
+                <div
+                  className={`h-[64px] sm:h-[72px] w-[64px] sm:w-[72px] rounded-2xl border p-2.5 flex items-center justify-center shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:shadow-md ${tint}`}
+                >
+                  <Icon className="w-7 h-7 sm:w-8 sm:h-8 transition-transform duration-300 group-hover:scale-110" />
+                </div>
+              )}
 
-              {/* Category Title */}
-              <span className="mt-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-[#005826] dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+              {/* Category Title - Naturally aligned underneath */}
+              <span className="mt-2 text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-[#005826] dark:group-hover:text-emerald-400 transition-colors line-clamp-1 max-w-full px-1">
                 {cat.name}
               </span>
 
-              {/* Product Count or Tag */}
-              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+              {/* Product Count */}
+              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
                 {cat.products_count !== undefined ? `${cat.products_count} items` : "Explore"}
               </span>
             </Link>

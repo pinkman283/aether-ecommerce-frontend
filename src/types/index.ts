@@ -10,6 +10,7 @@ export interface Category {
   is_featured: boolean;
   display_order: number;
   products_count?: number;
+  parent?: Category | null;
   children?: Category[];
 }
 

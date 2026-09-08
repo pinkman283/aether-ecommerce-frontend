@@ -46,6 +46,8 @@ function ProductCatalogContent() {
   const [totalCount, setTotalCount] = useState(0);
   const [perPage, setPerPage] = useState(15);
 
+  const isDiscountedQuery = searchParams.get("discounted") === "true" || searchParams.get("discounted") === "1" || searchParams.get("on_sale") === "true" || searchParams.get("deals") === "true";
+
   // Filters State (Multiple Categories & Brands Supported)
   const [search, setSearch] = useState(currentSearch);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
@@ -54,7 +56,7 @@ function ProductCatalogContent() {
   const [minPrice, setMinPrice] = useState<number | "">("");
   const [maxPrice, setMaxPrice] = useState<number | "">("");
   const [minRating, setMinRating] = useState<number | "">("");
-  const [discountedOnly, setDiscountedOnly] = useState(false);
+  const [discountedOnly, setDiscountedOnly] = useState(isDiscountedQuery);
   const [inStockOnly, setInStockOnly] = useState(false);
   
   // Left Slide-Out Drawer State
@@ -84,6 +86,9 @@ function ProductCatalogContent() {
     setSelectedBrands(rawBrd ? rawBrd.split(",").map((b) => b.trim()).filter(Boolean) : []);
 
     setSearch(searchParams.get("search") || "");
+
+    const isDisc = searchParams.get("discounted") === "true" || searchParams.get("discounted") === "1" || searchParams.get("on_sale") === "true" || searchParams.get("deals") === "true";
+    setDiscountedOnly(isDisc);
   }, [searchParams]);
 
   // Reset to page 1 on filter changes
@@ -197,6 +202,19 @@ function ProductCatalogContent() {
 
   const hasActiveFilters = activeFilterCount > 0;
 
+  const findCategoryBySlug = (list: Category[], targetSlug: string): Category | null => {
+    for (const c of list) {
+      if (c.slug === targetSlug) return c;
+      if (c.children && c.children.length > 0) {
+        const found = findCategoryBySlug(c.children, targetSlug);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const selectedCategoryObj = selectedCategories.length === 1 ? findCategoryBySlug(categories, selectedCategories[0]) : null;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
       {/* Page Header */}
@@ -211,8 +229,8 @@ function ProductCatalogContent() {
           className="text-2xl sm:text-4xl font-black tracking-tight"
           style={{ color: "var(--theme-text-heading, #0f172a)" }}
         >
-          {selectedCategories.length === 1
-            ? categories.find((c) => c.slug === selectedCategories[0])?.name || "Catalog"
+          {selectedCategoryObj
+            ? selectedCategoryObj.name
             : selectedCategories.length > 1
             ? `${selectedCategories.length} Categories Selected`
             : selectedBrands.length === 1
@@ -357,7 +375,7 @@ function ProductCatalogContent() {
 
           {/* Multiple Category Badges */}
           {selectedCategories.map((slug) => {
-            const catName = categories.find((c) => c.slug === slug)?.name || slug;
+            const catName = findCategoryBySlug(categories, slug)?.name || slug;
             return (
               <span 
                 key={`cat-${slug}`}
@@ -722,7 +740,7 @@ function ProductCatalogContent() {
                     )}
                   </div>
 
-                  <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                  <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
                     {/* All Hardware Option */}
                     <button
                       onClick={() => handleCategoryToggle("")}
@@ -748,49 +766,66 @@ function ProductCatalogContent() {
                       )}
                     </button>
 
-                    {/* Specific Categories */}
-                    {categories.map((cat) => {
-                      const isSelected = selectedCategories.includes(cat.slug);
-                      return (
-                        <button
-                          key={cat.id}
-                          onClick={() => handleCategoryToggle(cat.slug)}
-                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
-                            isSelected
-                              ? "border shadow-2xs font-bold"
-                              : "hover:bg-gray-50 dark:hover:bg-white/5"
-                          }`}
-                          style={isSelected ? {
-                            backgroundColor: "var(--theme-hover-bg, rgba(0, 88, 38, 0.08))",
-                            color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))",
-                            borderColor: "var(--theme-card-border, #e5e7eb)"
-                          } : {
-                            color: "var(--theme-text-heading, #0f172a)"
-                          }}
-                        >
-                          <div className="flex items-center gap-2.5 truncate">
-                            <div 
-                              className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
-                                isSelected ? "border-transparent shadow-xs" : "border-gray-300 dark:border-white/20 bg-transparent"
+                    {/* Hierarchical Categories Tree */}
+                    {(() => {
+                      const renderCategoryTreeItem = (cat: Category, level: number = 0) => {
+                        const isSelected = selectedCategories.includes(cat.slug);
+                        return (
+                          <div key={cat.id || cat.slug}>
+                            <button
+                              onClick={() => handleCategoryToggle(cat.slug)}
+                              className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
+                                level === 1 ? "pl-6 text-[11.5px]" : level >= 2 ? "pl-9 text-[11px]" : ""
+                              } ${
+                                isSelected
+                                  ? "border shadow-2xs font-bold"
+                                  : "hover:bg-gray-50 dark:hover:bg-white/5"
                               }`}
                               style={isSelected ? {
-                                backgroundColor: "var(--theme-primary, #005826)",
-                                color: "#ffffff"
-                              } : undefined}
+                                backgroundColor: "var(--theme-hover-bg, rgba(0, 88, 38, 0.08))",
+                                color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))",
+                                borderColor: "var(--theme-card-border, #e5e7eb)"
+                              } : {
+                                color: "var(--theme-text-heading, #0f172a)"
+                              }}
                             >
-                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                            </div>
-                            <span className="truncate">{cat.name}</span>
+                              <div className="flex items-center gap-2 truncate">
+                                {level > 0 && <span className="text-[10px] text-slate-400 select-none">↳</span>}
+                                <div 
+                                  className={`w-3.5 h-3.5 rounded-md flex items-center justify-center border transition-all shrink-0 ${
+                                    isSelected ? "border-transparent shadow-xs" : "border-gray-300 dark:border-white/20 bg-transparent"
+                                  }`}
+                                  style={isSelected ? {
+                                    backgroundColor: "var(--theme-primary, #005826)",
+                                    color: "#ffffff"
+                                  } : undefined}
+                                >
+                                  {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                </div>
+                                <span className="truncate">{cat.name}</span>
+                              </div>
+                              {cat.products_count !== undefined && cat.products_count > 0 && (
+                                <span 
+                                  className="text-[10px] font-normal shrink-0 ml-1.5"
+                                  style={{ color: "var(--theme-text-body, #94a3b8)" }}
+                                >
+                                  {cat.products_count}
+                                </span>
+                              )}
+                            </button>
+
+                            {/* Render children recursively */}
+                            {cat.children && cat.children.length > 0 && (
+                              <div className="space-y-0.5 mt-0.5">
+                                {cat.children.map((child) => renderCategoryTreeItem(child, level + 1))}
+                              </div>
+                            )}
                           </div>
-                          <span 
-                            className="text-[10px] font-normal shrink-0 ml-1.5"
-                            style={{ color: "var(--theme-text-body, #94a3b8)" }}
-                          >
-                            {cat.products_count ?? ""}
-                          </span>
-                        </button>
-                      );
-                    })}
+                        );
+                      };
+
+                      return categories.map((cat) => renderCategoryTreeItem(cat, 0));
+                    })()}
                   </div>
                 </div>
 
