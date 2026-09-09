@@ -47,7 +47,7 @@ export default function HomePage() {
         const bBanners = bannerData?.bottom_banners || bannerData?.middle_banners || [];
         setBottomBanners(bBanners);
       } catch (err) {
-        console.error("Failed to load storefront data:", err);
+        console.warn("Notice: Storefront data fetch fallback:", err);
       } finally {
         setLoading(false);
       }

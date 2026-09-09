@@ -13,7 +13,10 @@ import {
   ShieldCheck,
   Flame,
   Tag,
-  CheckCircle2
+  Truck,
+  CheckCircle2,
+  UserCheck,
+  ExternalLink
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { useThemeStore, DEFAULT_THEME_SETTINGS } from "@/store/useThemeStore";
@@ -80,9 +83,30 @@ export default function AdminStorefrontPage() {
   const [trustRibbonTitle4, setTrustRibbonTitle4] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_title_4 || "7-Day Easy Replacement");
   const [trustRibbonDesc4, setTrustRibbonDesc4] = useState(DEFAULT_THEME_SETTINGS.trust_ribbon_desc_4 || "Hassle-free returns & replacement policy");
 
+  // Footer Guarantees & Features Strip State
+  const [footerFeaturesEnabled, setFooterFeaturesEnabled] = useState(DEFAULT_THEME_SETTINGS.footer_features_enabled ?? true);
+  const [footerFeatureTitle1, setFooterFeatureTitle1] = useState(DEFAULT_THEME_SETTINGS.footer_feature_title_1 || "Free Express Shipping");
+  const [footerFeatureDesc1, setFooterFeatureDesc1] = useState(DEFAULT_THEME_SETTINGS.footer_feature_desc_1 || "Complimentary delivery inside & outside Dhaka.");
+  const [footerFeatureLink1, setFooterFeatureLink1] = useState(DEFAULT_THEME_SETTINGS.footer_feature_link_1 || "/shipping-policy");
+  const [footerFeatureTitle2, setFooterFeatureTitle2] = useState(DEFAULT_THEME_SETTINGS.footer_feature_title_2 || "2-Year Studio Warranty");
+  const [footerFeatureDesc2, setFooterFeatureDesc2] = useState(DEFAULT_THEME_SETTINGS.footer_feature_desc_2 || "Comprehensive hardware protection & zero-cost repair.");
+  const [footerFeatureLink2, setFooterFeatureLink2] = useState(DEFAULT_THEME_SETTINGS.footer_feature_link_2 || "/refund-policy");
+  const [footerFeatureTitle3, setFooterFeatureTitle3] = useState(DEFAULT_THEME_SETTINGS.footer_feature_title_3 || "30-Day Risk-Free Trial");
+  const [footerFeatureDesc3, setFooterFeatureDesc3] = useState(DEFAULT_THEME_SETTINGS.footer_feature_desc_3 || "Hassle-free evaluation with prepaid RMA labels.");
+  const [footerFeatureLink3, setFooterFeatureLink3] = useState(DEFAULT_THEME_SETTINGS.footer_feature_link_3 || "/refund-policy");
+  const [footerFeatureTitle4, setFooterFeatureTitle4] = useState(DEFAULT_THEME_SETTINGS.footer_feature_title_4 || "24/7 Audio Support");
+  const [footerFeatureDesc4, setFooterFeatureDesc4] = useState(DEFAULT_THEME_SETTINGS.footer_feature_desc_4 || "Direct access to sound engineers & hardware specialists.");
+  const [footerFeatureLink4, setFooterFeatureLink4] = useState(DEFAULT_THEME_SETTINGS.footer_feature_link_4 || "/contact");
+
+  // Customer Login & Sign Up Page State
+  const [customerAuthBgImage, setCustomerAuthBgImage] = useState(DEFAULT_THEME_SETTINGS.customer_auth_bg_image || "");
+  const [customerAuthBgColor, setCustomerAuthBgColor] = useState(DEFAULT_THEME_SETTINGS.customer_auth_bg_color || "#ffffff");
+  const [customerAuthCardPosition, setCustomerAuthCardPosition] = useState(DEFAULT_THEME_SETTINGS.customer_auth_card_position || "left");
+
   const [initialSettings, setInitialSettings] = useState<any>(null);
   const splitFileInputRef = useRef<HTMLInputElement>(null);
   const splitLogoInputRef = useRef<HTMLInputElement>(null);
+  const authBgFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function loadStorefrontSettings() {
@@ -144,6 +168,26 @@ export default function AdminStorefrontPage() {
         if (s.trust_ribbon_desc_3) setTrustRibbonDesc3(s.trust_ribbon_desc_3);
         if (s.trust_ribbon_title_4) setTrustRibbonTitle4(s.trust_ribbon_title_4);
         if (s.trust_ribbon_desc_4) setTrustRibbonDesc4(s.trust_ribbon_desc_4);
+
+        // Footer Guarantees & Features Strip
+        if (s.footer_features_enabled !== undefined) setFooterFeaturesEnabled(Boolean(s.footer_features_enabled));
+        if (s.footer_feature_title_1) setFooterFeatureTitle1(s.footer_feature_title_1);
+        if (s.footer_feature_desc_1) setFooterFeatureDesc1(s.footer_feature_desc_1);
+        if (s.footer_feature_link_1) setFooterFeatureLink1(s.footer_feature_link_1);
+        if (s.footer_feature_title_2) setFooterFeatureTitle2(s.footer_feature_title_2);
+        if (s.footer_feature_desc_2) setFooterFeatureDesc2(s.footer_feature_desc_2);
+        if (s.footer_feature_link_2) setFooterFeatureLink2(s.footer_feature_link_2);
+        if (s.footer_feature_title_3) setFooterFeatureTitle3(s.footer_feature_title_3);
+        if (s.footer_feature_desc_3) setFooterFeatureDesc3(s.footer_feature_desc_3);
+        if (s.footer_feature_link_3) setFooterFeatureLink3(s.footer_feature_link_3);
+        if (s.footer_feature_title_4) setFooterFeatureTitle4(s.footer_feature_title_4);
+        if (s.footer_feature_desc_4) setFooterFeatureDesc4(s.footer_feature_desc_4);
+        if (s.footer_feature_link_4) setFooterFeatureLink4(s.footer_feature_link_4);
+
+        // Customer Login & Sign Up Page
+        if (s.customer_auth_bg_image !== undefined) setCustomerAuthBgImage(s.customer_auth_bg_image || "");
+        if (s.customer_auth_bg_color !== undefined) setCustomerAuthBgColor(s.customer_auth_bg_color || "#ffffff");
+        if (s.customer_auth_card_position !== undefined) setCustomerAuthCardPosition(s.customer_auth_card_position || "left");
       } catch (err) {
         console.error(err);
       } finally {
@@ -152,6 +196,31 @@ export default function AdminStorefrontPage() {
     }
     loadStorefrontSettings();
   }, []);
+
+  const handleAuthBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Background image file must be less than 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setCustomerAuthBgImage(dataUrl);
+      if (authBgFileInputRef.current) authBgFileInputRef.current.value = "";
+      toast.success("New customer login/signup background uploaded! Click 'Save Storefront' to publish.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAuthBg = () => {
+    setCustomerAuthBgImage("");
+    if (authBgFileInputRef.current) authBgFileInputRef.current.value = "";
+    toast.info("Background image removed. The page will display your default/custom background color.");
+  };
 
   const handleSplitFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -246,7 +315,23 @@ export default function AdminStorefrontPage() {
       norm(trustRibbonTitle3) !== norm(initialSettings.trust_ribbon_title_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_3) ||
       norm(trustRibbonDesc3) !== norm(initialSettings.trust_ribbon_desc_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_3) ||
       norm(trustRibbonTitle4) !== norm(initialSettings.trust_ribbon_title_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_4) ||
-      norm(trustRibbonDesc4) !== norm(initialSettings.trust_ribbon_desc_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_4)
+      norm(trustRibbonDesc4) !== norm(initialSettings.trust_ribbon_desc_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_4) ||
+      Boolean(footerFeaturesEnabled) !== Boolean(initialSettings.footer_features_enabled ?? true) ||
+      norm(footerFeatureTitle1) !== norm(initialSettings.footer_feature_title_1 || DEFAULT_THEME_SETTINGS.footer_feature_title_1) ||
+      norm(footerFeatureDesc1) !== norm(initialSettings.footer_feature_desc_1 || DEFAULT_THEME_SETTINGS.footer_feature_desc_1) ||
+      norm(footerFeatureLink1) !== norm(initialSettings.footer_feature_link_1 || DEFAULT_THEME_SETTINGS.footer_feature_link_1) ||
+      norm(footerFeatureTitle2) !== norm(initialSettings.footer_feature_title_2 || DEFAULT_THEME_SETTINGS.footer_feature_title_2) ||
+      norm(footerFeatureDesc2) !== norm(initialSettings.footer_feature_desc_2 || DEFAULT_THEME_SETTINGS.footer_feature_desc_2) ||
+      norm(footerFeatureLink2) !== norm(initialSettings.footer_feature_link_2 || DEFAULT_THEME_SETTINGS.footer_feature_link_2) ||
+      norm(footerFeatureTitle3) !== norm(initialSettings.footer_feature_title_3 || DEFAULT_THEME_SETTINGS.footer_feature_title_3) ||
+      norm(footerFeatureDesc3) !== norm(initialSettings.footer_feature_desc_3 || DEFAULT_THEME_SETTINGS.footer_feature_desc_3) ||
+      norm(footerFeatureLink3) !== norm(initialSettings.footer_feature_link_3 || DEFAULT_THEME_SETTINGS.footer_feature_link_3) ||
+      norm(footerFeatureTitle4) !== norm(initialSettings.footer_feature_title_4 || DEFAULT_THEME_SETTINGS.footer_feature_title_4) ||
+      norm(footerFeatureDesc4) !== norm(initialSettings.footer_feature_desc_4 || DEFAULT_THEME_SETTINGS.footer_feature_desc_4) ||
+      norm(footerFeatureLink4) !== norm(initialSettings.footer_feature_link_4 || DEFAULT_THEME_SETTINGS.footer_feature_link_4) ||
+      norm(customerAuthBgImage) !== norm(initialSettings.customer_auth_bg_image || "") ||
+      norm(customerAuthBgColor) !== norm(initialSettings.customer_auth_bg_color || "#ffffff") ||
+      norm(customerAuthCardPosition) !== norm(initialSettings.customer_auth_card_position || "left")
     );
   }, [
     initialSettings,
@@ -290,6 +375,22 @@ export default function AdminStorefrontPage() {
     trustRibbonDesc3,
     trustRibbonTitle4,
     trustRibbonDesc4,
+    footerFeaturesEnabled,
+    footerFeatureTitle1,
+    footerFeatureDesc1,
+    footerFeatureLink1,
+    footerFeatureTitle2,
+    footerFeatureDesc2,
+    footerFeatureLink2,
+    footerFeatureTitle3,
+    footerFeatureDesc3,
+    footerFeatureLink3,
+    footerFeatureTitle4,
+    footerFeatureDesc4,
+    footerFeatureLink4,
+    customerAuthBgImage,
+    customerAuthBgColor,
+    customerAuthCardPosition,
   ]);
 
   const handleReset = () => {
@@ -334,6 +435,22 @@ export default function AdminStorefrontPage() {
     setTrustRibbonDesc3(initialSettings.trust_ribbon_desc_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_3 || "Official manufacturer warranty coverage");
     setTrustRibbonTitle4(initialSettings.trust_ribbon_title_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_4 || "7-Day Easy Replacement");
     setTrustRibbonDesc4(initialSettings.trust_ribbon_desc_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_4 || "Hassle-free returns & replacement policy");
+    setFooterFeaturesEnabled(initialSettings.footer_features_enabled ?? DEFAULT_THEME_SETTINGS.footer_features_enabled ?? true);
+    setFooterFeatureTitle1(initialSettings.footer_feature_title_1 || DEFAULT_THEME_SETTINGS.footer_feature_title_1 || "Free Express Shipping");
+    setFooterFeatureDesc1(initialSettings.footer_feature_desc_1 || DEFAULT_THEME_SETTINGS.footer_feature_desc_1 || "Complimentary delivery inside & outside Dhaka.");
+    setFooterFeatureLink1(initialSettings.footer_feature_link_1 || DEFAULT_THEME_SETTINGS.footer_feature_link_1 || "/shipping-policy");
+    setFooterFeatureTitle2(initialSettings.footer_feature_title_2 || DEFAULT_THEME_SETTINGS.footer_feature_title_2 || "2-Year Studio Warranty");
+    setFooterFeatureDesc2(initialSettings.footer_feature_desc_2 || DEFAULT_THEME_SETTINGS.footer_feature_desc_2 || "Comprehensive hardware protection & zero-cost repair.");
+    setFooterFeatureLink2(initialSettings.footer_feature_link_2 || DEFAULT_THEME_SETTINGS.footer_feature_link_2 || "/refund-policy");
+    setFooterFeatureTitle3(initialSettings.footer_feature_title_3 || DEFAULT_THEME_SETTINGS.footer_feature_title_3 || "30-Day Risk-Free Trial");
+    setFooterFeatureDesc3(initialSettings.footer_feature_desc_3 || DEFAULT_THEME_SETTINGS.footer_feature_desc_3 || "Hassle-free evaluation with prepaid RMA labels.");
+    setFooterFeatureLink3(initialSettings.footer_feature_link_3 || DEFAULT_THEME_SETTINGS.footer_feature_link_3 || "/refund-policy");
+    setFooterFeatureTitle4(initialSettings.footer_feature_title_4 || DEFAULT_THEME_SETTINGS.footer_feature_title_4 || "24/7 Audio Support");
+    setFooterFeatureDesc4(initialSettings.footer_feature_desc_4 || DEFAULT_THEME_SETTINGS.footer_feature_desc_4 || "Direct access to sound engineers & hardware specialists.");
+    setFooterFeatureLink4(initialSettings.footer_feature_link_4 || DEFAULT_THEME_SETTINGS.footer_feature_link_4 || "/contact");
+    setCustomerAuthBgImage(initialSettings.customer_auth_bg_image || "");
+    setCustomerAuthBgColor(initialSettings.customer_auth_bg_color || "#ffffff");
+    setCustomerAuthCardPosition(initialSettings.customer_auth_card_position || "left");
     toast.info("Storefront settings reverted.");
   };
 
@@ -385,6 +502,22 @@ export default function AdminStorefrontPage() {
       trust_ribbon_desc_3: trustRibbonDesc3,
       trust_ribbon_title_4: trustRibbonTitle4,
       trust_ribbon_desc_4: trustRibbonDesc4,
+      footer_features_enabled: footerFeaturesEnabled,
+      footer_feature_title_1: footerFeatureTitle1,
+      footer_feature_desc_1: footerFeatureDesc1,
+      footer_feature_link_1: footerFeatureLink1,
+      footer_feature_title_2: footerFeatureTitle2,
+      footer_feature_desc_2: footerFeatureDesc2,
+      footer_feature_link_2: footerFeatureLink2,
+      footer_feature_title_3: footerFeatureTitle3,
+      footer_feature_desc_3: footerFeatureDesc3,
+      footer_feature_link_3: footerFeatureLink3,
+      footer_feature_title_4: footerFeatureTitle4,
+      footer_feature_desc_4: footerFeatureDesc4,
+      footer_feature_link_4: footerFeatureLink4,
+      customer_auth_bg_image: customerAuthBgImage,
+      customer_auth_bg_color: customerAuthBgColor,
+      customer_auth_card_position: customerAuthCardPosition,
     };
 
     try {
@@ -1141,6 +1274,282 @@ export default function AdminStorefrontPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* SECTION 5: FOOTER GUARANTEES & FEATURES STRIP */}
+        {/* ========================================================================= */}
+        <div className="rounded-2xl bg-[#0f121b] border border-white/[0.08] p-5 sm:p-6 space-y-5">
+          <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                <Truck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-tight">Footer Guarantees & Features Strip</h3>
+                <p className="text-xs text-slate-400">4 promotional value & warranty feature items displayed across the top of the footer</p>
+              </div>
+            </div>
+
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={footerFeaturesEnabled}
+                onChange={(e) => setFooterFeaturesEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500" />
+            </label>
+          </div>
+
+          {footerFeaturesEnabled && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Item 1 */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">Footer Feature 1: Express Shipping</span>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Title</label>
+                    <input
+                      type="text"
+                      value={footerFeatureTitle1}
+                      onChange={(e) => setFooterFeatureTitle1(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Subtitle</label>
+                    <input
+                      type="text"
+                      value={footerFeatureDesc1}
+                      onChange={(e) => setFooterFeatureDesc1(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Link Route</label>
+                    <input
+                      type="text"
+                      value={footerFeatureLink1}
+                      onChange={(e) => setFooterFeatureLink1(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Item 2 */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                  <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block">Footer Feature 2: Warranty & Protection</span>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Title</label>
+                    <input
+                      type="text"
+                      value={footerFeatureTitle2}
+                      onChange={(e) => setFooterFeatureTitle2(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Subtitle</label>
+                    <input
+                      type="text"
+                      value={footerFeatureDesc2}
+                      onChange={(e) => setFooterFeatureDesc2(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Link Route</label>
+                    <input
+                      type="text"
+                      value={footerFeatureLink2}
+                      onChange={(e) => setFooterFeatureLink2(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Item 3 */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">Footer Feature 3: Risk-Free Trial / Return</span>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Title</label>
+                    <input
+                      type="text"
+                      value={footerFeatureTitle3}
+                      onChange={(e) => setFooterFeatureTitle3(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Subtitle</label>
+                    <input
+                      type="text"
+                      value={footerFeatureDesc3}
+                      onChange={(e) => setFooterFeatureDesc3(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Link Route</label>
+                    <input
+                      type="text"
+                      value={footerFeatureLink3}
+                      onChange={(e) => setFooterFeatureLink3(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Item 4 */}
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                  <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider block">Footer Feature 4: Expert Support</span>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Title</label>
+                    <input
+                      type="text"
+                      value={footerFeatureTitle4}
+                      onChange={(e) => setFooterFeatureTitle4(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Subtitle</label>
+                    <input
+                      type="text"
+                      value={footerFeatureDesc4}
+                      onChange={(e) => setFooterFeatureDesc4(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400 block">Link Route</label>
+                    <input
+                      type="text"
+                      value={footerFeatureLink4}
+                      onChange={(e) => setFooterFeatureLink4(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* CUSTOMER LOGIN & SIGN UP PAGE                                             */}
+        {/* ========================================================================= */}
+        <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
+          <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-teal-400" />
+              <div>
+                <h3 className="text-sm font-bold text-white">Customer Login & Sign Up Page</h3>
+                <p className="text-[11px] text-slate-400">Background wallpaper and color settings</p>
+              </div>
+            </div>
+
+            <a
+              href="/login"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-semibold transition-colors"
+            >
+              <span>View Page</span>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1">
+            {/* Background Wallpaper Image */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-300 block">Background Wallpaper Image</label>
+              <input
+                type="file"
+                ref={authBgFileInputRef}
+                onChange={handleAuthBgUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                {customerAuthBgImage && (
+                  <div className="w-14 h-11 rounded-lg border border-white/15 overflow-hidden bg-black/50 shrink-0">
+                    <img
+                      src={customerAuthBgImage}
+                      alt="Background"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={() => authBgFileInputRef.current?.click()}
+                    className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload</span>
+                  </button>
+                  {customerAuthBgImage && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveAuthBg}
+                      className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+                      title="Remove wallpaper image"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Remove</span>
+                    </button>
+                  )}
+                  <input
+                    type="text"
+                    value={customerAuthBgImage}
+                    onChange={(e) => setCustomerAuthBgImage(e.target.value)}
+                    placeholder="https://..."
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-teal-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Fallback Background Color */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-300 block">Fallback Background Color</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={customerAuthBgColor || "#ffffff"}
+                  onChange={(e) => setCustomerAuthBgColor(e.target.value)}
+                  className="w-9 h-9 rounded-lg border border-white/15 bg-transparent cursor-pointer shrink-0 p-0.5"
+                />
+                <input
+                  type="text"
+                  value={customerAuthBgColor}
+                  onChange={(e) => setCustomerAuthBgColor(e.target.value)}
+                  placeholder="#ffffff"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-teal-400 uppercase"
+                />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {[
+                    { label: "White", color: "#ffffff" },
+                    { label: "Slate", color: "#f8fafc" },
+                    { label: "Dark", color: "#090a0f" },
+                  ].map((p) => (
+                    <button
+                      key={p.color}
+                      type="button"
+                      onClick={() => setCustomerAuthBgColor(p.color)}
+                      className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-slate-300 transition-colors"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>

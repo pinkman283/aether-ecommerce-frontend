@@ -305,7 +305,7 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
           setCategories(data);
         }
       })
-      .catch((err) => console.error("Failed to load navbar categories:", err));
+      .catch((err) => console.warn("Notice: Navbar categories fetch fallback:", err));
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -572,13 +572,13 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                   </AnimatePresence>
                 </div>
               ) : (
-                <button
-                  onClick={() => openAuthModal("login")}
+                <Link
+                  href="/login"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 text-xs font-bold text-slate-800 dark:text-white hover:border-[#005826] transition-all cursor-pointer"
                 >
                   <UserIcon className="w-3.5 h-3.5 text-[#005826] dark:text-indigo-400" />
                   <span>Sign In</span>
-                </button>
+                </Link>
               )}
             </div>
 

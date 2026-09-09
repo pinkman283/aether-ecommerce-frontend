@@ -13,7 +13,9 @@ import {
   Star, 
   ArrowUpDown,
   RotateCcw,
-  Tag
+  Tag,
+  ChevronRight,
+  ChevronDown
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Brand, Category, Product } from "@/types";
@@ -61,6 +63,9 @@ function ProductCatalogContent() {
   
   // Left Slide-Out Drawer State
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  
+  // Expand/Collapse state for hierarchical categories
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadMeta() {
@@ -72,7 +77,7 @@ function ProductCatalogContent() {
         setCategories(catData || []);
         setBrands(brandData || []);
       } catch (err) {
-        console.error("Failed to load filter metadata:", err);
+        console.warn("Notice: Filter metadata fetch fallback:", err);
       }
     }
     loadMeta();
@@ -124,7 +129,7 @@ function ProductCatalogContent() {
         if (res.last_page) setLastPage(res.last_page);
         if (res.total !== undefined) setTotalCount(res.total);
       } catch (err) {
-        console.error("Failed to fetch catalog:", err);
+        console.warn("Notice: Products catalog fetch fallback:", err);
       } finally {
         setLoading(false);
       }
@@ -211,6 +216,62 @@ function ProductCatalogContent() {
       }
     }
     return null;
+  };
+
+  // Helper to find all ancestor category slugs of a selected category
+  const findCategoryAncestors = (list: Category[], targetSlug: string, path: string[] = []): string[] => {
+    for (const c of list) {
+      if (c.slug === targetSlug) {
+        return path;
+      }
+      if (c.children && c.children.length > 0) {
+        const found = findCategoryAncestors(c.children, targetSlug, [...path, c.slug]);
+        if (found.length > 0 || c.children.some((child) => child.slug === targetSlug)) {
+          return found.length > 0 ? found : [...path, c.slug];
+        }
+      }
+    }
+    return [];
+  };
+
+  // Auto-expand parent branches of selected categories
+  useEffect(() => {
+    if (selectedCategories.length > 0 && categories.length > 0) {
+      const ancestorsToExpand = new Set<string>(expandedCategories);
+      selectedCategories.forEach((slug) => {
+        const ancestors = findCategoryAncestors(categories, slug);
+        ancestors.forEach((a) => ancestorsToExpand.add(a));
+      });
+      setExpandedCategories(Array.from(ancestorsToExpand));
+    }
+  }, [selectedCategories, categories]);
+
+  const toggleCategoryExpand = (slug: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setExpandedCategories((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    );
+  };
+
+  const expandAllCategories = () => {
+    const allParentSlugs: string[] = [];
+    const collectParents = (list: Category[]) => {
+      list.forEach((c) => {
+        if (c.children && c.children.length > 0) {
+          allParentSlugs.push(c.slug);
+          collectParents(c.children);
+        }
+      });
+    };
+    collectParents(categories);
+    setExpandedCategories(allParentSlugs);
+  };
+
+  const collapseAllCategories = () => {
+    setExpandedCategories([]);
   };
 
   const selectedCategoryObj = selectedCategories.length === 1 ? findCategoryBySlug(categories, selectedCategories[0]) : null;
@@ -720,7 +781,7 @@ function ProductCatalogContent() {
               {/* 2. Scrollable Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
                 
-                {/* 1. Categories Multi-Select Section */}
+                {/* 1. Categories Multi-Select Section with Interactive Dropdowns */}
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span 
@@ -729,25 +790,38 @@ function ProductCatalogContent() {
                     >
                       Categories {selectedCategories.length > 0 && `(${selectedCategories.length})`}
                     </span>
-                    {selectedCategories.length > 0 && (
-                      <button
-                        onClick={() => handleCategoryToggle("")}
-                        className="text-[10px] font-bold hover:underline"
-                        style={{ color: "var(--theme-primary, #005826)" }}
-                      >
-                        Select All
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {categories.some((c) => c.children && c.children.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={expandedCategories.length > 0 ? collapseAllCategories : expandAllCategories}
+                          className="text-[10px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                        >
+                          {expandedCategories.length > 0 ? "Collapse All" : "Expand All"}
+                        </button>
+                      )}
+                      {selectedCategories.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleCategoryToggle("")}
+                          className="text-[10px] font-bold hover:underline cursor-pointer"
+                          style={{ color: "var(--theme-primary, #005826)" }}
+                        >
+                          Select All
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                  <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
                     {/* All Hardware Option */}
                     <button
+                      type="button"
                       onClick={() => handleCategoryToggle("")}
                       className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
                         selectedCategories.length === 0
                           ? "border shadow-2xs font-bold"
-                          : "hover:bg-gray-50 dark:hover:bg-white/5"
+                          : "hover:bg-gray-50 dark:hover:bg-white/5 border border-transparent"
                       }`}
                       style={selectedCategories.length === 0 ? {
                         backgroundColor: "var(--theme-hover-bg, rgba(0, 88, 38, 0.08))",
@@ -757,29 +831,58 @@ function ProductCatalogContent() {
                         color: "var(--theme-text-heading, #0f172a)"
                       }}
                     >
-                      <span>All Hardware</span>
-                      {selectedCategories.length === 0 && (
-                        <Check 
-                          className="w-3.5 h-3.5" 
-                          style={{ color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))" }}
-                        />
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all shrink-0 ${
+                            selectedCategories.length === 0 ? "border-transparent shadow-xs" : "border-gray-300 dark:border-white/20 bg-transparent"
+                          }`}
+                          style={selectedCategories.length === 0 ? {
+                            backgroundColor: "var(--theme-primary, #005826)",
+                            color: "#ffffff"
+                          } : undefined}
+                        >
+                          {selectedCategories.length === 0 && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                        <span>All Hardware</span>
+                      </div>
+                      {totalCount > 0 && (
+                        <span 
+                          className="text-[10px] font-normal shrink-0 ml-2 px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/5"
+                          style={{ color: "var(--theme-text-body, #94a3b8)" }}
+                        >
+                          {totalCount}
+                        </span>
                       )}
                     </button>
 
-                    {/* Hierarchical Categories Tree */}
+                    {/* Hierarchical Categories Tree with Interactive Dropdowns */}
                     {(() => {
-                      const renderCategoryTreeItem = (cat: Category, level: number = 0) => {
+                      const renderCategoryNode = (cat: Category, level: number = 0) => {
                         const isSelected = selectedCategories.includes(cat.slug);
+                        const hasChildren = Boolean(cat.children && cat.children.length > 0);
+                        const isExpanded = expandedCategories.includes(cat.slug);
+
+                        // Count how many descendants are selected
+                        const getSelectedDescendantCount = (item: Category): number => {
+                          let count = 0;
+                          if (item.children) {
+                            item.children.forEach((child) => {
+                              if (selectedCategories.includes(child.slug)) count++;
+                              count += getSelectedDescendantCount(child);
+                            });
+                          }
+                          return count;
+                        };
+                        const activeChildrenCount = hasChildren ? getSelectedDescendantCount(cat) : 0;
+
                         return (
-                          <div key={cat.id || cat.slug}>
-                            <button
-                              onClick={() => handleCategoryToggle(cat.slug)}
-                              className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
-                                level === 1 ? "pl-6 text-[11.5px]" : level >= 2 ? "pl-9 text-[11px]" : ""
-                              } ${
+                          <div key={cat.id || cat.slug} className="select-none">
+                            {/* Category Row */}
+                            <div
+                              className={`w-full group rounded-xl text-xs font-semibold transition-all flex items-center justify-between p-1.5 cursor-pointer ${
                                 isSelected
                                   ? "border shadow-2xs font-bold"
-                                  : "hover:bg-gray-50 dark:hover:bg-white/5"
+                                  : "hover:bg-gray-50 dark:hover:bg-white/5 border border-transparent"
                               }`}
                               style={isSelected ? {
                                 backgroundColor: "var(--theme-hover-bg, rgba(0, 88, 38, 0.08))",
@@ -788,12 +891,33 @@ function ProductCatalogContent() {
                               } : {
                                 color: "var(--theme-text-heading, #0f172a)"
                               }}
+                              onClick={() => handleCategoryToggle(cat.slug)}
                             >
-                              <div className="flex items-center gap-2 truncate">
-                                {level > 0 && <span className="text-[10px] text-slate-400 select-none">↳</span>}
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                {/* Expand / Collapse Chevron Button */}
+                                {hasChildren ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => toggleCategoryExpand(cat.slug, e)}
+                                    className="w-5 h-5 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+                                    title={isExpanded ? "Collapse subcategories" : "Expand subcategories"}
+                                  >
+                                    <ChevronRight 
+                                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                        isExpanded ? "rotate-90 text-slate-700 dark:text-slate-200" : ""
+                                      }`} 
+                                    />
+                                  </button>
+                                ) : (
+                                  <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                                    <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                                  </div>
+                                )}
+
+                                {/* Custom Checkbox */}
                                 <div 
-                                  className={`w-3.5 h-3.5 rounded-md flex items-center justify-center border transition-all shrink-0 ${
-                                    isSelected ? "border-transparent shadow-xs" : "border-gray-300 dark:border-white/20 bg-transparent"
+                                  className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all shrink-0 ${
+                                    isSelected ? "border-transparent shadow-xs" : "border-gray-300 dark:border-white/20 bg-transparent group-hover:border-gray-400"
                                   }`}
                                   style={isSelected ? {
                                     backgroundColor: "var(--theme-primary, #005826)",
@@ -802,34 +926,59 @@ function ProductCatalogContent() {
                                 >
                                   {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                 </div>
-                                <span className="truncate">{cat.name}</span>
+
+                                {/* Category Name */}
+                                <span className={`truncate text-xs ${isSelected ? "font-bold" : "font-medium"}`}>
+                                  {cat.name}
+                                </span>
+
+                                {/* Active descendant badge indicator if collapsed */}
+                                {!isExpanded && activeChildrenCount > 0 && (
+                                  <span 
+                                    className="px-1.5 py-0.2 rounded-full text-[9px] font-black text-white ml-1 shrink-0 shadow-2xs"
+                                    style={{ backgroundColor: "var(--theme-primary, #005826)" }}
+                                    title={`${activeChildrenCount} subcategories selected`}
+                                  >
+                                    +{activeChildrenCount}
+                                  </span>
+                                )}
                               </div>
+
+                              {/* Product Count Badge */}
                               {cat.products_count !== undefined && cat.products_count > 0 && (
                                 <span 
-                                  className="text-[10px] font-normal shrink-0 ml-1.5"
+                                  className="text-[10px] font-normal shrink-0 ml-2 px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/5"
                                   style={{ color: "var(--theme-text-body, #94a3b8)" }}
                                 >
                                   {cat.products_count}
                                 </span>
                               )}
-                            </button>
+                            </div>
 
-                            {/* Render children recursively */}
-                            {cat.children && cat.children.length > 0 && (
-                              <div className="space-y-0.5 mt-0.5">
-                                {cat.children.map((child) => renderCategoryTreeItem(child, level + 1))}
-                              </div>
-                            )}
+                            {/* Collapsible Children Subcategories */}
+                            <AnimatePresence initial={false}>
+                              {hasChildren && isExpanded && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                                  className="overflow-hidden ml-3.5 pl-2.5 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-0.5"
+                                >
+                                  {cat.children!.map((child) => renderCategoryNode(child, level + 1))}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         );
                       };
 
-                      return categories.map((cat) => renderCategoryTreeItem(cat, 0));
+                      return categories.map((cat) => renderCategoryNode(cat, 0));
                     })()}
                   </div>
                 </div>
 
-                {/* 2. Brands Multi-Select Section (Right after Category) */}
+                {/* 2. Brands Multi-Select Section */}
                 {brands.length > 0 && (
                   <div 
                     className="space-y-2.5 pt-4 border-t"
@@ -844,8 +993,9 @@ function ProductCatalogContent() {
                       </span>
                       {selectedBrands.length > 0 && (
                         <button
+                          type="button"
                           onClick={() => handleBrandToggle("")}
-                          className="text-[10px] font-bold hover:underline"
+                          className="text-[10px] font-bold hover:underline cursor-pointer"
                           style={{ color: "var(--theme-primary, #005826)" }}
                         >
                           Select All
@@ -853,14 +1003,15 @@ function ProductCatalogContent() {
                       )}
                     </div>
 
-                    <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                    <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
                       {/* All Brands Option */}
                       <button
+                        type="button"
                         onClick={() => handleBrandToggle("")}
                         className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
                           selectedBrands.length === 0
                             ? "border shadow-2xs font-bold"
-                            : "hover:bg-gray-50 dark:hover:bg-white/5"
+                            : "hover:bg-gray-50 dark:hover:bg-white/5 border border-transparent"
                         }`}
                         style={selectedBrands.length === 0 ? {
                           backgroundColor: "var(--theme-hover-bg, rgba(0, 88, 38, 0.08))",
@@ -870,13 +1021,20 @@ function ProductCatalogContent() {
                           color: "var(--theme-text-heading, #0f172a)"
                         }}
                       >
-                        <span>All Brands</span>
-                        {selectedBrands.length === 0 && (
-                          <Check 
-                            className="w-3.5 h-3.5" 
-                            style={{ color: "var(--theme-view-all-color, var(--theme-tab-active-bg, var(--theme-primary, #005826)))" }}
-                          />
-                        )}
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all shrink-0 ${
+                              selectedBrands.length === 0 ? "border-transparent shadow-xs" : "border-gray-300 dark:border-white/20 bg-transparent"
+                            }`}
+                            style={selectedBrands.length === 0 ? {
+                              backgroundColor: "var(--theme-primary, #005826)",
+                              color: "#ffffff"
+                            } : undefined}
+                          >
+                            {selectedBrands.length === 0 && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </div>
+                          <span>All Brands</span>
+                        </div>
                       </button>
 
                       {/* Specific Brands List */}
@@ -884,12 +1042,13 @@ function ProductCatalogContent() {
                         const isSelected = selectedBrands.includes(brand.slug) || selectedBrands.includes(brand.name);
                         return (
                           <button
+                            type="button"
                             key={brand.id}
                             onClick={() => handleBrandToggle(brand.slug || brand.name)}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
+                            className={`w-full text-left p-1.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
                               isSelected
                                 ? "border shadow-2xs font-bold"
-                                : "hover:bg-gray-50 dark:hover:bg-white/5"
+                                : "hover:bg-gray-50 dark:hover:bg-white/5 border border-transparent"
                             }`}
                             style={isSelected ? {
                               backgroundColor: "var(--theme-hover-bg, rgba(0, 88, 38, 0.08))",
@@ -899,9 +1058,9 @@ function ProductCatalogContent() {
                               color: "var(--theme-text-heading, #0f172a)"
                             }}
                           >
-                            <div className="flex items-center gap-2.5 truncate">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
                               <div 
-                                className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
+                                className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all shrink-0 ${
                                   isSelected ? "border-transparent shadow-xs" : "border-gray-300 dark:border-white/20 bg-transparent"
                                 }`}
                                 style={isSelected ? {
@@ -909,16 +1068,20 @@ function ProductCatalogContent() {
                                   color: "#ffffff"
                                 } : undefined}
                               >
-                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                               </div>
-                              <span className="truncate">{brand.name}</span>
+                              <span className={`truncate text-xs ${isSelected ? "font-bold" : "font-medium"}`}>
+                                {brand.name}
+                              </span>
                             </div>
-                            <span 
-                              className="text-[10px] font-normal shrink-0 ml-1.5"
-                              style={{ color: "var(--theme-text-body, #94a3b8)" }}
-                            >
-                              {brand.products_count ?? ""}
-                            </span>
+                            {brand.products_count !== undefined && brand.products_count > 0 && (
+                              <span 
+                                className="text-[10px] font-normal shrink-0 ml-2 px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/5"
+                                style={{ color: "var(--theme-text-body, #94a3b8)" }}
+                              >
+                                {brand.products_count}
+                              </span>
+                            )}
                           </button>
                         );
                       })}

@@ -11,7 +11,7 @@ export const apiClient = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 30000,
+  timeout: 10000,
 });
 
 // Attach bearer token dynamically if available in localStorage
@@ -26,6 +26,13 @@ apiClient.interceptors.request.use((config) => {
 });
 
 let inFlightHomepageBanners: Promise<HomepageBannersResponse> | null = null;
+let inFlightCategories: Promise<Category[]> | null = null;
+let inFlightFeatured: Promise<{
+  featured_products: Product[];
+  new_arrivals: Product[];
+  best_sellers: Product[];
+  featured_categories: Category[];
+}> | null = null;
 
 export const api = {
   client: apiClient,
@@ -41,7 +48,7 @@ export const api = {
       .finally(() => {
         setTimeout(() => {
           inFlightHomepageBanners = null;
-        }, 1500);
+        }, 2000);
       });
     return inFlightHomepageBanners;
   },
@@ -55,15 +62,25 @@ export const api = {
     }
   },
 
-  // Storefront Featured
+  // Storefront Featured (Deduplicated across concurrent callers)
   async getFeatured(): Promise<{
     featured_products: Product[];
     new_arrivals: Product[];
     best_sellers: Product[];
     featured_categories: Category[];
   }> {
-    const res = await apiClient.get("/featured");
-    return res.data;
+    if (inFlightFeatured) {
+      return inFlightFeatured;
+    }
+    inFlightFeatured = apiClient
+      .get("/featured")
+      .then((res) => res.data)
+      .finally(() => {
+        setTimeout(() => {
+          inFlightFeatured = null;
+        }, 2000);
+      });
+    return inFlightFeatured;
   },
 
   // Products Catalog
@@ -104,10 +121,20 @@ export const api = {
     return res.data;
   },
 
-  // Categories
+  // Categories (Deduplicated across concurrent callers)
   async getCategories(): Promise<Category[]> {
-    const res = await apiClient.get("/categories");
-    return res.data;
+    if (inFlightCategories) {
+      return inFlightCategories;
+    }
+    inFlightCategories = apiClient
+      .get("/categories")
+      .then((res) => res.data)
+      .finally(() => {
+        setTimeout(() => {
+          inFlightCategories = null;
+        }, 2000);
+      });
+    return inFlightCategories;
   },
 
 
@@ -185,7 +212,7 @@ export const api = {
   },
 
   // Auth
-  async login(credentials: { email: string; password: string }): Promise<{
+  async login(credentials: { email: string; password: string; remember?: boolean }): Promise<{
     message: string;
     token: string;
     user: User;

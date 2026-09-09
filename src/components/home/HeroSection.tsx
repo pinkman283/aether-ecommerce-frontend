@@ -91,7 +91,7 @@ export function HeroSection() {
           setData(res);
         }
       } catch (err) {
-        console.error("Failed to load storefront homepage banners:", err);
+        console.warn("Notice: Storefront homepage banners fallback:", err);
       } finally {
         if (isMounted) setLoading(false);
       }

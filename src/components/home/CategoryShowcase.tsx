@@ -292,7 +292,7 @@ export function CategoryShowcase({ categories = [], bottomBanners = [] }: Catego
           setFallbackSections(results.filter((s) => s.products.length > 0));
         }
       } catch (err) {
-        console.error("Failed to load category sections:", err);
+        console.warn("Notice: Category sections fetch fallback:", err);
       } finally {
         if (isMounted) setLoading(false);
       }

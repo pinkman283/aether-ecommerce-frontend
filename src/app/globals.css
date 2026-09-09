@@ -9,6 +9,7 @@
   --color-cyber-border: rgba(255, 255, 255, 0.08);
 }
 
+
 body {
   background-color: var(--theme-bg, #090a0f);
   color: var(--theme-text-body, #94a3b8);
@@ -60,6 +61,21 @@ p:not([class*="text-"]):not([style*="color"]),
   border-color: var(--theme-hover-text, var(--theme-primary, #06b6d4)) !important;
   box-shadow: 0 16px 36px -8px color-mix(in srgb, var(--theme-primary, #06b6d4) 25%, transparent) !important;
 }
+
+/* Customer Auth Dynamic Themed Input Focus */
+.theme-auth-input-box {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.theme-auth-input-box:hover {
+  border-color: var(--theme-card-border, #cbd5e1);
+}
+
+.theme-auth-input-box:focus-within {
+  border-color: var(--theme-primary, #059669) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary, #059669) 22%, transparent) !important;
+}
+
 
 /* Primary Button Fill & Text */
 .theme-btn-primary {
@@ -406,7 +422,7 @@ body.theme-light-mode:not(.admin-body) .theme-promo-banner {
 
 /* Form Controls & Inputs Synchronization in Light Mode */
 body.theme-light-mode:not(.admin-body) .theme-input,
-body.theme-light-mode:not(.admin-body) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(.quantity-counter-input),
+body.theme-light-mode:not(.admin-body) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(.quantity-counter-input):not(.auth-seamless-input),
 body.theme-light-mode:not(.admin-body) select,
 body.theme-light-mode:not(.admin-body) textarea {
   background-color: #f8fafc !important;
@@ -420,7 +436,13 @@ body.theme-light-mode:not(.admin-body) textarea {
 .quantity-counter-input:focus,
 body.theme-light-mode:not(.admin-body) .quantity-counter-input,
 body.theme-light-mode:not(.admin-body) .quantity-counter-input:hover,
-body.theme-light-mode:not(.admin-body) .quantity-counter-input:focus {
+body.theme-light-mode:not(.admin-body) .quantity-counter-input:focus,
+.auth-seamless-input,
+.auth-seamless-input:hover,
+.auth-seamless-input:focus,
+body.theme-light-mode:not(.admin-body) .auth-seamless-input,
+body.theme-light-mode:not(.admin-body) .auth-seamless-input:hover,
+body.theme-light-mode:not(.admin-body) .auth-seamless-input:focus {
   background-color: #ffffff !important;
   border: 0 !important;
   border-width: 0 !important;
@@ -430,21 +452,21 @@ body.theme-light-mode:not(.admin-body) .quantity-counter-input:focus {
 }
 
 body.theme-light-mode:not(.admin-body) .theme-input::placeholder,
-body.theme-light-mode:not(.admin-body) input:not(.quantity-counter-input)::placeholder,
+body.theme-light-mode:not(.admin-body) input:not(.quantity-counter-input):not(.auth-seamless-input)::placeholder,
 body.theme-light-mode:not(.admin-body) textarea::placeholder {
   color: #64748b !important;
   opacity: 0.85 !important;
 }
 
 body.theme-light-mode:not(.admin-body) .theme-input:hover,
-body.theme-light-mode:not(.admin-body) input:not(.quantity-counter-input):hover,
+body.theme-light-mode:not(.admin-body) input:not(.quantity-counter-input):not(.auth-seamless-input):hover,
 body.theme-light-mode:not(.admin-body) select:hover {
   background-color: #ffffff !important;
   border-color: #94a3b8 !important;
 }
 
 body.theme-light-mode:not(.admin-body) .theme-input:focus,
-body.theme-light-mode:not(.admin-body) input:not(.quantity-counter-input):focus,
+body.theme-light-mode:not(.admin-body) input:not(.quantity-counter-input):not(.auth-seamless-input):focus,
 body.theme-light-mode:not(.admin-body) select:focus {
   background-color: #ffffff !important;
   border-color: var(--theme-primary, #2563eb) !important;
@@ -471,7 +493,6 @@ body.theme-light-mode:not(.admin-body) .theme-footer {
 body:not(.admin-body) .theme-footer-guarantees,
 body.theme-light-mode:not(.admin-body) .theme-footer-guarantees {
   background-color: var(--theme-footer-ribbon-bg, rgba(255, 255, 255, 0.02)) !important;
-  border-bottom: 1px solid var(--theme-footer-border, rgba(255, 255, 255, 0.08)) !important;
 }
 
 body:not(.admin-body) .theme-footer-card-title,

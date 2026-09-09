@@ -32,6 +32,13 @@ export function AppProviders({
     setMounted(true);
   }, []);
 
+  // Always ensure landing at the top of the page on navigation
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
+  }, [pathname]);
+
   const isAdminRoute = pathname?.startsWith("/admin");
 
   if (isAdminRoute) {
@@ -57,16 +64,18 @@ export function AppProviders({
 
   return (
     <ThemeProvider initialTheme={initialTheme}>
-      {/* Horizontal Split Reveal Intro Animation */}
-      <SplitReveal initialTheme={initialTheme} />
+      <div className="min-h-screen flex flex-col">
+        {/* Horizontal Split Reveal Intro Animation */}
+        <SplitReveal initialTheme={initialTheme} />
 
-      <Navbar onOpenSearch={() => setSearchOpen(true)} />
-      
-      <main className="min-h-[calc(100vh-140px)] pb-14 sm:pb-0">
-        {children}
-      </main>
+        <Navbar onOpenSearch={() => setSearchOpen(true)} />
+        
+        <main className="flex-1 flex flex-col pb-14 sm:pb-0">
+          {children}
+        </main>
 
-      <Footer />
+        <Footer />
+      </div>
 
       {/* Global Modals, Drawers & Conversion Widgets */}
       {mounted && (

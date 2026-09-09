@@ -80,6 +80,24 @@ export interface ThemeSettings {
   category_deals_card_title?: string;
   category_deals_card_subtitle?: string;
   category_deals_card_link?: string;
+  // Footer Guarantees & Features Strip Settings
+  footer_features_enabled?: boolean;
+  footer_feature_title_1?: string;
+  footer_feature_desc_1?: string;
+  footer_feature_link_1?: string;
+  footer_feature_title_2?: string;
+  footer_feature_desc_2?: string;
+  footer_feature_link_2?: string;
+  footer_feature_title_3?: string;
+  footer_feature_desc_3?: string;
+  footer_feature_link_3?: string;
+  footer_feature_title_4?: string;
+  footer_feature_desc_4?: string;
+  footer_feature_link_4?: string;
+  // Customer Auth Page Customization
+  customer_auth_bg_image?: string;
+  customer_auth_bg_color?: string;
+  customer_auth_card_position?: "left" | "center" | "right";
 }
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
@@ -119,6 +137,22 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   category_deals_card_title: "Top Deals",
   category_deals_card_subtitle: "Up to 20% Off",
   category_deals_card_link: "/products?discounted=true",
+  footer_features_enabled: true,
+  footer_feature_title_1: "Free Express Shipping",
+  footer_feature_desc_1: "Complimentary delivery inside & outside Dhaka.",
+  footer_feature_link_1: "/shipping-policy",
+  footer_feature_title_2: "2-Year Studio Warranty",
+  footer_feature_desc_2: "Comprehensive hardware protection & zero-cost repair.",
+  footer_feature_link_2: "/refund-policy",
+  footer_feature_title_3: "30-Day Risk-Free Trial",
+  footer_feature_desc_3: "Hassle-free evaluation with prepaid RMA labels.",
+  footer_feature_link_3: "/refund-policy",
+  footer_feature_title_4: "24/7 Audio Support",
+  footer_feature_desc_4: "Direct access to sound engineers & hardware specialists.",
+  footer_feature_link_4: "/contact",
+  customer_auth_bg_image: "",
+  customer_auth_bg_color: "#ffffff",
+  customer_auth_card_position: "left",
   store_brand_name: "INHALIQ",
   store_brand_tagline: "ELEVATE EVERY INHALE",
   store_brand_logo: "",
@@ -164,6 +198,29 @@ export const RADIUS_MAP: Record<string, { root: string; sm: string; md: string; 
   "rounded-xl": { root: "0.75rem", sm: "0.375rem", md: "0.5rem", lg: "0.75rem", xl: "1rem", "2xl": "1.25rem", "3xl": "1.5rem", "4xl": "2rem" },
   "rounded-2xl": { root: "1rem", sm: "0.5rem", md: "0.75rem", lg: "1rem", xl: "1.25rem", "2xl": "1.5rem", "3xl": "2rem", "4xl": "2.5rem" },
 };
+
+export function getThemeCardRadiusPx(radiusKey?: string): number {
+  if (!radiusKey) return 24;
+  if (radiusKey === "rounded-none") return 0;
+  if (radiusKey === "rounded-md") return 12;
+  if (radiusKey === "rounded-lg") return 18;
+  if (radiusKey === "rounded-xl") return 24;
+  if (radiusKey === "rounded-2xl") return 32;
+  if (radiusKey.endsWith("px")) return Math.max(0, parseInt(radiusKey, 10) || 0);
+  return 24;
+}
+
+export function getThemeInputRadiusPx(radiusKey?: string): number {
+  if (!radiusKey) return 12;
+  if (radiusKey === "rounded-none") return 0;
+  if (radiusKey === "rounded-md") return 6;
+  if (radiusKey === "rounded-lg") return 8;
+  if (radiusKey === "rounded-xl") return 12;
+  if (radiusKey === "rounded-2xl") return 16;
+  if (radiusKey.endsWith("px")) return Math.max(0, Math.round((parseInt(radiusKey, 10) || 12) / 2));
+  return 12;
+}
+
 
 export function getHexLuminance(hex: string): number {
   if (!hex || typeof hex !== "string") return 0;

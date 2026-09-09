@@ -96,7 +96,7 @@ export function HomepageProductSection({ section }: HomepageProductSectionProps)
           [tabId]: products,
         }));
       } catch (err) {
-        console.error("Failed to load tab products:", err);
+        console.warn("Notice: Tab products fetch fallback:", err);
       } finally {
         setLoadingTab(false);
       }
