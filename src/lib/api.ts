@@ -185,6 +185,20 @@ export const api = {
     return res.data;
   },
 
+  async getShippingZones(): Promise<{
+    zones: Array<{
+      id: string;
+      name: string;
+      rate: number;
+      duration?: string;
+      free_threshold?: number;
+      is_active: boolean;
+    }>;
+  }> {
+    const res = await apiClient.get("/shipping-zones");
+    return res.data;
+  },
+
   // Addresses
   async getAddresses(): Promise<Address[]> {
     const res = await apiClient.get("/addresses");

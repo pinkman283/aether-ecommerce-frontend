@@ -62,7 +62,15 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState(user?.name || "");
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "");
   const [customerEmail, setCustomerEmail] = useState(user?.email || "");
-  const [shippingArea, setShippingArea] = useState<"inside_dhaka" | "outside_dhaka">("inside_dhaka");
+  const [shippingArea, setShippingArea] = useState<string>("inside_dhaka");
+  const [shippingZones, setShippingZones] = useState<Array<{
+    id: string;
+    name: string;
+    rate: number;
+    duration?: string;
+    free_threshold?: number;
+    is_active?: boolean;
+  }>>([]);
   const [fullAddress, setFullAddress] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(true);
@@ -120,15 +128,24 @@ export default function CheckoutPage() {
     loadCustomerPromos();
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    api.getShippingZones().then((res) => {
+      if (res?.zones && res.zones.length > 0) {
+        setShippingZones(res.zones);
+      }
+    }).catch(() => {});
+  }, []);
+
   // Pricing calculations
   const subtotal = getSubtotal();
 
-  const insideDhakaRate = theme.shipping_inside_dhaka_rate ?? 60;
-  const outsideDhakaRate = theme.shipping_outside_dhaka_rate ?? 120;
-  const freeShippingThreshold = theme.shipping_free_threshold ?? 100;
+  const activeZone = shippingZones.find((z) => z.id === shippingArea);
+  const baseShippingRate = activeZone
+    ? activeZone.rate
+    : (shippingArea === "inside_dhaka" ? (theme.shipping_inside_dhaka_rate ?? 60) : (theme.shipping_outside_dhaka_rate ?? 130));
 
-  const baseShippingRate = shippingArea === "inside_dhaka" ? insideDhakaRate : outsideDhakaRate;
-  const isFreeShipping = subtotal >= freeShippingThreshold;
+  const zoneFreeThreshold = activeZone?.free_threshold ?? (theme.shipping_free_threshold ?? 3000);
+  const isFreeShipping = zoneFreeThreshold > 0 && subtotal >= zoneFreeThreshold;
   const defaultEffectiveShipping = isFreeShipping ? 0 : baseShippingRate;
 
   // Authoritative promotion evaluation
@@ -362,6 +379,7 @@ export default function CheckoutPage() {
           country: "Bangladesh",
         },
         payment_method: paymentMethod,
+        shipping_method: shippingArea,
         coupon_code: appliedCoupon?.code,
         use_store_credit: useStoreCredit,
         notes: orderNotes.trim() || undefined,
@@ -637,15 +655,25 @@ export default function CheckoutPage() {
                     <div className="relative">
                       <select
                         value={shippingArea}
-                        onChange={(e) => setShippingArea(e.target.value as "inside_dhaka" | "outside_dhaka")}
+                        onChange={(e) => setShippingArea(e.target.value)}
                         className="w-full theme-input rounded-xl px-3.5 py-2.5 text-xs appearance-none pr-8 focus:outline-none focus:border-cyan-400 transition-all cursor-pointer"
                       >
-                        <option value="inside_dhaka">
-                          Inside Dhaka ({formatPrice(insideDhakaRate)})
-                        </option>
-                        <option value="outside_dhaka">
-                          Outside Dhaka ({formatPrice(outsideDhakaRate)})
-                        </option>
+                        {shippingZones.length > 0 ? (
+                          shippingZones.map((zone) => (
+                            <option key={zone.id} value={zone.id}>
+                              {zone.name} ({formatPrice(zone.rate)}) {zone.duration ? `• ${zone.duration}` : ""}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="inside_dhaka">
+                              Inside Dhaka ({formatPrice(60)})
+                            </option>
+                            <option value="outside_dhaka">
+                              Outside Dhaka ({formatPrice(130)})
+                            </option>
+                          </>
+                        )}
                       </select>
                       <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>

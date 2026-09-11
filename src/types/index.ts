@@ -130,6 +130,40 @@ export interface OrderItem {
   total_price: number;
 }
 
+export interface Shipment {
+  id: number;
+  order_id: number;
+  provider: 'steadfast' | 'pathao' | 'redx' | string;
+  consignment_id?: string | null;
+  tracking_code?: string | null;
+  tracking_url?: string | null;
+  status: 'draft' | 'booked' | 'pickup_pending' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'delivery_failed' | 'cancelled' | 'returned';
+  courier_status_raw?: string | null;
+  recipient_name: string;
+  recipient_phone: string;
+  recipient_address: string;
+  cod_amount: number;
+  courier_charge: number;
+  courier_cod_fee: number;
+  weight: number;
+  delivery_area?: string | null;
+  pickup_store_id?: string | null;
+  notes?: string | null;
+  delivery_attempts: number;
+  failure_reason?: string | null;
+  return_reason?: string | null;
+  booked_at?: string | null;
+  picked_up_at?: string | null;
+  in_transit_at?: string | null;
+  out_for_delivery_at?: string | null;
+  delivered_at?: string | null;
+  returned_at?: string | null;
+  cancelled_at?: string | null;
+  last_synced_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Order {
   id: number;
   user_id?: number | null;
@@ -152,6 +186,7 @@ export interface Order {
   subtotal: number;
   tax_amount: number;
   shipping_amount: number;
+  shipping_method?: string | null;
   discount_amount: number;
   total_amount: number;
   payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
@@ -177,6 +212,8 @@ export interface Order {
   user?: User;
   cashier_user?: User;
   pos_register_session?: PosRegisterSession;
+  latest_shipment?: Shipment | null;
+  shipments?: Shipment[];
 }
 
 export interface User {

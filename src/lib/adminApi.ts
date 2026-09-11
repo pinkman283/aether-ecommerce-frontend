@@ -27,6 +27,7 @@ import {
   PurchaseOrder, 
   SalesInvoice,
   SalesSummary,
+  Shipment,
   User, 
   Vendor, 
   VendorAnalyticsItem, 
@@ -338,6 +339,69 @@ export const adminApi = {
 
   async refundOrder(id: number, data: { reason: string; restock?: boolean }): Promise<{ message: string; order: Order }> {
     const res = await adminClient.post(`/admin/orders/${id}/refund`, data);
+    return res.data;
+  },
+
+  // ==========================================
+  // COURIER & SHIPMENT FULFILLMENT
+  // ==========================================
+  async getCourierOptions(orderId: number): Promise<{
+    order_id: number;
+    order_number: string;
+    customer_name: string;
+    customer_phone?: string;
+    shipping_address: any;
+    payment_status: string;
+    suggested_cod_amount: number;
+    suggested_weight: number;
+    default_provider: string;
+    providers: Array<{
+      provider: string;
+      name: string;
+      is_enabled: boolean;
+      is_test_mode: boolean;
+      test_status?: string;
+      test_message?: string;
+      stores?: Array<{ store_id: number; store_name: string; store_address: string }>;
+    }>;
+    active_shipment?: Shipment | null;
+  }> {
+    const res = await adminClient.get(`/admin/orders/${orderId}/courier-options`);
+    return res.data;
+  },
+
+  async bookShipment(orderId: number, data: {
+    provider: string;
+    weight?: number;
+    cod_amount?: number;
+    pickup_store_id?: string;
+    notes?: string;
+    delivery_area?: string;
+  }): Promise<{ message: string; shipment: Shipment; order: Order }> {
+    const res = await adminClient.post(`/admin/orders/${orderId}/shipments`, data);
+    return res.data;
+  },
+
+  async trackShipment(orderId: number, shipmentId: number): Promise<{
+    message: string;
+    shipment: Shipment;
+    order: Order;
+  }> {
+    const res = await adminClient.get(`/admin/orders/${orderId}/shipments/${shipmentId}/track`);
+    return res.data;
+  },
+
+  async cancelShipment(orderId: number, shipmentId: number): Promise<{
+    message: string;
+    shipment: Shipment;
+    order: Order;
+  }> {
+    const res = await adminClient.post(`/admin/orders/${orderId}/shipments/${shipmentId}/cancel`);
+    return res.data;
+  },
+
+  async getShippingLabel(orderId: number, shipmentId: number): Promise<{ label: any }> {
+    const res = await adminClient.get(`/admin/orders/${orderId}/shipments/${shipmentId}/label`);
     return res.data;
   },
 

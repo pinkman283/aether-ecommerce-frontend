@@ -153,6 +153,98 @@ function OrdersContent() {
   const [restock, setRestock] = useState(true);
   const [refunding, setRefunding] = useState(false);
 
+  // Courier Booking Modal
+  const [bookingOrder, setBookingOrder] = useState<Order | null>(null);
+  const [courierOptions, setCourierOptions] = useState<any | null>(null);
+  const [loadingCourierOptions, setLoadingCourierOptions] = useState(false);
+  const [selectedCourier, setSelectedCourier] = useState("steadfast");
+  const [bookingWeight, setBookingWeight] = useState(0.5);
+  const [bookingCod, setBookingCod] = useState(0);
+  const [bookingPickupStore, setBookingPickupStore] = useState("");
+  const [bookingNotes, setBookingNotes] = useState("");
+  const [bookingDeliveryArea, setBookingDeliveryArea] = useState("");
+  const [isBookingCourier, setIsBookingCourier] = useState(false);
+
+  // Thermal Shipping Label Modal
+  const [shippingLabelData, setShippingLabelData] = useState<any | null>(null);
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+
+  const handleOpenBookCourier = async (order: Order) => {
+    setBookingOrder(order);
+    setLoadingCourierOptions(true);
+    try {
+      const res = await adminApi.getCourierOptions(order.id);
+      setCourierOptions(res);
+      setSelectedCourier(res.default_provider || "steadfast");
+      setBookingWeight(res.suggested_weight || 0.5);
+      setBookingCod(res.suggested_cod_amount || 0);
+      setBookingDeliveryArea(res.shipping_address?.city || "");
+      setBookingNotes(order.notes || "");
+      const pathaoProvider = res.providers?.find((p: any) => p.provider === "pathao");
+      if (pathaoProvider?.stores?.[0]) {
+        setBookingPickupStore(String(pathaoProvider.stores[0].store_id));
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to load courier options.");
+    } finally {
+      setLoadingCourierOptions(false);
+    }
+  };
+
+  const handleExecuteBookCourier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingOrder) return;
+    setIsBookingCourier(true);
+    try {
+      const res = await adminApi.bookShipment(bookingOrder.id, {
+        provider: selectedCourier,
+        weight: Number(bookingWeight),
+        cod_amount: Number(bookingCod),
+        pickup_store_id: bookingPickupStore || undefined,
+        delivery_area: bookingDeliveryArea || undefined,
+        notes: bookingNotes || undefined,
+      });
+      toast.success(res.message);
+      setBookingOrder(null);
+      loadOrders();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Courier booking failed.");
+    } finally {
+      setIsBookingCourier(false);
+    }
+  };
+
+  const handleTrackShipment = async (orderId: number, shipmentId: number) => {
+    try {
+      const res = await adminApi.trackShipment(orderId, shipmentId);
+      toast.success(res.message);
+      loadOrders();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to sync tracking status.");
+    }
+  };
+
+  const handleCancelShipment = async (orderId: number, shipmentId: number) => {
+    if (!confirm("Are you sure you want to cancel this courier consignment?")) return;
+    try {
+      const res = await adminApi.cancelShipment(orderId, shipmentId);
+      toast.success(res.message);
+      loadOrders();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to cancel shipment.");
+    }
+  };
+
+  const handlePrintLabel = async (orderId: number, shipmentId: number) => {
+    try {
+      const res = await adminApi.getShippingLabel(orderId, shipmentId);
+      setShippingLabelData(res.label);
+      setIsLabelModalOpen(true);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to generate shipping label.");
+    }
+  };
+
   const openInvoiceModal = async (orderId: number) => {
     setLoadingInvoice(true);
     try {
@@ -783,6 +875,7 @@ function OrdersContent() {
                 <th className="p-3 text-left w-[11%] min-w-[90px]">Amount</th>
                 <th className="p-3 text-left w-[12%] min-w-[100px]">Payment</th>
                 <th className="p-3 text-left w-[12%] min-w-[100px]">Fulfillment</th>
+                <th className="p-3 text-left w-[14%] min-w-[130px]">Logistics / Courier</th>
                 <th className="p-3 text-left w-[12%] min-w-[110px]">IP / Security</th>
                 <th className="p-3 text-left w-[11%] min-w-[100px]">Date</th>
                 <th className="p-3 text-center min-w-[100px]">Actions</th>
@@ -791,14 +884,14 @@ function OrdersContent() {
             <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center text-slate-500">
+                  <td colSpan={10} className="p-12 text-center text-slate-500">
                     <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-amber-400" />
                     <span>Loading orders...</span>
                   </td>
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-0">
+                  <td colSpan={10} className="p-0">
                     <AdminEmptyState
                       title="No orders found"
                       description="No customer orders matched your current filters."
@@ -853,6 +946,77 @@ function OrdersContent() {
                         <AdminStatusBadge status={order.order_status} />
                       </td>
 
+                      {/* Logistics / Courier */}
+                      {/* Logistics / Courier */}
+                      <td className="p-3 text-left whitespace-nowrap">
+                        {(() => {
+                          const shipment = order.latest_shipment || (order.shipments && order.shipments[0]);
+                          if (shipment) {
+                            return (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[9.5px] font-bold uppercase tracking-wider">
+                                    {shipment.provider}
+                                  </span>
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
+                                    shipment.status === 'delivered' ? 'bg-emerald-500/20 text-emerald-400' :
+                                    shipment.status === 'in_transit' ? 'bg-sky-500/20 text-sky-400' :
+                                    shipment.status === 'out_for_delivery' ? 'bg-cyan-500/20 text-cyan-400' :
+                                    shipment.status === 'delivery_failed' ? 'bg-rose-500/20 text-rose-400' :
+                                    'bg-amber-500/20 text-amber-300'
+                                  }`}>
+                                    {shipment.status.replace(/_/g, ' ')}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[10px]">
+                                  {shipment.consignment_id && (
+                                    <span className="font-mono text-slate-400 truncate max-w-[110px]" title={`Consignment ID: ${shipment.consignment_id}`}>
+                                      {shipment.consignment_id}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTrackShipment(order.id, shipment.id)}
+                                    className="text-slate-400 hover:text-cyan-400 transition-colors p-0.5"
+                                    title="Sync live tracking from courier"
+                                  >
+                                    <RefreshCw className="w-2.5 h-2.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePrintLabel(order.id, shipment.id)}
+                                    className="text-slate-400 hover:text-amber-400 transition-colors p-0.5"
+                                    title="Print 4x6 Thermal Label"
+                                  >
+                                    <Printer className="w-2.5 h-2.5" />
+                                  </button>
+                                  {shipment.tracking_url && (
+                                    <a
+                                      href={shipment.tracking_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-slate-400 hover:text-indigo-400 transition-colors p-0.5"
+                                      title="Open courier tracking portal"
+                                    >
+                                      <ExternalLink className="w-2.5 h-2.5" />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenBookCourier(order)}
+                              className="px-2 py-1 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[10.5px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer"
+                            >
+                              <Truck className="w-3 h-3" /> Book Courier
+                            </button>
+                          );
+                        })()}
+                      </td>
+
                       {/* IP Security */}
                       <td className="p-3 text-left whitespace-nowrap">
                         <button
@@ -874,6 +1038,29 @@ function OrdersContent() {
                       {/* Actions */}
                       <td className="p-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
+                          {(() => {
+                            const s = order.latest_shipment || (order.shipments && order.shipments[0]);
+                            if (s) {
+                              return (
+                                <button
+                                  onClick={() => handlePrintLabel(order.id, s.id)}
+                                  className="p-1.5 rounded-md text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                                  title="Print 4x6 Thermal Shipping Label"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                </button>
+                              );
+                            }
+                            return (
+                              <button
+                                onClick={() => handleOpenBookCourier(order)}
+                                className="p-1.5 rounded-md text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors cursor-pointer"
+                                title="Book Courier Consignment"
+                              >
+                                <Truck className="w-3.5 h-3.5" />
+                              </button>
+                            );
+                          })()}
                           <button
                             onClick={() => openInvoiceModal(order.id)}
                             className="p-1.5 rounded-md text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors cursor-pointer"
@@ -990,6 +1177,108 @@ function OrdersContent() {
               <span>Total Amount</span>
               <span className="text-base text-cyan-400 font-mono font-black">{formatPrice(selectedOrder.total_amount)}</span>
             </div>
+
+            {/* Logistics & Fulfillment Details */}
+            {(() => {
+              const shipment = selectedOrder.latest_shipment || (selectedOrder.shipments && selectedOrder.shipments[0]);
+              return (
+                <div className="p-3.5 rounded-xl bg-indigo-500/5 border border-indigo-500/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-indigo-400" />
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">Logistics & Courier Consignment</span>
+                    </div>
+                    {shipment && (
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
+                        shipment.status === 'delivered' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                        shipment.status === 'in_transit' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' :
+                        shipment.status === 'out_for_delivery' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
+                        shipment.status === 'delivery_failed' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                        'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      }`}>
+                        {shipment.status.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                  </div>
+
+                  {shipment ? (
+                    <div className="space-y-3 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                          <span className="text-[10px] text-slate-400 block">Courier</span>
+                          <span className="font-bold text-white uppercase">{shipment.provider}</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                          <span className="text-[10px] text-slate-400 block">Consignment ID</span>
+                          <span className="font-mono font-bold text-cyan-400 block truncate">{shipment.consignment_id || 'N/A'}</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                          <span className="text-[10px] text-slate-400 block">Tracking Code</span>
+                          <span className="font-mono font-bold text-slate-300 block truncate">{shipment.tracking_code || 'N/A'}</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                          <span className="text-[10px] text-slate-400 block">COD Collectable</span>
+                          <span className="font-mono font-bold text-emerald-400">{formatPrice(shipment.cod_amount || 0)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/5">
+                        <button
+                          type="button"
+                          onClick={() => handleTrackShipment(selectedOrder.id, shipment.id)}
+                          className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <RefreshCw className="w-3 h-3 text-cyan-400" /> Sync Tracking
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handlePrintLabel(selectedOrder.id, shipment.id)}
+                          className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Printer className="w-3 h-3" /> Thermal Shipping Label
+                        </button>
+                        {shipment.tracking_url && (
+                          <a
+                            href={shipment.tracking_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Courier Tracking Portal
+                          </a>
+                        )}
+                        {!['delivered', 'cancelled', 'returned'].includes(shipment.status) && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelShipment(selectedOrder.id, shipment.id)}
+                            className="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors ml-auto cursor-pointer"
+                          >
+                            <Ban className="w-3 h-3" /> Cancel Consignment
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between pt-1">
+                      <p className="text-xs text-slate-400">
+                        No courier consignment booked yet. Dispatch this package via Steadfast, Pathao, or RedX.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const ord = selectedOrder;
+                          setSelectedOrder(null);
+                          handleOpenBookCourier(ord);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                      >
+                        <Truck className="w-3.5 h-3.5" /> Book Courier
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -1272,6 +1561,278 @@ function OrdersContent() {
         loading={loadingInvoice}
         onClose={() => setSelectedInvoice(null)}
       />
+
+      {/* BOOK COURIER MODAL */}
+      {bookingOrder && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-[#0e121e] border border-amber-500/30 rounded-2xl p-5 space-y-4 my-8 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Truck className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="text-sm font-black text-white">Book Courier Consignment</h3>
+                  <span className="text-[11px] text-slate-400">Order #{bookingOrder.order_number}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setBookingOrder(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {loadingCourierOptions ? (
+              <div className="p-10 text-center text-slate-400">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-amber-400" />
+                <span>Checking courier integrations & balance...</span>
+              </div>
+            ) : (
+              <form onSubmit={handleExecuteBookCourier} className="space-y-4 text-xs">
+                {/* Recipient Quick Summary */}
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
+                  <div className="flex justify-between items-center text-slate-300">
+                    <span className="font-bold text-white">{bookingOrder.customer_name}</span>
+                    <span className="font-mono text-cyan-400">{bookingOrder.customer_phone}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    {bookingOrder.shipping_address?.address_line1}, {bookingOrder.shipping_address?.city}
+                  </p>
+                </div>
+
+                {/* Courier Provider Selection */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-200 block">Select Courier Partner</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "steadfast", name: "Steadfast", desc: "Express / COD" },
+                      { id: "pathao", name: "Pathao", desc: "On-Demand" },
+                      { id: "redx", name: "RedX", desc: "Nationwide" },
+                    ].map((provider) => {
+                      const isSelected = selectedCourier === provider.id;
+                      const providerMeta = courierOptions?.providers?.find((p: any) => p.provider === provider.id);
+                      return (
+                        <button
+                          key={provider.id}
+                          type="button"
+                          onClick={() => setSelectedCourier(provider.id)}
+                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-amber-500/15 border-amber-500 text-white shadow-sm"
+                              : "bg-white/[0.02] border-white/10 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                          }`}
+                        >
+                          <div className="font-bold capitalize text-white flex items-center justify-between">
+                            <span>{provider.name}</span>
+                            {providerMeta?.balance !== undefined && providerMeta.balance !== null && (
+                              <span className="text-[9px] font-mono text-emerald-400">৳{providerMeta.balance}</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-400 block">{provider.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Weight & COD */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-300 block">Parcel Weight (kg)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      max="50"
+                      value={bookingWeight}
+                      onChange={(e) => setBookingWeight(parseFloat(e.target.value) || 0.5)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:border-amber-400/50 focus:outline-none"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-300 block">COD Collectable (৳)</label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={bookingCod}
+                      onChange={(e) => setBookingCod(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:border-amber-400/50 focus:outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Pickup Store (Pathao / RedX) */}
+                {selectedCourier === "pathao" && courierOptions?.providers?.find((p: any) => p.provider === "pathao")?.stores?.length > 0 && (
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-300 block">Pickup Hub / Store</label>
+                    <select
+                      value={bookingPickupStore}
+                      onChange={(e) => setBookingPickupStore(e.target.value)}
+                      className="w-full bg-[#0e121e] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400/50 focus:outline-none"
+                    >
+                      {courierOptions.providers.find((p: any) => p.provider === "pathao").stores.map((s: any) => (
+                        <option key={s.store_id} value={s.store_id}>
+                          {s.store_name} ({s.store_address})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Delivery Area / Destination */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Delivery Area / City</label>
+                  <input
+                    type="text"
+                    value={bookingDeliveryArea}
+                    onChange={(e) => setBookingDeliveryArea(e.target.value)}
+                    placeholder="e.g. Dhaka, Chittagong, Sylhet"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400/50 focus:outline-none"
+                  />
+                </div>
+
+                {/* Delivery Instructions */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-300 block">Delivery Notes / Special Instructions</label>
+                  <input
+                    type="text"
+                    value={bookingNotes}
+                    onChange={(e) => setBookingNotes(e.target.value)}
+                    placeholder="e.g. Call before delivery, handle with care"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400/50 focus:outline-none"
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setBookingOrder(null)}
+                    className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isBookingCourier}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-md disabled:opacity-50"
+                  >
+                    {isBookingCourier ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Dispatching...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Truck className="w-3.5 h-3.5" />
+                        <span>Confirm Dispatch</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* THERMAL 4X6 SHIPPING LABEL MODAL */}
+      {isLabelModalOpen && shippingLabelData && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-md bg-[#0e121e] border border-white/20 rounded-2xl p-5 space-y-4 my-8 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10 print:hidden">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-amber-400" />
+                <h3 className="text-sm font-black text-white">Thermal Shipping Label (4" × 6")</h3>
+              </div>
+              <button
+                onClick={() => setIsLabelModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Label Printable Container (White background, black text high-contrast thermal aesthetic) */}
+            <div id="thermal-label" className="bg-white text-black p-5 rounded-lg border-2 border-black font-sans space-y-3 print:border-none print:m-0 print:p-2">
+              {/* Header */}
+              <div className="flex justify-between items-start border-b-2 border-black pb-2">
+                <div>
+                  <h2 className="text-lg font-black tracking-tight">{shippingLabelData.store_name}</h2>
+                  <p className="text-[10px] text-gray-700">{shippingLabelData.sender_phone}</p>
+                </div>
+                <div className="text-right">
+                  <span className="px-2 py-0.5 bg-black text-white text-[11px] font-black uppercase rounded">
+                    {shippingLabelData.courier_name}
+                  </span>
+                  <p className="text-[10px] font-mono mt-1 font-bold">{shippingLabelData.delivery_type}</p>
+                </div>
+              </div>
+
+              {/* Barcode / Consignment Visual */}
+              <div className="text-center py-2 border-b-2 border-black bg-gray-50 rounded">
+                <div className="font-mono text-xl tracking-[0.3em] font-black uppercase">
+                  {shippingLabelData.consignment_id || shippingLabelData.order_number}
+                </div>
+                <p className="text-[9px] text-gray-500 font-mono mt-0.5">CONSIGNMENT TRACKING ID</p>
+              </div>
+
+              {/* Recipient Box */}
+              <div className="border-b-2 border-black pb-2 space-y-1">
+                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block">DELIVER TO:</span>
+                <div className="text-sm font-black">{shippingLabelData.customer_name}</div>
+                <div className="text-xs font-mono font-bold">{shippingLabelData.customer_phone}</div>
+                <p className="text-xs leading-snug">{shippingLabelData.customer_address}</p>
+                <p className="text-xs font-bold text-gray-800">{shippingLabelData.customer_city}</p>
+              </div>
+
+              {/* Package Specs & Financial COD */}
+              <div className="grid grid-cols-2 gap-2 border-b-2 border-black pb-2 text-xs">
+                <div>
+                  <span className="text-[9px] text-gray-500 block">ORDER REF</span>
+                  <span className="font-mono font-black">{shippingLabelData.order_number}</span>
+                  <span className="text-[9px] text-gray-500 block mt-1">WEIGHT</span>
+                  <span className="font-mono font-bold">{shippingLabelData.weight}</span>
+                </div>
+                <div className="bg-black text-white p-2 rounded text-center flex flex-col justify-center">
+                  <span className="text-[9px] uppercase tracking-wider block opacity-80">CASH ON DELIVERY</span>
+                  <span className="text-base font-mono font-black">
+                    {shippingLabelData.cod_amount > 0 ? `৳${shippingLabelData.cod_amount}` : "PAID (৳0)"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer / Notes */}
+              <div className="text-[10px] text-gray-600 flex justify-between items-center pt-1">
+                <span>{shippingLabelData.notes || "Standard Parcel Delivery"}</span>
+                <span className="font-mono text-[9px]">{shippingLabelData.date}</span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/10 print:hidden">
+              <button
+                type="button"
+                onClick={() => setIsLabelModalOpen(false)}
+                className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Thermal Label</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

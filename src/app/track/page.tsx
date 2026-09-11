@@ -55,23 +55,38 @@ function TrackOrderContent() {
     fetchTracking(query);
   };
 
-  const getStepIndex = (status: string) => {
-    switch (status) {
-      case "pending": return 0;
-      case "processing": return 1;
-      case "shipped": return 2;
-      case "delivered": return 3;
-      default: return 1;
+  const getStepIndex = (shipmentStatus?: string, orderStatus?: string) => {
+    const s = (shipmentStatus || orderStatus || "").toLowerCase();
+    switch (s) {
+      case "pending":
+      case "draft":
+        return 0;
+      case "booked":
+      case "pickup_pending":
+      case "processing":
+        return 1;
+      case "picked_up":
+      case "in_transit":
+      case "shipped":
+        return 2;
+      case "out_for_delivery":
+        return 3;
+      case "delivered":
+      case "completed":
+        return 4;
+      default:
+        return 1;
     }
   };
 
-  const currentStep = order ? getStepIndex(order.order_status) : 1;
+  const currentStep = order ? getStepIndex(order.shipment_status, order.order_status) : 0;
 
   const trackingSteps = [
-    { title: "Order Confirmed", desc: "Studio calibration initiated" },
-    { title: "Quality Check & Packing", desc: "Acoustic diagnostic passed" },
-    { title: "In Transit with Carrier", desc: "Express priority dispatch" },
-    { title: "Delivered to Door", desc: "Signature verified" },
+    { title: "Order Confirmed", desc: "Order registered in system" },
+    { title: "Consignment Booked", desc: "Dispatch request received by courier" },
+    { title: "In Transit", desc: "Parcel moving through logistics hubs" },
+    { title: "Out for Delivery", desc: "Assigned to delivery rider" },
+    { title: "Delivered", desc: "Handed over and verified" },
   ];
 
   return (
@@ -79,13 +94,13 @@ function TrackOrderContent() {
       {/* Header */}
       <div className="text-center space-y-3">
         <span className="text-xs font-black uppercase tracking-widest text-indigo-400">
-          Real-Time Hardware Dispatch
+          Live Logistics Telemetry
         </span>
         <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-          Track Your Studio Package
+          Track Your Order
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-          Enter your order reference code (e.g. ORD-2026-98421) or tracking number for live logistics telemetry.
+          Enter your order reference code (e.g. ORD-2026-XXXXX) or courier tracking number.
         </p>
 
         {/* Search Bar */}
@@ -103,7 +118,7 @@ function TrackOrderContent() {
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold uppercase tracking-wide transition-all shadow-lg shadow-indigo-600/30 disabled:opacity-50"
+            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold uppercase tracking-wide transition-all shadow-lg shadow-indigo-600/30 disabled:opacity-50 cursor-pointer"
           >
             {loading ? "..." : "Track"}
           </button>
@@ -130,37 +145,69 @@ function TrackOrderContent() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Carrier & Routing
+                  Courier Partner & Routing
                 </span>
                 <span className="text-base font-bold text-white flex items-center gap-2 mt-0.5">
-                  <Truck className="w-4 h-4 text-cyan-400" /> {order.carrier || "DHL Cyber Express"}
+                  <Truck className="w-4 h-4 text-cyan-400" /> {order.carrier || "Courier Assignment in Progress"}
                 </span>
-                <span className="text-xs text-slate-400 font-mono">
-                  {order.tracking_code}
-                </span>
+                {order.tracking_code && (
+                  <span className="text-xs text-slate-400 font-mono block mt-0.5">
+                    Consignment ID: <span className="text-cyan-300 font-bold">{order.tracking_code}</span>
+                  </span>
+                )}
+                {order.tracking_url && (
+                  <a
+                    href={order.tracking_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-cyan-400 hover:text-cyan-300 hover:underline mt-1.5 transition-colors"
+                  >
+                    <span>Track on Courier Portal</span>
+                    <span className="text-[10px]">↗</span>
+                  </a>
+                )}
               </div>
 
               <div className="text-left sm:text-right">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Recipient
+                  Recipient Destination
                 </span>
                 <span className="text-xs font-bold text-white block mt-0.5">{order.customer_name}</span>
-                <span className="text-[11px] text-slate-400">{order.shipping_address?.city}, {order.shipping_address?.country}</span>
+                <span className="text-[11px] text-slate-400">{order.shipping_destination?.city}, {order.shipping_destination?.country}</span>
+                <div className="mt-1.5">
+                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    order.shipment_status === 'delivered'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : order.shipment_status === 'delivery_failed'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  }`}>
+                    {order.shipment_status ? order.shipment_status.replace(/_/g, ' ') : order.order_status}
+                  </span>
+                </div>
               </div>
             </div>
 
+            {/* Failure/Return alert banner if applicable */}
+            {order.failure_reason && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Notice: {order.failure_reason} (Attempt: {order.delivery_attempts || 1})</span>
+              </div>
+            )}
+
             {/* Step Visualizer Timeline */}
             <div className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
                 {trackingSteps.map((s, idx) => {
                   const isCompleted = idx <= currentStep;
                   const isCurrent = idx === currentStep;
 
                   return (
-                    <div key={s.title} className="flex md:flex-col items-start gap-4 md:gap-2">
+                    <div key={s.title} className="flex md:flex-col items-start gap-3 md:gap-2">
                       <div className="flex items-center gap-2">
                         <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
+                          className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
                             isCurrent
                               ? "bg-cyan-500 border-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/30 animate-pulse"
                               : isCompleted
@@ -168,7 +215,7 @@ function TrackOrderContent() {
                               : "bg-white/5 border-white/10 text-slate-600"
                           }`}
                         >
-                          {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                          {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
                         </div>
                       </div>
 
