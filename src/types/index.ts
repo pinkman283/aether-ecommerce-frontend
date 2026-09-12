@@ -744,14 +744,19 @@ export interface SalesInvoice {
   payment_status: string;
   payment_method: string;
   order_status: string;
+  carrier?: string | null;
+  tracking_code?: string | null;
+  tracking_id?: string | null;
+  shipping_method?: string | null;
   company: {
     name: string;
-    tagline: string;
-    address: string;
-    tax_number: string;
-    phone: string;
-    email: string;
-    website: string;
+    logo?: string | null;
+    tagline?: string;
+    address?: string;
+    tax_number?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
   };
   customer: {
     name: string;
