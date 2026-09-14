@@ -27,6 +27,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { BlogPost, BlogCategory, BlogTag } from "@/types";
 import { AdminPageHeader, AdminStatusBadge, AdminEmptyState, AdminPagination } from "@/components/admin/ui";
+import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { toast } from "sonner";
 
 export default function AdminBlogPostsPage() {
@@ -580,7 +581,10 @@ export default function AdminBlogPostsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">Featured Image URL</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300">Featured Image URL</label>
+                    <ImageUploadGuidance slotKey="admin_blog_featured" imageUrl={formImage} layout="inline" />
+                  </div>
                   <input
                     type="url"
                     placeholder="https://images.unsplash.com/..."

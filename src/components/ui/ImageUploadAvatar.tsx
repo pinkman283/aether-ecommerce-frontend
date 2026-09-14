@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Camera, Trash2, Upload, User as UserIcon, RefreshCw } from "lucide-react";
+import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { toast } from "sonner";
 
 interface ImageUploadAvatarProps {
@@ -157,9 +158,12 @@ export function ImageUploadAvatar({
             )}
           </div>
 
-          <span className="text-[10px] text-slate-500">
-            JPG, PNG, WebP up to 5MB. Live preview updates immediately.
-          </span>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-slate-500">
+              JPG, PNG, WebP up to 5MB. Live preview updates immediately.
+            </span>
+            <ImageUploadGuidance slotKey="admin_profile_avatar" layout="inline" />
+          </div>
         </div>
       </div>
     </div>

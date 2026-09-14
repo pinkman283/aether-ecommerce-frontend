@@ -21,6 +21,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { useThemeStore, DEFAULT_THEME_SETTINGS } from "@/store/useThemeStore";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
+import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { toast } from "sonner";
 
 export default function AdminStorefrontPage() {
@@ -954,7 +955,10 @@ export default function AdminStorefrontPage() {
 
               {/* Wallpaper Upload & Manager */}
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-300 block">Splash Wallpaper Image</label>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-300 block">Splash Wallpaper Image</label>
+                  <ImageUploadGuidance slotKey="admin_storefront_wallpaper" imageUrl={splitRevealImage} layout="inline" />
+                </div>
                 <input
                   type="file"
                   ref={splitFileInputRef}
@@ -1005,7 +1009,10 @@ export default function AdminStorefrontPage() {
 
               {/* Split Screen Brand Logo Manager */}
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-300 block">Split-Reveal Custom Logo (Optional)</label>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <label className="text-[11px] font-bold text-slate-300 block">Split-Reveal Custom Logo (Optional)</label>
+                  <ImageUploadGuidance slotKey="admin_storefront_split_logo" imageUrl={splitRevealLogo} layout="inline" />
+                </div>
                 <input
                   type="file"
                   ref={splitLogoInputRef}
@@ -1464,7 +1471,10 @@ export default function AdminStorefrontPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1">
             {/* Background Wallpaper Image */}
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-slate-300 block">Background Wallpaper Image</label>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <label className="text-[11px] font-bold text-slate-300 block">Background Wallpaper Image</label>
+                <ImageUploadGuidance slotKey="admin_storefront_auth_bg" imageUrl={customerAuthBgImage} layout="inline" />
+              </div>
               <input
                 type="file"
                 ref={authBgFileInputRef}

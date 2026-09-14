@@ -1246,6 +1246,59 @@ export const adminApi = {
   },
 
   // ==========================================
+  // BRAND LOGOS & FAVICON MANAGEMENT
+  // ==========================================
+  async getBrandLogos(): Promise<{
+    logos: Array<{
+      id: number;
+      name: string | null;
+      image_url: string;
+      created_at: string;
+      updated_at: string;
+      placements: Array<{ id: number; logo_id: number; placement: string }>;
+    }>;
+    favicon: string;
+    available_placements: Array<{ id: string; label: string; description: string; recommended: string }>;
+  }> {
+    const res = await adminClient.get("/admin/branding/logos");
+    return res.data;
+  },
+
+  async createBrandLogo(data: { name?: string; image_url: string; placements?: string[] }): Promise<{ message: string; logo: any }> {
+    const res = await adminClient.post("/admin/branding/logos", data);
+    return res.data;
+  },
+
+  async updateBrandLogo(id: number, data: { name?: string; image_url: string; placements?: string[] }): Promise<{ message: string; logo: any }> {
+    const res = await adminClient.put(`/admin/branding/logos/${id}`, data);
+    return res.data;
+  },
+
+  async deleteBrandLogo(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/branding/logos/${id}`);
+    return res.data;
+  },
+
+  async uploadBrandingAsset(file: File): Promise<{ message: string; image_url: string; path: string }> {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await adminClient.post("/admin/branding/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  async updateFavicon(favicon_url: string): Promise<{ message: string; favicon: string }> {
+    const res = await adminClient.put("/admin/branding/favicon", { favicon_url });
+    return res.data;
+  },
+
+  async removeFavicon(): Promise<{ message: string; favicon: string }> {
+    const res = await adminClient.delete("/admin/branding/favicon");
+    return res.data;
+  },
+
+  // ==========================================
   // ACCOUNTING & GENERAL LEDGER
   // ==========================================
   async getAccountingOverview(params?: { period?: string; date_from?: string; date_to?: string }): Promise<AccountingOverviewResponse> {

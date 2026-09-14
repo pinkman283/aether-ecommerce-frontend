@@ -27,6 +27,7 @@ import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 
 export default function AdminBrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -662,7 +663,10 @@ export default function AdminBrandsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-300">Logo URL (Optional)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-slate-300">Logo URL (Optional)</label>
+                  <ImageUploadGuidance slotKey="admin_brand_logo" imageUrl={logo} layout="inline" />
+                </div>
                 <input
                   type="text"
                   value={logo}

@@ -17,6 +17,7 @@ import { adminApi } from "@/lib/adminApi";
 import { SeoSettings } from "@/types";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
 import { AdminPageHeader } from "@/components/admin/ui";
+import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { toast } from "sonner";
 
 export default function AdminSeoSettingsPage() {
@@ -163,7 +164,10 @@ export default function AdminSeoSettingsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">OpenGraph Default Image URL</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300">OpenGraph Default Image URL</label>
+                    <ImageUploadGuidance slotKey="admin_seo_og" imageUrl={seo.og_image} layout="inline" />
+                  </div>
                   <input
                     type="url"
                     value={seo.og_image || ""}

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, animate } from "framer-motion";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
-import { ThemeSettings } from "@/store/useThemeStore";
+import { ThemeSettings, resolveLogo } from "@/store/useThemeStore";
 import { Sparkles } from "lucide-react";
 
 export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) {
@@ -42,7 +42,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
     : (activeTheme.store_brand_name || "AETHER");
   const duration = activeTheme.split_reveal_duration || 2.2;
   const dimOpacity = activeTheme.split_reveal_dim ?? 0.45;
-  const logoUrl = activeTheme.split_reveal_logo || activeTheme.store_brand_logo || "";
+  const logoUrl = resolveLogo(activeTheme, "split_reveal", "");
   const isVertical = ((activeTheme.split_reveal_direction || "vertical") === "vertical");
 
   // Keep image highly visible and bright, reduce dim overlay drastically

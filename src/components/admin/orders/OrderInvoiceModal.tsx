@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { SalesInvoice } from "@/types";
 import { formatPrice } from "@/lib/utils";
-import { useThemeStore } from "@/store/useThemeStore";
+import { useThemeStore, resolveLogo } from "@/store/useThemeStore";
 import { toast } from "sonner";
 
 interface OrderInvoiceModalProps {
@@ -39,7 +39,7 @@ export function OrderInvoiceModal({ invoice, loading, onClose }: OrderInvoiceMod
 
   // Determine dynamic brand details
   const storeName = invoice?.company?.name || theme?.store_brand_name || "Store";
-  const storeLogo = !logoError ? (invoice?.company?.logo || theme?.store_brand_logo || "") : "";
+  const storeLogo = !logoError ? (invoice?.company?.logo || resolveLogo(theme, "invoice", "") || "") : "";
   const storeTagline = invoice?.company?.tagline || theme?.store_brand_tagline || "";
 
   // Order Tracking ID: Guarantee tracking ID is always present

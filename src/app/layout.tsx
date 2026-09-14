@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const serverTheme = await getServerTheme();
   const brand = serverTheme.store_brand_name || "AETHER";
   const tagline = serverTheme.store_brand_tagline || "Official Store";
-  const logoUrl = serverTheme.store_brand_logo || "/branding/logo.png";
+  const faviconUrl = serverTheme.store_favicon || "/favicon.ico";
 
   return {
     title: `${brand} | ${tagline}`,
@@ -19,15 +19,13 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: [brand, "Studio Equipment", "Audio Gear", "Online Store", "Hardware"],
     icons: {
       icon: [
-        { url: "/favicon.ico", sizes: "any" },
+        { url: faviconUrl },
         { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
         { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-        { url: logoUrl, type: "image/png" },
       ],
-      shortcut: ["/favicon.ico", logoUrl],
+      shortcut: [faviconUrl],
       apple: [
-        { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-        { url: logoUrl },
+        { url: serverTheme.store_favicon || "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
       ],
     },
   };
@@ -79,13 +77,10 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href={serverTheme.store_favicon || "/favicon.ico"} sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        {serverTheme.store_brand_logo && (
-          <link rel="icon" href={serverTheme.store_brand_logo} />
-        )}
+        <link rel="apple-touch-icon" sizes="180x180" href={serverTheme.store_favicon || "/apple-touch-icon.png"} />
         {serverTheme.store_brand_logo && (
           <link rel="preload" as="image" href={serverTheme.store_brand_logo} fetchPriority="high" />
         )}

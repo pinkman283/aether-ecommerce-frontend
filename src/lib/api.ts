@@ -193,10 +193,17 @@ export const api = {
     shipping_address: Record<string, string>;
     billing_address?: Record<string, string>;
     payment_method: string;
+    shipping_method?: string;
     coupon_code?: string;
+    use_store_credit?: boolean;
+    notes?: string;
     items: { product_id: number; variant_id?: number | null; quantity: number }[];
-  }): Promise<{ message: string; order: Order }> {
-    const res = await apiClient.post("/orders", data);
+  }, idempotencyKey?: string): Promise<{ message: string; order: Order }> {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers["X-Idempotency-Key"] = idempotencyKey;
+    }
+    const res = await apiClient.post("/orders", data, { headers });
     return res.data;
   },
 

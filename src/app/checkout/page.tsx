@@ -359,6 +359,10 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
+      const idempotencyKey = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `ord-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
       const orderPayload = {
         customer_name: customerName.trim(),
         customer_email: customerEmail.trim() || `${cleanPhone}@guest.store`,
@@ -367,8 +371,9 @@ export default function CheckoutPage() {
           full_name: customerName.trim(),
           address_line1: fullAddress.trim(),
           address_line2: orderNotes.trim() ? `Note: ${orderNotes.trim()}` : "",
-          city: shippingArea === "inside_dhaka" ? "Dhaka" : "Outside Dhaka",
+          city: shippingArea === "inside_dhaka" ? "Dhaka" : (fullAddress.trim().split(",").pop()?.trim() || "Outside Dhaka"),
           district: shippingArea === "inside_dhaka" ? "Dhaka" : "Outside Dhaka",
+          postal_code: "1000",
           country: "Bangladesh",
           phone: cleanPhone,
         },
@@ -376,6 +381,7 @@ export default function CheckoutPage() {
           full_name: customerName.trim(),
           address_line1: fullAddress.trim(),
           city: shippingArea === "inside_dhaka" ? "Dhaka" : "Outside Dhaka",
+          postal_code: "1000",
           country: "Bangladesh",
         },
         payment_method: paymentMethod,
@@ -390,7 +396,7 @@ export default function CheckoutPage() {
         })),
       };
 
-      const res = await api.createOrder(orderPayload);
+      const res = await api.createOrder(orderPayload, idempotencyKey);
 
       // Trigger Celebration Confetti
       try {

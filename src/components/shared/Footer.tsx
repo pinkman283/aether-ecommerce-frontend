@@ -4,11 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, Truck, RotateCcw, Headphones, ArrowRight, Globe, Send, Share2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { useThemeStore } from "@/store/useThemeStore";
+import { useThemeStore, resolveLogo } from "@/store/useThemeStore";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
 
 export function Footer() {
   const { theme } = useAppTheme();
+  const footerLogo = resolveLogo(theme, "footer", "");
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
@@ -99,13 +100,13 @@ export function Footer() {
             {/* Brand Col */}
             <div className="lg:col-span-2 space-y-4">
               <Link href="/" suppressHydrationWarning className="flex items-center gap-3 inline-flex group select-none">
-                {theme.store_brand_logo ? (
+                {footerLogo ? (
                   <div
                     className="relative w-12 h-12 sm:w-13 sm:h-13 rounded-full p-1 border-2 border-cyan-400/30 bg-white/[0.04] shadow-[0_0_15px_rgba(6,182,212,0.2)] flex items-center justify-center shrink-0 group-hover:border-cyan-400 group-hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] group-hover:scale-105 transition-all duration-300"
                     suppressHydrationWarning
                   >
                     <img
-                      src={theme.store_brand_logo}
+                      src={footerLogo}
                       alt={theme.store_brand_name || "Company Logo"}
                       className="w-full h-full object-contain rounded-full filter drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]"
                       suppressHydrationWarning

@@ -33,6 +33,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { Brand, Category, Product, ProductImage } from "@/types";
 import { formatPrice } from "@/lib/utils";
+import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
 import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
@@ -1147,6 +1148,9 @@ export default function AdminProductsPage() {
                   <div>
                     <h4 className="text-xs font-semibold text-white tracking-wide">Product Images</h4>
                     <p className="text-[11px] text-slate-400 mt-0.5">{formImages.length}/5 uploaded (first is primary)</p>
+                    <div className="mt-1.5">
+                      <ImageUploadGuidance slotKey="admin_product_primary" layout="row" />
+                    </div>
                   </div>
 
                   {/* Segmented Switch */}

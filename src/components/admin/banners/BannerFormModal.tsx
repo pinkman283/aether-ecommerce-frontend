@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Banner, BannerDestinationType, Category, Brand, Product, Promotion } from "@/types";
 import { adminApi } from "@/lib/adminApi";
+import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { toast } from "sonner";
 
 interface BannerFormModalProps {
@@ -399,14 +400,24 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
               <div className="space-y-4">
                 {/* Desktop Image */}
                 <div className="p-4 rounded-xl bg-[#12151f] border border-white/10 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <label className="text-xs font-bold text-white flex items-center gap-2">
                       <Monitor className="w-4 h-4 text-cyan-400" />
                       Desktop Banner Asset <span className="text-rose-400">*</span>
                     </label>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      Recommended: 16:8 ratio (1600x800px)
-                    </span>
+                    <ImageUploadGuidance
+                      slotKey={
+                        placement === "middle_promo"
+                          ? "admin_banner_middle"
+                          : placement === "category_spotlight"
+                          ? "admin_banner_category"
+                          : placement === "bottom_banner"
+                          ? "admin_banner_bottom"
+                          : "admin_banner_hero_desktop"
+                      }
+                      imageUrl={imageUrl}
+                      layout="inline"
+                    />
                   </div>
 
                   <div className="flex gap-2">
@@ -436,14 +447,16 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
 
                 {/* Mobile Image */}
                 <div className="p-4 rounded-xl bg-[#12151f] border border-white/10 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <label className="text-xs font-bold text-white flex items-center gap-2">
                       <Smartphone className="w-4 h-4 text-purple-400" />
                       Mobile Banner Asset <span className="text-slate-400 font-normal">(Optional)</span>
                     </label>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      Recommended: 1:1 or 4:5 ratio
-                    </span>
+                    <ImageUploadGuidance
+                      slotKey="admin_banner_hero_mobile"
+                      imageUrl={mobileImageUrl}
+                      layout="inline"
+                    />
                   </div>
                   <p className="text-[11px] text-slate-400">
                     If provided, will display on small screens (&lt;640px) to prevent aggressive cropping.

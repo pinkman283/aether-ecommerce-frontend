@@ -34,6 +34,8 @@ export interface ThemeSettings {
   store_brand_name: string;
   store_brand_tagline: string;
   store_brand_logo?: string;
+  store_favicon?: string;
+  logo_placements?: Record<string, string>;
   hero_headline_line1: string;
   hero_headline_line2_gradient: string;
   hero_headline_line3: string;
@@ -156,6 +158,8 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   store_brand_name: "INHALIQ",
   store_brand_tagline: "ELEVATE EVERY INHALE",
   store_brand_logo: "",
+  store_favicon: "",
+  logo_placements: {},
   hero_headline_line1: "Curated Precision",
   hero_headline_line2_gradient: "Hardware & Audio",
   hero_headline_line3: "& Everyday Carry.",
@@ -446,3 +450,41 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     }
   },
 }));
+
+/**
+ * Resolves the appropriate brand logo URL for a given placement.
+ * Order of fallback:
+ * 1. Explicit placement match from logo_placements[placement]
+ * 2. If 'mobile_navbar', fallback to 'navbar'
+ * 3. Fallback to primary store_brand_logo
+ * 4. Fallback default parameter
+ */
+export function resolveLogo(
+  theme?: ThemeSettings | null,
+  placement?: "navbar" | "mobile_navbar" | "footer" | "auth" | "invoice" | "split_reveal" | string,
+  fallback = "/branding/logo.png"
+): string {
+  if (!theme) return fallback;
+
+  if (placement && theme.logo_placements && theme.logo_placements[placement]) {
+    return theme.logo_placements[placement];
+  }
+
+  // Mobile navbar gracefully falls back to desktop navbar logo if not explicitly assigned
+  if (placement === "mobile_navbar" && theme.logo_placements?.navbar) {
+    return theme.logo_placements.navbar;
+  }
+
+  // Split reveal fallback
+  if (placement === "split_reveal" && theme.split_reveal_logo) {
+    return theme.split_reveal_logo;
+  }
+
+  // Standard brand logo fallback
+  if (theme.store_brand_logo) {
+    return theme.store_brand_logo;
+  }
+
+  return fallback;
+}
+

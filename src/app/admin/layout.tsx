@@ -56,7 +56,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useAdminAuthStore } from "@/store/useAdminAuthStore";
-import { useThemeStore } from "@/store/useThemeStore";
+import { useThemeStore, resolveLogo } from "@/store/useThemeStore";
 import { adminApi } from "@/lib/adminApi";
 import { SidebarNavGroup, SidebarNavLink, NavChildItem } from "@/components/admin/SidebarNavGroup";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -321,7 +321,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   const companyBrandName = theme?.store_brand_name || "AETHER";
-  const companyBrandLogo = theme?.store_brand_logo;
+  const companyBrandLogo = resolveLogo(theme, "navbar", "") || theme?.store_brand_logo;
 
   // Additional sub-pages for breadcrumb and command palette indexing
   const additionalSubPages = [

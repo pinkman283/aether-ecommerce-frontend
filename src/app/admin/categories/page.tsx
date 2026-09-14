@@ -28,6 +28,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { Category } from "@/types";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
@@ -1228,8 +1229,11 @@ export default function AdminCategoriesPage() {
 
               {/* Minimal Device Image Upload & Delete Section */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-slate-300">Cover Image</label>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-slate-300">Cover Image</label>
+                    <ImageUploadGuidance slotKey="admin_category_thumbnail" imageUrl={image} layout="inline" />
+                  </div>
                   {image && (
                     <button
                       type="button"

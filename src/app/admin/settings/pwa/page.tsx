@@ -17,6 +17,7 @@ import { adminApi } from "@/lib/adminApi";
 import { PwaSettings } from "@/types";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
 import { AdminPageHeader } from "@/components/admin/ui";
+import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { toast } from "sonner";
 
 export default function AdminPwaSettingsPage() {
@@ -202,7 +203,10 @@ export default function AdminPwaSettingsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">192x192 Icon Path</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300">192x192 Icon Path</label>
+                    <ImageUploadGuidance slotKey="admin_pwa_192" imageUrl={pwa.icon_192} layout="inline" />
+                  </div>
                   <input
                     type="text"
                     value={pwa.icon_192 || ""}
@@ -213,7 +217,10 @@ export default function AdminPwaSettingsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">512x512 High-Res Icon Path</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300">512x512 High-Res Icon Path</label>
+                    <ImageUploadGuidance slotKey="admin_pwa_512" imageUrl={pwa.icon_512} layout="inline" />
+                  </div>
                   <input
                     type="text"
                     value={pwa.icon_512 || ""}
