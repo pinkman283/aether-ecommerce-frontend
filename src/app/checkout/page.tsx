@@ -737,16 +737,10 @@ export default function CheckoutPage() {
               </div>
 
               {/* Payment Selectable Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-3 text-xs">
                 {/* Cash On Delivery Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("cash_on_delivery")}
-                  className={`p-3.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
-                    paymentMethod === "cash_on_delivery"
-                      ? "border-cyan-400 bg-cyan-500/10 shadow-md shadow-cyan-500/10"
-                      : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] hover:border-cyan-400/40"
-                  }`}
+                <div
+                  className="p-3.5 rounded-xl border border-cyan-400 bg-cyan-500/10 shadow-md shadow-cyan-500/10 flex items-center justify-between text-left"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="p-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 shrink-0">
@@ -757,112 +751,26 @@ export default function CheckoutPage() {
                         className="font-black block text-xs"
                         style={{ color: "var(--theme-text-heading, #0f172a)" }}
                       >
-                        Cash On Delivery
+                        Cash On Delivery (COD)
                       </span>
                       <span 
                         className="text-[10px]"
                         style={{ color: "var(--theme-text-body, #64748b)" }}
                       >
-                        Pay upon arrival
+                        Pay in cash when your parcel arrives at your doorstep
                       </span>
                     </div>
                   </div>
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                    paymentMethod === "cash_on_delivery" ? "border-cyan-400 bg-cyan-400" : "border-slate-400"
-                  }`}>
-                    {paymentMethod === "cash_on_delivery" && <Check className="w-2.5 h-2.5 text-slate-950 stroke-3" />}
-                  </div>
-                </button>
-
-                {/* Online Card / Instant Payment Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("credit_card")}
-                  className={`p-3.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
-                    paymentMethod === "credit_card"
-                      ? "border-cyan-400 bg-cyan-500/10 shadow-md shadow-cyan-500/10"
-                      : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] hover:border-cyan-400/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-2 rounded-lg bg-indigo-500/15 border border-indigo-500/30 shrink-0">
-                      <CreditCard className="w-4 h-4 text-indigo-500" />
-                    </div>
-                    <div>
-                      <span 
-                        className="font-black block text-xs"
-                        style={{ color: "var(--theme-text-heading, #0f172a)" }}
-                      >
-                        Online Card / Pay
-                      </span>
-                      <span 
-                        className="text-[10px]"
-                        style={{ color: "var(--theme-text-body, #64748b)" }}
-                      >
-                        Cards, MFS & Banking
-                      </span>
-                    </div>
-                  </div>
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                    paymentMethod === "credit_card" ? "border-cyan-400 bg-cyan-400" : "border-slate-400"
-                  }`}>
-                    {paymentMethod === "credit_card" && <Check className="w-2.5 h-2.5 text-slate-950 stroke-3" />}
-                  </div>
-                </button>
-              </div>
-
-              {/* Online Payment Inputs if Credit Card selected */}
-              {paymentMethod === "credit_card" && (
-                <div className="space-y-3 p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10 text-xs">
-                  <div className="space-y-1">
-                    <label 
-                      className="text-[11px] font-bold block"
-                      style={{ color: "var(--theme-text-heading, #0f172a)" }}
-                    >
-                      Card Number
-                    </label>
-                    <input
-                      type="text"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      placeholder="•••• •••• •••• ••••"
-                      className="w-full theme-input rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-cyan-400"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label 
-                        className="text-[11px] font-bold block"
-                        style={{ color: "var(--theme-text-heading, #0f172a)" }}
-                      >
-                        Expiry Date
-                      </label>
-                      <input
-                        type="text"
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        placeholder="MM/YY"
-                        className="w-full theme-input rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-cyan-400"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label 
-                        className="text-[11px] font-bold block"
-                        style={{ color: "var(--theme-text-heading, #0f172a)" }}
-                      >
-                        CVC / CVV
-                      </label>
-                      <input
-                        type="text"
-                        value={cardCvc}
-                        onChange={(e) => setCardCvc(e.target.value)}
-                        placeholder="CVC"
-                        className="w-full theme-input rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-cyan-400"
-                      />
-                    </div>
+                  <div className="w-4 h-4 rounded-full border border-cyan-400 bg-cyan-400 flex items-center justify-center shrink-0">
+                    <Check className="w-2.5 h-2.5 text-slate-950 stroke-3" />
                   </div>
                 </div>
-              )}
+
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-[11px] text-slate-500">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>Only verified Cash on Delivery is currently supported. Inspect items upon delivery.</span>
+                </div>
+              </div>
             </div>
 
             {/* 4. ORDER SUMMARY CARD */}

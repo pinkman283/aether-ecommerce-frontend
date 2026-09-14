@@ -23,7 +23,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RotateCcw,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { Product, Category } from "@/types";
@@ -52,6 +56,14 @@ export default function AdminInventoryPage() {
   });
   const [loading, setLoading] = useState(true);
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [fromRecord, setFromRecord] = useState<number | null>(null);
+  const [toRecord, setToRecord] = useState<number | null>(null);
+
   // Filters & Sorting
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -67,6 +79,8 @@ export default function AdminInventoryPage() {
 
   // Stock Adjustment Modal
   const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+  const [unitCostInput, setUnitCostInput] = useState<string>("");
   const [adjustMode, setAdjustMode] = useState<"add" | "reduce">("add");
   const [addQty, setAddQty] = useState<string>("10");
   const [addReason, setAddReason] = useState<string>("Supplier Restock Batch");
@@ -74,16 +88,27 @@ export default function AdminInventoryPage() {
   const [reduceReason, setReduceReason] = useState<string>("Damaged in Warehouse");
   const [saving, setSaving] = useState(false);
 
-  const loadInventory = async () => {
+  const loadInventory = async (pageOverride?: number) => {
     setLoading(true);
+    const targetPage = pageOverride !== undefined ? pageOverride : page;
     try {
       const [res, cats] = await Promise.all([
         adminApi.getInventory({
           search: search.trim() || undefined,
+          filter: stockLevelFilter !== "all" ? stockLevelFilter : undefined,
+          category_id: categoryId || undefined,
+          sort_by: sortBy,
+          page: targetPage,
+          per_page: perPage,
         }),
         adminApi.getCategories().catch(() => []),
       ]);
       setInventory(res.inventory.data || []);
+      setTotalPages(res.inventory.last_page || 1);
+      setTotalRecords(res.inventory.total || 0);
+      setFromRecord(res.inventory.from ?? null);
+      setToRecord(res.inventory.to ?? null);
+      setPage(res.inventory.current_page || 1);
       setSummary(res.summary || {});
       setCategories(cats || []);
     } catch (err) {
@@ -95,11 +120,12 @@ export default function AdminInventoryPage() {
 
   useEffect(() => {
     loadInventory();
-  }, []);
+  }, [page, perPage, stockLevelFilter, categoryId, sortBy]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    loadInventory();
+    setPage(1);
+    loadInventory(1);
   };
 
   const handleResetFilters = () => {
@@ -107,11 +133,7 @@ export default function AdminInventoryPage() {
     setCategoryId("");
     setStockLevelFilter("all");
     setSortBy("urgent_restock");
-    adminApi.getInventory({}).then((res) => {
-      setInventory(res.inventory.data || []);
-      setSummary(res.summary || {});
-    });
-    setSortBy("urgent_restock");
+    setPage(1);
     toast.success("Inventory filters reset to default.");
   };
 
@@ -153,6 +175,8 @@ export default function AdminInventoryPage() {
     setAddReason("Supplier Restock Batch");
     setReduceQty("1");
     setReduceReason("Damaged in Warehouse");
+    setSelectedVariantId(p.variants && p.variants.length > 0 ? p.variants[0].id : null);
+    setUnitCostInput(p.cost_price ? p.cost_price.toString() : "");
   };
 
   const handleSaveAdjustment = async (e: React.FormEvent) => {
@@ -161,6 +185,11 @@ export default function AdminInventoryPage() {
 
     let adjustmentDelta = 0;
     let memo = "";
+
+    const selectedVariant = adjustingProduct.variants?.find((v) => v.id === selectedVariantId);
+    const maxDeduct = selectedVariant
+      ? selectedVariant.stock_quantity
+      : adjustingProduct.stock_quantity;
 
     if (adjustMode === "add") {
       const qty = Number(addQty);
@@ -176,8 +205,8 @@ export default function AdminInventoryPage() {
         toast.error("Please enter a valid positive quantity to reduce.");
         return;
       }
-      if (qty > adjustingProduct.stock_quantity) {
-        toast.error(`Cannot reduce ${qty} units. Current stock is only ${adjustingProduct.stock_quantity} units.`);
+      if (qty > maxDeduct) {
+        toast.error(`Cannot reduce ${qty} units. Current stock is only ${maxDeduct} units.`);
         return;
       }
       adjustmentDelta = -qty;
@@ -190,6 +219,8 @@ export default function AdminInventoryPage() {
       const res = await adminApi.adjustStock(adjustingProduct.id, {
         adjustment: adjustmentDelta,
         reason: memo,
+        variant_id: selectedVariantId || undefined,
+        unit_cost: unitCostInput ? Number(unitCostInput) : undefined,
       });
 
       setInventory(inventory.map((p) => (p.id === adjustingProduct.id ? res.product : p)));
@@ -204,7 +235,8 @@ export default function AdminInventoryPage() {
   };
 
   // Live Calculations for modal
-  const currentStock = adjustingProduct?.stock_quantity ?? 0;
+  const selectedVariant = adjustingProduct?.variants?.find((v) => v.id === selectedVariantId);
+  const currentStock = selectedVariant ? selectedVariant.stock_quantity : (adjustingProduct?.stock_quantity ?? 0);
   const parsedAdd = Number(addQty) || 0;
   const parsedReduce = Number(reduceQty) || 0;
   const targetStock = adjustMode === "add" 
@@ -212,23 +244,7 @@ export default function AdminInventoryPage() {
     : Math.max(0, currentStock - parsedReduce);
   const isOverReducing = adjustMode === "reduce" && parsedReduce > currentStock;
 
-  const displayedInventory = inventory
-    .filter((p) => {
-      if (categoryId && p.category_id?.toString() !== categoryId) return false;
-      if (stockLevelFilter === "in_stock" && p.stock_quantity <= 10) return false;
-      if (stockLevelFilter === "low_stock" && (p.stock_quantity <= 0 || p.stock_quantity > 10)) return false;
-      if (stockLevelFilter === "out_of_stock" && p.stock_quantity > 0) return false;
-      if (stockLevelFilter === "overstocked" && p.stock_quantity < 50) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === "urgent_restock") return a.stock_quantity - b.stock_quantity;
-      if (sortBy === "stock_desc") return b.stock_quantity - a.stock_quantity;
-      if (sortBy === "name_asc") return a.name.localeCompare(b.name);
-      if (sortBy === "price_desc") return Number(b.price) - Number(a.price);
-      if (sortBy === "sku_asc") return (a.sku || "").localeCompare(b.sku || "");
-      return 0;
-    });
+  const displayedInventory = inventory;
 
   return (
     <div className="space-y-6 pb-16">
@@ -417,7 +433,19 @@ export default function AdminInventoryPage() {
                       {formatPrice(p.price)}
                     </td>
                     <td className="p-3 text-left font-semibold text-xs text-white whitespace-nowrap">
-                      {p.stock_quantity} <span className="text-slate-400 text-[10px] font-normal">units</span>
+                      <div>
+                        <span>{p.stock_quantity} <span className="text-slate-400 text-[10px] font-normal">units</span></span>
+                        {p.variants && p.variants.length > 0 && (
+                          <div className="mt-0.5 text-[10px] font-mono text-cyan-400 flex items-center gap-1">
+                            <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 border border-cyan-500/20">
+                              {p.variants.length} SKUs
+                            </span>
+                            <span className="text-slate-400 font-sans truncate max-w-[130px]" title={p.variants.map((v) => `${v.name}: ${v.stock_quantity}`).join(', ')}>
+                              {p.variants.map((v) => v.stock_quantity).join(' + ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3 text-left whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
@@ -464,6 +492,78 @@ export default function AdminInventoryPage() {
           </tbody>
         </table>
       </ScrollableTableCard>
+
+      {/* Pagination Bar */}
+      <div className="bg-[#0e121e] p-4 sm:p-5 rounded-2xl border border-white/10 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="text-xs text-slate-400 flex items-center gap-2">
+          <span>
+            Showing <strong className="text-white font-mono">{fromRecord || 0}</strong> to{" "}
+            <strong className="text-white font-mono">{toRecord || 0}</strong> of{" "}
+            <strong className="text-amber-400 font-mono">{totalRecords.toLocaleString()}</strong> catalog items
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Per Page Selector */}
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>Per page:</span>
+            <select
+              value={perPage}
+              onChange={(e) => {
+                setPerPage(Number(e.target.value));
+                setPage(1);
+              }}
+              className="bg-[#151824] border border-white/10 text-white rounded-xl px-2.5 py-1 text-xs focus:outline-none focus:border-amber-400 cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+
+          {/* Navigation Controls */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPage(1)}
+              disabled={page <= 1 || loading}
+              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 flex items-center justify-center transition cursor-pointer border border-white/5"
+              title="First Page"
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 flex items-center justify-center transition cursor-pointer border border-white/5"
+              title="Previous Page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <span className="px-3 py-1 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-300 font-mono font-bold text-xs">
+              Page {page} of {totalPages || 1}
+            </span>
+
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 flex items-center justify-center transition cursor-pointer border border-white/5"
+              title="Next Page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setPage(totalPages)}
+              disabled={page >= totalPages || loading}
+              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 flex items-center justify-center transition cursor-pointer border border-white/5"
+              title="Last Page"
+            >
+              <ChevronsRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Product Stock View Drawer */}
       <Sheet open={!!viewingProduct} onOpenChange={(open) => { if (!open) setViewingProduct(null); }}>
@@ -704,9 +804,45 @@ export default function AdminInventoryPage() {
                   </button>
                 </div>
 
+                {/* Target Variant / SKU Selector */}
+                {adjustingProduct.variants && adjustingProduct.variants.length > 0 && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-300">
+                      Target SKU / Variant
+                    </label>
+                    <select
+                      value={selectedVariantId ?? ""}
+                      onChange={(e) => setSelectedVariantId(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white focus:border-white/20 focus:outline-none transition cursor-pointer"
+                    >
+                      {adjustingProduct.variants.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name} ({v.sku}) — In Stock: {v.stock_quantity} units
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Input Fields */}
                 {adjustMode === "add" ? (
                   <div className="space-y-4">
+                    {/* Unit Cost for FIFO Layer */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-300">
+                        Acquisition Unit Cost ($) <span className="text-slate-500 font-normal">(Optional, for FIFO cost layer)</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={unitCostInput}
+                        onChange={(e) => setUnitCostInput(e.target.value)}
+                        placeholder="e.g. 45.00 (leave blank to use default cost price)"
+                        className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-white/20 focus:outline-none transition font-mono"
+                      />
+                    </div>
+
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-medium text-slate-300">

@@ -17,6 +17,10 @@ import {
   Lead, 
   LeadStats, 
   Order, 
+  OrderReturn,
+  OrderReturnItem,
+  CourierSettlement,
+  CourierSettlementItem,
   PosCashMovement, 
   PosReceipt, 
   PosRegister, 
@@ -377,8 +381,44 @@ export const adminApi = {
     pickup_store_id?: string;
     notes?: string;
     delivery_area?: string;
+    recipient_city_id?: number;
+    recipient_zone_id?: number;
+    recipient_area_id?: number;
   }): Promise<{ message: string; shipment: Shipment; order: Order }> {
     const res = await adminClient.post(`/admin/orders/${orderId}/shipments`, data);
+    return res.data;
+  },
+
+  async getOrderTimeline(orderId: number): Promise<{
+    order_id: number;
+    order_number: string;
+    timeline: Array<{
+      id?: number;
+      event_type: string;
+      title: string;
+      description?: string;
+      actor_type?: string;
+      actor_name?: string;
+      occurred_at: string;
+      metadata?: any;
+    }>;
+  }> {
+    const res = await adminClient.get(`/admin/orders/${orderId}/timeline`);
+    return res.data;
+  },
+
+  async getPathaoCities(): Promise<{ cities: Array<{ city_id: number; city_name: string }> }> {
+    const res = await adminClient.get("/admin/orders/courier/pathao/cities");
+    return res.data;
+  },
+
+  async getPathaoZones(cityId: number): Promise<{ zones: Array<{ zone_id: number; zone_name: string }> }> {
+    const res = await adminClient.get(`/admin/orders/courier/pathao/zones/${cityId}`);
+    return res.data;
+  },
+
+  async getPathaoAreas(zoneId: number): Promise<{ areas: Array<{ area_id: number; area_name: string }> }> {
+    const res = await adminClient.get(`/admin/orders/courier/pathao/areas/${zoneId}`);
     return res.data;
   },
 
@@ -402,6 +442,94 @@ export const adminApi = {
 
   async getShippingLabel(orderId: number, shipmentId: number): Promise<{ label: any }> {
     const res = await adminClient.get(`/admin/orders/${orderId}/shipments/${shipmentId}/label`);
+    return res.data;
+  },
+
+  // ==========================================
+  // RETURNS & RTO MANAGEMENT
+  // ==========================================
+  async getReturns(params?: {
+    tab?: string;
+    search?: string;
+    status?: string;
+    return_type?: string;
+    date_from?: string;
+    date_to?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<{
+    status: string;
+    data: OrderReturn[];
+    meta: { current_page: number; last_page: number; per_page: number; total: number };
+    stats: {
+      all_count: number;
+      rto_count: number;
+      customer_returns_count: number;
+      awaiting_inspection_count: number;
+      refunded_count: number;
+      total_refunded_amount: number;
+    };
+  }> {
+    const res = await adminClient.get("/admin/returns", { params });
+    return res.data;
+  },
+
+  async getReturn(id: number | string): Promise<{ status: string; data: OrderReturn }> {
+    const res = await adminClient.get(`/admin/returns/${id}`);
+    return res.data;
+  },
+
+  async createReturn(data: {
+    order_id: number;
+    return_type: string;
+    return_reason?: string;
+    amount_collected_courier?: number;
+    courier_delivery_fee?: number;
+    courier_rto_fee?: number;
+    courier_tracking_code?: string;
+    notes?: string;
+    items?: Array<{
+      order_item_id?: number;
+      quantity_returned: number;
+      return_reason?: string;
+      condition?: string;
+    }>;
+  }): Promise<{ status: string; message: string; data: OrderReturn }> {
+    const res = await adminClient.post("/admin/returns", data);
+    return res.data;
+  },
+
+  async receiveReturn(id: number, data?: { notes?: string; courier_tracking_code?: string }): Promise<{
+    status: string;
+    message: string;
+    data: OrderReturn;
+  }> {
+    const res = await adminClient.post(`/admin/returns/${id}/receive`, data || {});
+    return res.data;
+  },
+
+  async submitReturnQc(id: number, data: {
+    items: Array<{
+      id: number;
+      disposition: string;
+      restocked_quantity?: number;
+      damaged_quantity?: number;
+      writeoff_quantity?: number;
+      refund_unit_price?: number;
+      condition?: string;
+      qc_notes?: string;
+    }>;
+  }): Promise<{ status: string; message: string; data: OrderReturn }> {
+    const res = await adminClient.post(`/admin/returns/${id}/qc`, data);
+    return res.data;
+  },
+
+  async processReturnRefund(id: number, data: {
+    refund_amount: number;
+    refund_method: string;
+    notes?: string;
+  }): Promise<{ status: string; message: string; data: OrderReturn }> {
+    const res = await adminClient.post(`/admin/returns/${id}/refund`, data);
     return res.data;
   },
 
@@ -804,17 +932,31 @@ export const adminApi = {
   // ==========================================
   async getInventory(params?: {
     search?: string;
-    filter?: "low_stock" | "out_of_stock" | "all";
+    filter?: string;
+    category_id?: string | number;
+    sort_by?: string;
     page?: number;
+    per_page?: number;
   }): Promise<{
     summary: { total_skus: number; total_units: number; low_stock_count: number; out_of_stock_count: number };
-    inventory: { data: Product[]; total: number; current_page: number; last_page: number };
+    inventory: {
+      data: Product[];
+      total: number;
+      current_page: number;
+      last_page: number;
+      per_page: number;
+      from: number;
+      to: number;
+    };
   }> {
     const res = await adminClient.get("/admin/inventory", { params });
     return res.data;
   },
 
-  async adjustStock(id: number, data: { adjustment: number; reason: string }): Promise<{ message: string; product: Product }> {
+  async adjustStock(
+    id: number,
+    data: { adjustment: number; reason: string; variant_id?: number; unit_cost?: number }
+  ): Promise<{ message: string; product: Product; movement?: any }> {
     const res = await adminClient.post(`/admin/inventory/${id}/adjust`, data);
     return res.data;
   },
@@ -1219,6 +1361,71 @@ export const adminApi = {
     const baseUrl = adminClient.defaults.baseURL || "http://127.0.0.1:8000/api";
     const token = typeof window !== "undefined" ? localStorage.getItem("aether_admin_token") : "";
     return `${baseUrl}/admin/accounting/export?type=${type}&api_token=${token}`;
+  },
+
+  // ==========================================
+  // COURIER SETTLEMENTS & RECONCILIATION
+  // ==========================================
+  async getSettlements(params?: {
+    provider?: string;
+    status?: string;
+    search?: string;
+    date_from?: string;
+    date_to?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<{
+    status: string;
+    data: CourierSettlement[];
+    meta: { current_page: number; last_page: number; per_page: number; total: number };
+    stats: {
+      total_settlements: number;
+      pending_count: number;
+      reconciled_count: number;
+      total_cod_collected: number;
+      total_delivery_fees: number;
+      total_actual_payout: number;
+      total_variance: number;
+    };
+  }> {
+    const res = await adminClient.get("/admin/accounting/settlements", { params });
+    return res.data;
+  },
+
+  async getSettlement(id: number): Promise<{ status: string; data: CourierSettlement }> {
+    const res = await adminClient.get(`/admin/accounting/settlements/${id}`);
+    return res.data;
+  },
+
+  async createSettlement(data: {
+    provider: string;
+    settlement_date: string;
+    settlement_number?: string;
+    bank_account_id?: number;
+    notes?: string;
+    actual_payout?: number;
+    items: Array<{
+      consignment_id?: string;
+      tracking_code?: string;
+      cod_collected: number;
+      delivery_fee?: number;
+      rto_fee?: number;
+      cod_fee?: number;
+      other_fee?: number;
+      notes?: string;
+    }>;
+  }): Promise<{ status: string; message: string; data: CourierSettlement }> {
+    const res = await adminClient.post("/admin/accounting/settlements", data);
+    return res.data;
+  },
+
+  async reconcileSettlement(id: number, data: {
+    bank_account_id: number;
+    actual_payout?: number;
+    notes?: string;
+  }): Promise<{ status: string; message: string; data: CourierSettlement }> {
+    const res = await adminClient.post(`/admin/accounting/settlements/${id}/reconcile`, data);
+    return res.data;
   },
 
   // ==========================================

@@ -74,7 +74,24 @@ export const api = {
     }
     inFlightFeatured = apiClient
       .get("/featured")
-      .then((res) => res.data)
+      .then((res) => {
+        const raw = res.data || {};
+        const toArray = (val: any) => {
+          if (Array.isArray(val)) return val;
+          if (val && Array.isArray(val.data)) return val.data;
+          if (val && typeof val === "object") {
+            return Object.values(val).filter((item: any) => item && typeof item === "object" && "id" in item);
+          }
+          return [];
+        };
+
+        return {
+          featured_products: toArray(raw.featured_products),
+          new_arrivals: toArray(raw.new_arrivals),
+          best_sellers: toArray(raw.best_sellers),
+          featured_categories: toArray(raw.featured_categories),
+        };
+      })
       .finally(() => {
         setTimeout(() => {
           inFlightFeatured = null;
@@ -128,7 +145,15 @@ export const api = {
     }
     inFlightCategories = apiClient
       .get("/categories")
-      .then((res) => res.data)
+      .then((res) => {
+        const data = res.data;
+        if (Array.isArray(data)) return data;
+        if (data && Array.isArray(data.data)) return data.data;
+        if (data && typeof data === "object") {
+          return Object.values(data).filter((item: any) => item && typeof item === "object" && "id" in item);
+        }
+        return [];
+      })
       .finally(() => {
         setTimeout(() => {
           inFlightCategories = null;

@@ -90,6 +90,8 @@ function OrdersContent() {
 
   // Inspect / Details Modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderTimeline, setOrderTimeline] = useState<any[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
 
   // IP Block & Restriction Modal State
   const [ipBlockModalData, setIpBlockModalData] = useState<{
@@ -118,15 +120,15 @@ function OrdersContent() {
   const [newAddressLine, setNewAddressLine] = useState("742 Evergreen Terrace");
   const [newCity, setNewCity] = useState("San Francisco");
   const [newState, setNewState] = useState("CA");
-  const [newPostal, setNewPostal] = useState("94107");
+  const [newPostal, setNewPostal] = useState("94102");
   const [newCountry, setNewCountry] = useState("United States");
   const [orderItems, setOrderItems] = useState<{ productId: number; quantity: number; unitPrice: number }[]>([]);
   const [selectedProdId, setSelectedProdId] = useState<string>("");
   const [itemQty, setItemQty] = useState<string>("1");
-  const [newPaymentStatus, setNewPaymentStatus] = useState<string>("paid");
-  const [newPaymentMethod, setNewPaymentMethod] = useState<string>("credit_card");
   const [newOrderStatus, setNewOrderStatus] = useState<string>("processing");
-  const [newCarrier, setNewCarrier] = useState<string>("DHL Express");
+  const [newPaymentStatus, setNewPaymentStatus] = useState<string>("pending");
+  const [newPaymentMethod, setNewPaymentMethod] = useState<string>("cod");
+  const [newCarrier, setNewCarrier] = useState<string>("");
   const [newTracking, setNewTracking] = useState<string>("");
   const [newShippingAmount, setNewShippingAmount] = useState<string>("0");
   const [creating, setCreating] = useState(false);
@@ -165,12 +167,94 @@ function OrdersContent() {
   const [bookingDeliveryArea, setBookingDeliveryArea] = useState("");
   const [isBookingCourier, setIsBookingCourier] = useState(false);
 
+  // Pathao Location Specifics
+  const [pathaoCities, setPathaoCities] = useState<Array<{ city_id: number; city_name: string }>>([]);
+  const [pathaoZones, setPathaoZones] = useState<Array<{ zone_id: number; zone_name: string }>>([]);
+  const [pathaoAreas, setPathaoAreas] = useState<Array<{ area_id: number; area_name: string }>>([]);
+  const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+  const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
+  const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingZones, setLoadingZones] = useState(false);
+  const [loadingAreas, setLoadingAreas] = useState(false);
+
   // Thermal Shipping Label Modal
   const [shippingLabelData, setShippingLabelData] = useState<any | null>(null);
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
 
+  // Load Order Lifecycle Timeline on Inspect Modal Open
+  useEffect(() => {
+    if (!selectedOrder) {
+      setOrderTimeline([]);
+      return;
+    }
+    setLoadingTimeline(true);
+    adminApi.getOrderTimeline(selectedOrder.id)
+      .then((res) => {
+        setOrderTimeline(res.timeline || []);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch order timeline:", err);
+      })
+      .finally(() => {
+        setLoadingTimeline(false);
+      });
+  }, [selectedOrder?.id]);
+
+  // Load Pathao Cities when Pathao is selected
+  useEffect(() => {
+    if (selectedCourier === "pathao" && bookingOrder) {
+      if (pathaoCities.length === 0) {
+        setLoadingCities(true);
+        adminApi.getPathaoCities()
+          .then((res) => {
+            setPathaoCities(res.cities || []);
+          })
+          .catch((err) => console.error("Failed to load Pathao cities", err))
+          .finally(() => setLoadingCities(false));
+      }
+    }
+  }, [selectedCourier, bookingOrder]);
+
+  const handleCityChange = async (cityId: number) => {
+    setSelectedCityId(cityId);
+    setSelectedZoneId(null);
+    setSelectedAreaId(null);
+    setPathaoZones([]);
+    setPathaoAreas([]);
+    if (!cityId) return;
+    setLoadingZones(true);
+    try {
+      const res = await adminApi.getPathaoZones(cityId);
+      setPathaoZones(res.zones || []);
+    } catch (err) {
+      console.error("Failed to load Pathao zones", err);
+    } finally {
+      setLoadingZones(false);
+    }
+  };
+
+  const handleZoneChange = async (zoneId: number) => {
+    setSelectedZoneId(zoneId);
+    setSelectedAreaId(null);
+    setPathaoAreas([]);
+    if (!zoneId) return;
+    setLoadingAreas(true);
+    try {
+      const res = await adminApi.getPathaoAreas(zoneId);
+      setPathaoAreas(res.areas || []);
+    } catch (err) {
+      console.error("Failed to load Pathao areas", err);
+    } finally {
+      setLoadingAreas(false);
+    }
+  };
+
   const handleOpenBookCourier = async (order: Order) => {
     setBookingOrder(order);
+    setSelectedCityId((order as any).shipping_city_id || null);
+    setSelectedZoneId((order as any).shipping_zone_id || null);
+    setSelectedAreaId((order as any).shipping_area_id || null);
     setLoadingCourierOptions(true);
     try {
       const res = await adminApi.getCourierOptions(order.id);
@@ -202,6 +286,9 @@ function OrdersContent() {
         cod_amount: Number(bookingCod),
         pickup_store_id: bookingPickupStore || undefined,
         delivery_area: bookingDeliveryArea || undefined,
+        recipient_city_id: selectedCourier === "pathao" && selectedCityId ? selectedCityId : undefined,
+        recipient_zone_id: selectedCourier === "pathao" && selectedZoneId ? selectedZoneId : undefined,
+        recipient_area_id: selectedCourier === "pathao" && selectedAreaId ? selectedAreaId : undefined,
         notes: bookingNotes || undefined,
       });
       toast.success(res.message);
@@ -700,10 +787,13 @@ function OrdersContent() {
               options={[
                 { value: "all", label: "All Statuses" },
                 { value: "pending", label: "Pending" },
+                { value: "confirmed", label: "Confirmed" },
                 { value: "processing", label: "Processing" },
                 { value: "shipped", label: "Shipped" },
                 { value: "delivered", label: "Delivered" },
                 { value: "cancelled", label: "Cancelled" },
+                { value: "returned", label: "Returned" },
+                { value: "partially_cancelled", label: "Partially Cancelled" },
               ]}
             />
 
@@ -714,6 +804,9 @@ function OrdersContent() {
                 { value: "all", label: "All Payments" },
                 { value: "paid", label: "Paid" },
                 { value: "pending", label: "Pending" },
+                { value: "unpaid", label: "Unpaid" },
+                { value: "partially_paid", label: "Partially Paid" },
+                { value: "partially_refunded", label: "Partially Refunded" },
                 { value: "refunded", label: "Refunded" },
                 { value: "failed", label: "Failed" },
               ]}
@@ -858,93 +951,132 @@ function OrdersContent() {
       />
 
       {/* Orders Table Card */}
-      <ScrollableTableCard className="bg-[#0f121b] border-white/[0.08]">
-        <table className="w-full text-left text-xs text-slate-300 min-w-[960px]">
-            <thead className="bg-white/[0.02] border-b border-white/[0.08] text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+      <ScrollableTableCard
+        className="bg-[#0f121b] border-white/[0.08]"
+        maxHeight="calc(100vh - 270px)"
+      >
+        <table className="w-full text-left text-xs text-slate-300 min-w-[1020px] border-separate border-spacing-0">
+          <thead className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+            <tr>
+              <th className="sticky top-0 left-0 z-30 bg-[#0e121e] border-b border-white/10 w-12 min-w-[48px] max-w-[48px] py-3.5 pl-5 pr-2 text-left">
+                <AdminCheckbox
+                  checked={filteredOrders.length > 0 && selectedIds.length === filteredOrders.length}
+                  indeterminate={selectedIds.length > 0 && selectedIds.length < filteredOrders.length}
+                  onChange={handleToggleSelectAll}
+                  title="Select all orders"
+                />
+              </th>
+              <th className="sticky top-0 left-[48px] z-30 bg-[#0e121e] border-b border-r border-white/10 p-3 text-left w-[14%] min-w-[130px] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.5)]">
+                Order Number
+              </th>
+              <th className="sticky top-0 z-20 bg-[#0e121e] border-b border-white/10 p-3 text-left w-[18%] min-w-[150px]">Customer</th>
+              <th className="sticky top-0 z-20 bg-[#0e121e] border-b border-white/10 p-3 text-left w-[11%] min-w-[90px]">Amount</th>
+              <th className="sticky top-0 z-20 bg-[#0e121e] border-b border-white/10 p-3 text-left w-[12%] min-w-[100px]">Payment</th>
+              <th className="sticky top-0 z-20 bg-[#0e121e] border-b border-white/10 p-3 text-left w-[12%] min-w-[100px]">Fulfillment</th>
+              <th className="sticky top-0 z-20 bg-[#0e121e] border-b border-white/10 p-3 text-left w-[14%] min-w-[130px]">Logistics / Courier</th>
+              <th className="sticky top-0 z-20 bg-[#0e121e] border-b border-white/10 p-3 text-left w-[12%] min-w-[110px]">IP / Security</th>
+              <th className="sticky top-0 z-20 bg-[#0e121e] border-b border-white/10 p-3 text-left w-[11%] min-w-[100px]">Date</th>
+              <th className="sticky top-0 z-20 bg-[#0e121e] border-b border-white/10 p-3 text-center min-w-[100px]">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.04]">
+            {loading ? (
               <tr>
-                <th className="py-3.5 pl-6 pr-3 w-14 text-left">
-                  <AdminCheckbox
-                    checked={filteredOrders.length > 0 && selectedIds.length === filteredOrders.length}
-                    indeterminate={selectedIds.length > 0 && selectedIds.length < filteredOrders.length}
-                    onChange={handleToggleSelectAll}
-                    title="Select all orders"
-                  />
-                </th>
-                <th className="p-3 text-left w-[14%] min-w-[120px]">Order Number</th>
-                <th className="p-3 text-left w-[18%] min-w-[150px]">Customer</th>
-                <th className="p-3 text-left w-[11%] min-w-[90px]">Amount</th>
-                <th className="p-3 text-left w-[12%] min-w-[100px]">Payment</th>
-                <th className="p-3 text-left w-[12%] min-w-[100px]">Fulfillment</th>
-                <th className="p-3 text-left w-[14%] min-w-[130px]">Logistics / Courier</th>
-                <th className="p-3 text-left w-[12%] min-w-[110px]">IP / Security</th>
-                <th className="p-3 text-left w-[11%] min-w-[100px]">Date</th>
-                <th className="p-3 text-center min-w-[100px]">Actions</th>
+                <td colSpan={10} className="p-12 text-center text-slate-500">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-amber-400" />
+                  <span>Loading orders...</span>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
-              {loading ? (
-                <tr>
-                  <td colSpan={10} className="p-12 text-center text-slate-500">
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-amber-400" />
-                    <span>Loading orders...</span>
-                  </td>
-                </tr>
-              ) : filteredOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="p-0">
-                    <AdminEmptyState
-                      title="No orders found"
-                      description="No customer orders matched your current filters."
-                    />
-                  </td>
-                </tr>
-              ) : (
-                filteredOrders.map((order) => {
-                  const isSelected = selectedIds.includes(order.id);
-                  const ip = order.ip_address || "127.0.0.1";
+            ) : filteredOrders.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="p-0">
+                  <AdminEmptyState
+                    title="No orders found"
+                    description="No customer orders matched your current filters."
+                  />
+                </td>
+              </tr>
+            ) : (
+              filteredOrders.map((order) => {
+                const isSelected = selectedIds.includes(order.id);
+                const ip = order.ip_address || "127.0.0.1";
 
-                  return (
-                    <tr
-                      key={order.id}
-                      className={`hover:bg-white/[0.02] transition-colors ${
-                        isSelected ? "bg-amber-500/5" : ""
+                return (
+                  <tr
+                    key={order.id}
+                    className={`group transition-colors ${
+                      isSelected ? "bg-amber-500/10" : "hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    <td
+                      className={`sticky left-0 z-10 w-12 min-w-[48px] max-w-[48px] py-3 pl-5 pr-2 text-left transition-colors ${
+                        isSelected ? "bg-[#161c28]" : "bg-[#0f121b] group-hover:bg-[#141926]"
+                      }`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <AdminCheckbox
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectRow(order.id)}
+                        title={`Select order ${order.order_number}`}
+                      />
+                    </td>
+
+                    {/* Order Number (Pinned Left Identifier) */}
+                    <td
+                      className={`sticky left-[48px] z-10 p-3 text-left font-mono font-bold whitespace-nowrap border-r border-white/10 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.5)] transition-colors ${
+                        isSelected ? "bg-[#161c28]" : "bg-[#0f121b] group-hover:bg-[#141926]"
                       }`}
                     >
-                      <td className="py-3.5 pl-6 pr-3 text-left" onClick={(e) => e.stopPropagation()}>
-                        <AdminCheckbox
-                          checked={isSelected}
-                          onChange={() => handleToggleSelectRow(order.id)}
-                          title={`Select order ${order.order_number}`}
-                        />
-                      </td>
-
-                      {/* Order Number */}
-                      <td className="p-3 text-left font-mono font-bold text-cyan-400 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrder(order)}
+                        className="text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
+                        title={`View order #${order.order_number} details`}
+                      >
                         {order.order_number}
-                      </td>
+                      </button>
+                    </td>
 
-                      {/* Customer */}
-                      <td className="p-3 text-left">
-                        <div className="truncate max-w-[180px]">
-                          <span className="font-bold text-white block truncate">{order.customer_name}</span>
-                          <span className="text-[10.5px] text-slate-400 block truncate">{order.customer_email}</span>
-                        </div>
-                      </td>
+                    {/* Customer */}
+                    <td className="p-3 text-left">
+                      <div className="truncate max-w-[180px]" title={`${order.customer_name} (${order.customer_email})`}>
+                        <span className="font-bold text-white block truncate">{order.customer_name}</span>
+                        <span className="text-[10.5px] text-slate-400 block truncate">{order.customer_email}</span>
+                      </div>
+                    </td>
 
-                      {/* Amount */}
-                      <td className="p-3 text-left font-mono font-bold text-white whitespace-nowrap">
-                        {formatPrice(order.total_amount)}
-                      </td>
+                    {/* Amount */}
+                    <td className="p-3 text-left font-mono font-bold text-white whitespace-nowrap">
+                      {formatPrice(order.total_amount)}
+                    </td>
 
-                      {/* Payment */}
-                      <td className="p-3 text-left whitespace-nowrap">
-                        <AdminStatusBadge status={order.payment_status} />
-                      </td>
+                    {/* Payment */}
+                    <td className="p-3 text-left whitespace-nowrap">
+                      <AdminStatusBadge status={order.payment_status} />
+                      {order.amount_collected_courier && order.amount_collected_courier > 0 && order.payment_status !== 'paid' ? (
+                        <span className="block text-[9.5px] font-mono text-amber-400/90 mt-0.5" title="Collected by courier">
+                          Coll: {formatPrice(order.amount_collected_courier)}
+                        </span>
+                      ) : null}
+                    </td>
 
-                      {/* Fulfillment */}
-                      <td className="p-3 text-left whitespace-nowrap">
-                        <AdminStatusBadge status={order.order_status} />
-                      </td>
+                    {/* Fulfillment & Return Deep-Link */}
+                    <td className="p-3 text-left whitespace-nowrap">
+                      <AdminStatusBadge status={order.order_status} />
+                      {order.return_status && order.return_status !== 'none' ? (
+                        <Link
+                          href={
+                            order.latest_return?.return_number
+                              ? `/admin/orders/returns?returnId=${encodeURIComponent(order.latest_return.return_number)}`
+                              : `/admin/orders/returns?search=${encodeURIComponent(order.order_number)}`
+                          }
+                          className="block text-[9.5px] font-semibold text-purple-400 hover:text-purple-300 hover:underline mt-0.5"
+                          title="Inspect Return / RTO details"
+                        >
+                          Return: {order.return_status.replace(/_/g, ' ')}
+                        </Link>
+                      ) : null}
+                    </td>
 
                       {/* Logistics / Courier */}
                       {/* Logistics / Courier */}
@@ -1099,11 +1231,12 @@ function OrdersContent() {
           </table>
       </ScrollableTableCard>
 
-      {/* INSPECT ORDER MODAL */}
+      {/* ORDER DETAILS MODAL */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-[#0e121e] border border-white/15 rounded-2xl shadow-2xl p-5 space-y-4 my-8">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-2xl max-h-[90vh] bg-[#0e121e] border border-white/15 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Pinned Modal Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 pb-3.5 border-b border-white/10 shrink-0 bg-[#0e121e]">
               <div>
                 <h3 className="text-sm font-black text-white">Order #{selectedOrder.order_number}</h3>
                 <span className="text-[10.5px] text-slate-400">{formatDate(selectedOrder.created_at)}</span>
@@ -1124,13 +1257,18 @@ function OrdersContent() {
                     Issue Refund
                   </button>
                 )}
-                <button onClick={() => setSelectedOrder(null)} className="p-1 text-slate-400 hover:text-white">
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            {/* Scrollable Content Body with Sleek Scrollbar */}
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Customer</span>
                 <span className="font-bold text-white block">{selectedOrder.customer_name}</span>
@@ -1177,6 +1315,40 @@ function OrdersContent() {
               <span>Total Amount</span>
               <span className="text-base text-cyan-400 font-mono font-black">{formatPrice(selectedOrder.total_amount)}</span>
             </div>
+
+            {/* Return / RTO Status Banner & Deep-Link */}
+            {selectedOrder.return_status && selectedOrder.return_status !== 'none' && (
+              <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0">
+                    <RotateCcw className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">Return / RTO Initiated</span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        {selectedOrder.return_status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    {selectedOrder.latest_return?.return_number && (
+                      <span className="text-[11px] font-mono text-purple-300/80 block mt-0.5">
+                        Return ID: {selectedOrder.latest_return.return_number}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Link
+                  href={
+                    selectedOrder.latest_return?.return_number
+                      ? `/admin/orders/returns?returnId=${encodeURIComponent(selectedOrder.latest_return.return_number)}`
+                      : `/admin/orders/returns?search=${encodeURIComponent(selectedOrder.order_number)}`
+                  }
+                  className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shrink-0 shadow-sm"
+                >
+                  Inspect Return Details &rarr;
+                </Link>
+              </div>
+            )}
 
             {/* Logistics & Fulfillment Details */}
             {(() => {
@@ -1279,9 +1451,103 @@ function OrdersContent() {
                 </div>
               );
             })()}
+
+            {/* ORDER LIFECYCLE AUDIT TRAIL & MILESTONES */}
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Order Lifecycle Milestones</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono px-2 py-0.5 rounded bg-white/5">
+                  {orderTimeline.length} Event{orderTimeline.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              {loadingTimeline ? (
+                <div className="py-6 text-center text-slate-400">
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1.5 text-amber-400" />
+                  <span className="text-xs">Loading lifecycle audit trail...</span>
+                </div>
+              ) : orderTimeline.length === 0 ? (
+                <div className="py-4 text-center text-slate-500 text-xs italic">
+                  No lifecycle events recorded for this order yet.
+                </div>
+              ) : (
+                <div className="relative pl-7 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-white/10">
+                  {orderTimeline.map((evt, idx) => {
+                    const isLatest = idx === 0;
+                    return (
+                      <div key={evt.id || idx} className="relative group">
+                        {/* Dot indicator */}
+                        <div className={`absolute -left-7 top-0.5 w-5 h-5 rounded-full bg-[#0e121e] border flex items-center justify-center ${
+                          isLatest ? 'border-amber-400 text-amber-400 ring-2 ring-amber-400/20' : 'border-white/20 text-slate-400'
+                        }`}>
+                          {(() => {
+                            switch (evt.event_type) {
+                              case 'order_placed':
+                              case 'confirmed':
+                                return <CheckCircle2 className="w-3 h-3 text-emerald-400" />;
+                              case 'courier_booked':
+                              case 'picked_up':
+                              case 'out_for_delivery':
+                                return <Truck className="w-3 h-3 text-cyan-400" />;
+                              case 'delivered':
+                                return <CheckCircle2 className="w-3 h-3 text-emerald-400" />;
+                              case 'customer_refused':
+                              case 'delivery_failed':
+                              case 'cancelled':
+                                return <AlertTriangle className="w-3 h-3 text-rose-400" />;
+                              case 'rto_initiated':
+                              case 'returned_to_warehouse':
+                              case 'restocked':
+                                return <RotateCcw className="w-3 h-3 text-purple-400" />;
+                              case 'accounting_adjusted':
+                                return <BadgeDollarSign className="w-3 h-3 text-amber-400" />;
+                              default:
+                                return <Clock className="w-3 h-3 text-slate-400" />;
+                            }
+                          })()}
+                        </div>
+
+                        <div className="text-xs space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-white text-[12.5px]">{evt.title}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {evt.occurred_at ? formatDate(evt.occurred_at) : ''}
+                            </span>
+                          </div>
+                          {evt.description && (
+                            <p className="text-[11.5px] text-slate-300 leading-relaxed">{evt.description}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                            {evt.actor_name && (
+                              <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/5">
+                                By {evt.actor_name}
+                              </span>
+                            )}
+                            {evt.metadata?.consignment_id && (
+                              <span className="text-[9.5px] font-mono text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
+                                #{evt.metadata.consignment_id}
+                              </span>
+                            )}
+                            {evt.metadata?.tracking_code && (
+                              <span className="text-[9.5px] font-mono text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">
+                                Trk: {evt.metadata.tracking_code}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* EDIT ORDER MODAL */}
       {editingOrder && (
@@ -1564,9 +1830,9 @@ function OrdersContent() {
 
       {/* BOOK COURIER MODAL */}
       {bookingOrder && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-lg bg-[#0e121e] border border-amber-500/30 rounded-2xl p-5 space-y-4 my-8 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-lg max-h-[90vh] bg-[#0e121e] border border-amber-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between p-4 sm:p-5 pb-3.5 border-b border-white/10 shrink-0 bg-[#0e121e]">
               <div className="flex items-center gap-2">
                 <Truck className="w-5 h-5 text-amber-400" />
                 <div>
@@ -1588,14 +1854,15 @@ function OrdersContent() {
                 <span>Checking courier integrations & balance...</span>
               </div>
             ) : (
-              <form onSubmit={handleExecuteBookCourier} className="space-y-4 text-xs">
-                {/* Recipient Quick Summary */}
-                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
-                  <div className="flex justify-between items-center text-slate-300">
-                    <span className="font-bold text-white">{bookingOrder.customer_name}</span>
-                    <span className="font-mono text-cyan-400">{bookingOrder.customer_phone}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
+              <form onSubmit={handleExecuteBookCourier} className="flex flex-col flex-1 overflow-hidden">
+                <div className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto flex-1 custom-scrollbar">
+                  {/* Recipient Quick Summary */}
+                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="font-bold text-white">{bookingOrder.customer_name}</span>
+                      <span className="font-mono text-cyan-400">{bookingOrder.customer_phone}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
                     {bookingOrder.shipping_address?.address_line1}, {bookingOrder.shipping_address?.city}
                   </p>
                 </div>
@@ -1682,17 +1949,96 @@ function OrdersContent() {
                   </div>
                 )}
 
-                {/* Delivery Area / Destination */}
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-300 block">Delivery Area / City</label>
-                  <input
-                    type="text"
-                    value={bookingDeliveryArea}
-                    onChange={(e) => setBookingDeliveryArea(e.target.value)}
-                    placeholder="e.g. Dhaka, Chittagong, Sylhet"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400/50 focus:outline-none"
-                  />
-                </div>
+                {/* Pathao Dynamic City & Zone Selectors */}
+                {selectedCourier === "pathao" ? (
+                  <div className="space-y-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/15">
+                    <span className="text-[11px] font-bold text-amber-300 block">Pathao Geolocation Routing</span>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-300 block">Recipient City</label>
+                        {loadingCities ? (
+                          <div className="flex items-center gap-1 text-slate-400 py-2">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" /> Loading cities...
+                          </div>
+                        ) : pathaoCities.length > 0 ? (
+                          <select
+                            value={selectedCityId || ""}
+                            onChange={(e) => handleCityChange(Number(e.target.value))}
+                            className="w-full bg-[#0e121e] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400/50 focus:outline-none"
+                          >
+                            <option value="">-- Select City --</option>
+                            {pathaoCities.map((c) => (
+                              <option key={c.city_id} value={c.city_id}>
+                                {c.city_name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={bookingDeliveryArea}
+                            onChange={(e) => setBookingDeliveryArea(e.target.value)}
+                            placeholder="e.g. Dhaka"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400/50 focus:outline-none"
+                          />
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-300 block">Recipient Zone</label>
+                        {loadingZones ? (
+                          <div className="flex items-center gap-1 text-slate-400 py-2">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" /> Loading zones...
+                          </div>
+                        ) : (
+                          <select
+                            value={selectedZoneId || ""}
+                            onChange={(e) => handleZoneChange(Number(e.target.value))}
+                            disabled={!selectedCityId || pathaoZones.length === 0}
+                            className="w-full bg-[#0e121e] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400/50 focus:outline-none disabled:opacity-50"
+                          >
+                            <option value="">{selectedCityId ? "-- Select Zone --" : "Select City First"}</option>
+                            {pathaoZones.map((z) => (
+                              <option key={z.zone_id} value={z.zone_id}>
+                                {z.zone_name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
+
+                    {pathaoAreas.length > 0 && (
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-300 block">Recipient Area / Sub-Zone</label>
+                        <select
+                          value={selectedAreaId || ""}
+                          onChange={(e) => setSelectedAreaId(Number(e.target.value))}
+                          className="w-full bg-[#0e121e] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400/50 focus:outline-none"
+                        >
+                          <option value="">-- Optional: Select Area --</option>
+                          {pathaoAreas.map((a) => (
+                            <option key={a.area_id} value={a.area_id}>
+                              {a.area_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-300 block">Delivery Area / City</label>
+                    <input
+                      type="text"
+                      value={bookingDeliveryArea}
+                      onChange={(e) => setBookingDeliveryArea(e.target.value)}
+                      placeholder="e.g. Dhaka, Chittagong, Sylhet"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-400/50 focus:outline-none"
+                    />
+                  </div>
+                )}
 
                 {/* Delivery Instructions */}
                 <div className="space-y-1">
@@ -1706,8 +2052,10 @@ function OrdersContent() {
                   />
                 </div>
 
+                </div>
+
                 {/* Actions */}
-                <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+                <div className="flex justify-end gap-2 p-4 border-t border-white/10 bg-[#0e121e] shrink-0">
                   <button
                     type="button"
                     onClick={() => setBookingOrder(null)}
@@ -1741,9 +2089,9 @@ function OrdersContent() {
 
       {/* THERMAL 4X6 SHIPPING LABEL MODAL */}
       {isLabelModalOpen && shippingLabelData && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-md bg-[#0e121e] border border-white/20 rounded-2xl p-5 space-y-4 my-8 shadow-2xl">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10 print:hidden">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-md max-h-[90vh] bg-[#0e121e] border border-white/20 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between p-4 sm:p-5 pb-3.5 border-b border-white/10 shrink-0 bg-[#0e121e] print:hidden">
               <div className="flex items-center gap-2">
                 <Printer className="w-5 h-5 text-amber-400" />
                 <h3 className="text-sm font-black text-white">Thermal Shipping Label (4" × 6")</h3>
@@ -1757,7 +2105,8 @@ function OrdersContent() {
             </div>
 
             {/* Label Printable Container (White background, black text high-contrast thermal aesthetic) */}
-            <div id="thermal-label" className="bg-white text-black p-5 rounded-lg border-2 border-black font-sans space-y-3 print:border-none print:m-0 print:p-2">
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 custom-scrollbar">
+              <div id="thermal-label" className="bg-white text-black p-5 rounded-lg border-2 border-black font-sans space-y-3 print:border-none print:m-0 print:p-2">
               {/* Header */}
               <div className="flex justify-between items-start border-b-2 border-black pb-2">
                 <div>
@@ -1811,9 +2160,10 @@ function OrdersContent() {
                 <span className="font-mono text-[9px]">{shippingLabelData.date}</span>
               </div>
             </div>
+          </div>
 
             {/* Modal Footer */}
-            <div className="flex justify-end gap-2 pt-2 border-t border-white/10 print:hidden">
+            <div className="flex justify-end gap-2 p-4 border-t border-white/10 bg-[#0e121e] shrink-0 print:hidden">
               <button
                 type="button"
                 onClick={() => setIsLabelModalOpen(false)}

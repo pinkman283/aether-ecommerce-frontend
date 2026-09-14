@@ -53,6 +53,7 @@ import {
   CreditCard,
   History,
   Sparkles,
+  RotateCcw,
 } from "lucide-react";
 import { useAdminAuthStore } from "@/store/useAdminAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
@@ -205,6 +206,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           icon: ShoppingBag,
           items: [
             { label: "Orders & Invoices", href: "/admin/orders", icon: ShoppingBag, permission: "orders.view" },
+            { label: "Returns & RTO", href: "/admin/orders/returns", icon: RotateCcw, permission: "orders.view" },
             { label: "Customers Directory", href: "/admin/customers", icon: Users, permission: "customers.view" },
             { label: "Leads & Abandoned", href: "/admin/leads", icon: Magnet, permission: "leads.view" },
             { label: "Reviews & Ratings", href: "/admin/reviews", icon: Star, permission: "reviews.view" },
@@ -256,6 +258,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           items: [
             { label: "Financial Overview (P&L)", href: "/admin/finance", icon: TrendingUp, permission: "finance.view" },
             { label: "Operating Expenses", href: "/admin/expenses", icon: Coins, permission: "expenses.view" },
+            { label: "Courier Settlements", href: "/admin/accounting/settlements", icon: BadgeDollarSign, permission: "accounting.view" },
             { label: "Customer Dues (A/R)", href: "/admin/accounting/receivables", icon: Users, permission: "accounting.view" },
             { label: "Supplier Dues (A/P)", href: "/admin/accounting/payables", icon: Truck, permission: "accounting.view" },
             { label: "Bank & Cash", href: "/admin/accounting/banking", icon: Wallet, permission: "accounting.view" },

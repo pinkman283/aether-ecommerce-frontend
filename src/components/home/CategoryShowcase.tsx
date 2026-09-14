@@ -261,12 +261,20 @@ export function CategoryShowcase({ categories = [], bottomBanners = [] }: Catego
 
         // 2. Fallback to category list if no dynamic sections configured yet
         let catList = categories;
-        if (!catList || catList.length === 0) {
+        if (!catList || (Array.isArray(catList) && catList.length === 0)) {
           catList = await api.getCategories();
         }
 
-        const validCatList = (catList || []).filter(
-          (c) => !c.slug.includes("test")
+        const safeCategoryList: Category[] = Array.isArray(catList)
+          ? catList
+          : catList && typeof catList === "object"
+            ? Array.isArray((catList as any).data)
+              ? (catList as any).data
+              : Object.values(catList).filter((item): item is Category => Boolean(item && typeof item === "object" && "id" in item))
+            : [];
+
+        const validCatList = safeCategoryList.filter(
+          (c) => c && c.slug && !c.slug.includes("test")
         );
 
         const sectionPromises = validCatList.map(async (cat) => {

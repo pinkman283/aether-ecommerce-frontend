@@ -18,7 +18,7 @@ import { Category } from "@/types";
 import { useThemeStore } from "@/store/useThemeStore";
 
 interface ExploreCategoriesSectionProps {
-  categories: Category[];
+  categories?: Category[];
 }
 
 // LuLu inspired soft pastel background tints for category tiles
@@ -40,7 +40,7 @@ const ICON_MAP: Record<string, any> = {
   Layers: Layers,
 };
 
-export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectionProps) {
+export function ExploreCategoriesSection({ categories = [] }: ExploreCategoriesSectionProps) {
   const { theme } = useThemeStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -62,10 +62,19 @@ export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectio
     });
   };
 
-  // Strictly filter to only main/parent categories (exclude subcategories)
-  const displayCategories = categories.filter((c) => !c.parent_id);
+  // Safely normalize categories to an array (handles Array, object with .data, or keyed dictionary)
+  const categoryList: Category[] = Array.isArray(categories)
+    ? categories
+    : categories && typeof categories === "object"
+      ? Array.isArray((categories as any).data)
+        ? (categories as any).data
+        : Object.values(categories).filter((item): item is Category => Boolean(item && typeof item === "object" && "id" in item))
+      : [];
 
-  if (displayCategories.length === 0 && categories.length === 0) return null;
+  // Strictly filter to only main/parent categories (exclude subcategories)
+  const displayCategories = categoryList.filter((c) => c && !c.parent_id);
+
+  if (displayCategories.length === 0 && categoryList.length === 0) return null;
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
@@ -144,7 +153,7 @@ export function ExploreCategoriesSection({ categories }: ExploreCategoriesSectio
         )}
 
         {/* Dynamic Aspect-Ratio Proportional Category Tiles */}
-        {(displayCategories.length > 0 ? displayCategories : categories).map((cat, idx) => {
+        {(displayCategories.length > 0 ? displayCategories : categoryList).map((cat, idx) => {
           const Icon = ICON_MAP[cat.icon || "Sparkles"] || Sparkles;
           const tint = PASTEL_TINTS[idx % PASTEL_TINTS.length];
 

@@ -31,6 +31,7 @@ export const AdminStatusBadge: React.FC<AdminStatusBadgeProps> = ({
       case "delivered":
       case "settled":
       case "verified":
+      case "confirmed":
         return {
           bg: "bg-emerald-500/10",
           text: "text-emerald-400",
@@ -38,7 +39,7 @@ export const AdminStatusBadge: React.FC<AdminStatusBadgeProps> = ({
           dot: "bg-emerald-400",
         };
 
-      // Warning / Pending / Processing / Due Soon
+      // Warning / Pending / Processing / Due Soon / Partial
       case "pending":
       case "processing":
       case "low stock":
@@ -47,6 +48,8 @@ export const AdminStatusBadge: React.FC<AdminStatusBadgeProps> = ({
       case "recorded":
       case "due soon":
       case "unpaid":
+      case "partially paid":
+      case "partially refunded":
         return {
           bg: "bg-amber-500/10",
           text: "text-amber-400",
@@ -54,7 +57,7 @@ export const AdminStatusBadge: React.FC<AdminStatusBadgeProps> = ({
           dot: "bg-amber-400",
         };
 
-      // Danger / Cancelled / Refunded / Out of Stock
+      // Danger / Cancelled / Refunded / Out of Stock / Returned
       case "cancelled":
       case "canceled":
       case "refunded":
@@ -63,6 +66,8 @@ export const AdminStatusBadge: React.FC<AdminStatusBadgeProps> = ({
       case "outofstock":
       case "blocked":
       case "overdue":
+      case "returned":
+      case "partially cancelled":
         return {
           bg: "bg-rose-500/10",
           text: "text-rose-400",
@@ -70,16 +75,20 @@ export const AdminStatusBadge: React.FC<AdminStatusBadgeProps> = ({
           dot: "bg-rose-400",
         };
 
-      // Informational / Cyan / Blue
+      // Informational / Cyan / Purple / Return Logistics
       case "draft":
       case "pos":
       case "online":
       case "featured":
+      case "rto in transit":
+      case "return requested":
+      case "qc completed":
+      case "received":
         return {
-          bg: "bg-cyan-500/10",
-          text: "text-cyan-400",
-          border: "border-cyan-500/25",
-          dot: "bg-cyan-400",
+          bg: "bg-purple-500/10",
+          text: "text-purple-400",
+          border: "border-purple-500/25",
+          dot: "bg-purple-400",
         };
 
       // Default Neutral

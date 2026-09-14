@@ -316,8 +316,15 @@ export default function AdminInventoryValuationPage() {
                             {p.stock_quantity} units
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 font-mono text-amber-400 font-bold">
-                          ${p.average_unit_cost.toFixed(2)}
+                        <td className="py-3.5 px-4 font-mono font-bold">
+                          {p.average_unit_cost !== null ? (
+                            <span className={p.is_estimated ? "text-amber-400" : "text-emerald-400"}>
+                              ${p.average_unit_cost.toFixed(2)}
+                              {p.is_estimated && <span className="text-[10px] text-slate-500 font-sans ml-1">(Est.)</span>}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 text-xs font-sans italic">Not Established</span>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 font-mono font-bold text-white">
                           ${p.total_inventory_cost.toFixed(2)}
@@ -329,9 +336,23 @@ export default function AdminInventoryValuationPage() {
                           +${p.potential_gross_margin.toFixed(2)}
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/5 text-slate-300">
-                            {p.cost_layers_count} FIFO tranches
-                          </span>
+                          {p.cost_layers_count > 0 ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              {p.cost_layers_count} FIFO tranche(s)
+                            </span>
+                          ) : p.stock_quantity <= 0 ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/5 text-slate-500 border border-white/5">
+                              Depleted
+                            </span>
+                          ) : p.cost_status === 'opening_cost_pending_layer' ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                              Cost Set (${p.cost_price?.toFixed(2)})
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              Opening Cost Required
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))

@@ -48,6 +48,8 @@ export interface ProductVariant {
   sku?: string | null;
   price_modifier: number;
   stock_quantity: number;
+  cost_price?: number | null;
+  barcode?: string | null;
 }
 
 export interface Review {
@@ -75,6 +77,7 @@ export interface Product {
   short_description?: string | null;
   description: string;
   price: number;
+  cost_price?: number | null;
   compare_at_price?: number | null;
   stock_quantity: number;
   is_featured: boolean;
@@ -152,6 +155,11 @@ export interface Shipment {
   delivery_attempts: number;
   failure_reason?: string | null;
   return_reason?: string | null;
+  rto_charge?: number;
+  collected_amount?: number | null;
+  remitted_amount?: number | null;
+  settlement_status?: 'unsettled' | 'settled' | 'disputed' | string;
+  courier_settlement_id?: number | null;
   booked_at?: string | null;
   picked_up_at?: string | null;
   in_transit_at?: string | null;
@@ -189,10 +197,15 @@ export interface Order {
   shipping_method?: string | null;
   discount_amount: number;
   total_amount: number;
-  payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
+  amount_collected_courier?: number;
+  amount_remitted_merchant?: number;
+  amount_refunded?: number;
+  payment_status: 'unpaid' | 'pending' | 'partially_paid' | 'paid' | 'partially_refunded' | 'refunded' | 'failed' | string;
   payment_method: 'credit_card' | 'cash_on_delivery' | 'paypal' | 'apple_pay' | string;
   payment_transaction_id?: string | null;
-  order_status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+  order_status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'returned' | 'partially_cancelled' | string;
+  return_status?: 'none' | 'return_requested' | 'rto_in_transit' | 'received' | 'qc_completed' | 'resolved' | 'cancelled' | string;
+  latest_return?: { id: number; order_id: number; return_number: string } | null;
   tracking_code?: string | null;
   carrier?: string | null;
   coupon_code?: string | null;
@@ -214,6 +227,110 @@ export interface Order {
   pos_register_session?: PosRegisterSession;
   latest_shipment?: Shipment | null;
   shipments?: Shipment[];
+  returns?: OrderReturn[];
+}
+
+export interface OrderReturnItem {
+  id: number;
+  order_return_id: number;
+  order_item_id?: number | null;
+  product_id?: number | null;
+  variant_id?: number | null;
+  quantity_returned: number;
+  return_reason?: string | null;
+  condition: 'unopened' | 'opened_intact' | 'damaged_packaging' | 'damaged_product' | 'defective' | 'wrong_item' | string;
+  qc_status: 'pending' | 'passed' | 'damaged' | 'defective' | string;
+  disposition: 'pending' | 'restock_sellable' | 'quarantine_damaged' | 'write_off_loss' | 'return_to_customer' | string;
+  restocked_quantity: number;
+  damaged_quantity: number;
+  writeoff_quantity: number;
+  unit_price: number;
+  refund_unit_price: number;
+  refund_subtotal: number;
+  qc_notes?: string | null;
+  product?: Product | null;
+  variant?: ProductVariant | null;
+  order_item?: OrderItem | null;
+}
+
+export interface OrderReturn {
+  id: number;
+  return_number: string;
+  order_id: number;
+  shipment_id?: number | null;
+  customer_id?: number | null;
+  return_type: 'rto' | 'customer_return' | 'failed_delivery' | 'partial_rejection';
+  status: 'initiated' | 'in_transit' | 'received' | 'qc_completed' | 'resolved' | 'rejected' | 'cancelled';
+  return_reason?: string | null;
+  order_total_snapshot: number;
+  product_subtotal_snapshot: number;
+  shipping_charge_snapshot: number;
+  amount_collected_courier: number;
+  amount_expected_from_customer: number;
+  refund_amount: number;
+  refund_method: 'none' | 'cash' | 'bank_transfer' | 'bkash' | 'nagad' | 'rocket' | 'store_credit' | string;
+  refund_status: 'none' | 'not_required' | 'pending' | 'processed' | 'store_credit_issued' | 'rejected' | string;
+  courier_delivery_fee: number;
+  courier_rto_fee: number;
+  courier_tracking_code?: string | null;
+  inspection_status: 'pending' | 'passed' | 'partial_damage' | 'rejected';
+  received_at?: string | null;
+  inspected_at?: string | null;
+  resolved_at?: string | null;
+  notes?: string | null;
+  created_by_user_id?: number | null;
+  inspected_by_user_id?: number | null;
+  order?: Order | null;
+  shipment?: Shipment | null;
+  customer?: { id: number; name: string; phone?: string; email?: string } | null;
+  items?: OrderReturnItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourierSettlementItem {
+  id: number;
+  courier_settlement_id: number;
+  shipment_id?: number | null;
+  order_id?: number | null;
+  consignment_id?: string | null;
+  tracking_code?: string | null;
+  cod_collected: number;
+  delivery_fee: number;
+  rto_fee: number;
+  cod_fee: number;
+  other_fee: number;
+  net_payout: number;
+  status: 'matched' | 'variance' | 'unmatched';
+  notes?: string | null;
+  shipment?: Shipment | null;
+  order?: Order | null;
+}
+
+export interface CourierSettlement {
+  id: number;
+  settlement_number: string;
+  provider: 'steadfast' | 'pathao' | 'redx' | string;
+  settlement_date: string;
+  total_cod_collected: number;
+  delivery_fees: number;
+  return_fees: number;
+  other_deductions: number;
+  expected_payout: number;
+  actual_payout: number;
+  variance: number;
+  bank_account_id?: number | null;
+  journal_entry_id?: number | null;
+  status: 'pending' | 'reconciled' | 'disputed';
+  notes?: string | null;
+  reconciled_by_user_id?: number | null;
+  reconciled_at?: string | null;
+  bank_account?: any;
+  journal_entry?: any;
+  reconciled_by_user?: any;
+  items?: CourierSettlementItem[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface User {
@@ -554,7 +671,12 @@ export interface ProductValuation {
   category_id?: number | null;
   stock_quantity: number;
   retail_price: number;
-  average_unit_cost: number;
+  cost_price?: number | null;
+  average_unit_cost: number | null;
+  cost_status?: "costed" | "opening_cost_pending_layer" | "cost_not_established" | "depleted";
+  is_estimated?: boolean;
+  real_fifo_units?: number;
+  real_fifo_valuation?: number;
   total_inventory_cost: number;
   potential_retail_value: number;
   potential_gross_margin: number;

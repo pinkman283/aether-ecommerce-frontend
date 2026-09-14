@@ -59,6 +59,8 @@ interface ProductFormVariant {
   color_hex?: string | null;
   stock_quantity: number;
   price_modifier?: number;
+  cost_price?: number | null;
+  barcode?: string | null;
 }
 
 const COLOR_PRESETS = [
@@ -136,6 +138,8 @@ export default function AdminProductsPage() {
   const [newVariantColorHex, setNewVariantColorHex] = useState("");
   const [newVariantStock, setNewVariantStock] = useState("20");
   const [newVariantPriceMod, setNewVariantPriceMod] = useState("0");
+  const [newVariantCostPrice, setNewVariantCostPrice] = useState("");
+  const [newVariantBarcode, setNewVariantBarcode] = useState("");
 
   // Delete Confirm Modal State
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
@@ -205,6 +209,8 @@ export default function AdminProductsPage() {
     setNewVariantColorHex("");
     setNewVariantStock("20");
     setNewVariantPriceMod("0");
+    setNewVariantCostPrice("");
+    setNewVariantBarcode("");
     setIsModalOpen(true);
   };
 
@@ -256,6 +262,8 @@ export default function AdminProductsPage() {
           color_hex: v.color_hex || null,
           stock_quantity: v.stock_quantity ?? 0,
           price_modifier: Number(v.price_modifier || 0),
+          cost_price: v.cost_price ? Number(v.cost_price) : null,
+          barcode: v.barcode || null,
         }))
       );
     } else {
@@ -267,6 +275,8 @@ export default function AdminProductsPage() {
     setNewVariantColorHex("");
     setNewVariantStock("20");
     setNewVariantPriceMod("0");
+    setNewVariantCostPrice("");
+    setNewVariantBarcode("");
 
     setIsModalOpen(true);
   };
@@ -287,6 +297,8 @@ export default function AdminProductsPage() {
 
     const stockQty = Math.max(0, parseInt(newVariantStock || "0", 10));
     const priceMod = parseFloat(newVariantPriceMod || "0") || 0;
+    const costPrice = newVariantCostPrice ? parseFloat(newVariantCostPrice) : null;
+    const barcode = newVariantBarcode.trim() || null;
 
     const displayName = trimmedName || (trimmedSize ? `Size ${trimmedSize}` : (newVariantColorHex ? `Color ${newVariantColorHex}` : "Option"));
 
@@ -297,6 +309,8 @@ export default function AdminProductsPage() {
       color_hex: newVariantColorHex || null,
       stock_quantity: stockQty,
       price_modifier: priceMod,
+      cost_price: costPrice,
+      barcode: barcode,
     };
 
     const nextVariants = [...formVariants, newVar];
@@ -310,6 +324,8 @@ export default function AdminProductsPage() {
     setNewVariantColorHex("");
     setNewVariantStock("20");
     setNewVariantPriceMod("0");
+    setNewVariantCostPrice("");
+    setNewVariantBarcode("");
     toast.success(`Option '${newVar.name}' added.`);
   };
 
@@ -560,6 +576,8 @@ export default function AdminProductsPage() {
         color_hex: v.color_hex || null,
         stock_quantity: Number(v.stock_quantity || 0),
         price_modifier: Number(v.price_modifier || 0),
+        cost_price: v.cost_price ? Number(v.cost_price) : null,
+        barcode: v.barcode || null,
       })),
     };
 
@@ -1297,63 +1315,91 @@ export default function AdminProductsPage() {
                 </div>
 
                 {/* Minimal Add Option Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                  <input
-                    type="text"
-                    value={newVariantName || ""}
-                    onChange={(e) => setNewVariantName(e.target.value)}
-                    placeholder="Option name (e.g. Midnight Black)"
-                    className="sm:col-span-4 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={newVariantSize || ""}
-                    onChange={(e) => setNewVariantSize(e.target.value)}
-                    placeholder="Size (e.g. S, M, L)"
-                    className="sm:col-span-2 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
-                  />
-                  <div className="sm:col-span-2 flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 rounded-xl px-2.5 py-1.5 transition-all">
-                    <label className="relative flex items-center gap-1.5 cursor-pointer flex-1 min-w-0">
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 shadow-xs"
-                        style={{ backgroundColor: newVariantColorHex || "transparent" }}
-                      />
-                      <span className="text-[10.5px] text-slate-400 truncate">
-                        {newVariantColorHex || "Color"}
-                      </span>
-                      <input
-                        type="color"
-                        value={newVariantColorHex || "#000000"}
-                        onChange={(e) => setNewVariantColorHex(e.target.value)}
-                        className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                      />
-                    </label>
-                    {newVariantColorHex && (
-                      <button
-                        type="button"
-                        onClick={() => setNewVariantColorHex("")}
-                        className="text-[10px] text-slate-500 hover:text-rose-400 ml-1"
-                        title="Remove color"
-                      >
-                        ✕
-                      </button>
-                    )}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                    <input
+                      type="text"
+                      value={newVariantName || ""}
+                      onChange={(e) => setNewVariantName(e.target.value)}
+                      placeholder="Option name (e.g. Midnight Black)"
+                      className="sm:col-span-5 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={newVariantSize || ""}
+                      onChange={(e) => setNewVariantSize(e.target.value)}
+                      placeholder="Size (e.g. S, M, L)"
+                      className="sm:col-span-3 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
+                    />
+                    <div className="sm:col-span-4 flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 rounded-xl px-2.5 py-1.5 transition-all">
+                      <label className="relative flex items-center gap-1.5 cursor-pointer flex-1 min-w-0">
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 shadow-xs"
+                          style={{ backgroundColor: newVariantColorHex || "transparent" }}
+                        />
+                        <span className="text-[10.5px] text-slate-400 truncate">
+                          {newVariantColorHex || "Color"}
+                        </span>
+                        <input
+                          type="color"
+                          value={newVariantColorHex || "#000000"}
+                          onChange={(e) => setNewVariantColorHex(e.target.value)}
+                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                        />
+                      </label>
+                      {newVariantColorHex && (
+                        <button
+                          type="button"
+                          onClick={() => setNewVariantColorHex("")}
+                          className="text-[10px] text-slate-500 hover:text-rose-400 ml-1"
+                          title="Remove color"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <input
-                    type="number"
-                    value={newVariantStock || ""}
-                    onChange={(e) => setNewVariantStock(e.target.value)}
-                    placeholder="Stock"
-                    className="sm:col-span-2 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 transition-all outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddVariant}
-                    className="sm:col-span-2 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 shadow-xs shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add
-                  </button>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                    <input
+                      type="number"
+                      value={newVariantStock || ""}
+                      onChange={(e) => setNewVariantStock(e.target.value)}
+                      placeholder="Stock"
+                      className="sm:col-span-2 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 transition-all outline-none"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newVariantPriceMod || ""}
+                      onChange={(e) => setNewVariantPriceMod(e.target.value)}
+                      placeholder="Price Mod (+৳)"
+                      className="sm:col-span-2 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 transition-all outline-none"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newVariantCostPrice || ""}
+                      onChange={(e) => setNewVariantCostPrice(e.target.value)}
+                      placeholder="Cost Price (৳)"
+                      className="sm:col-span-3 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 transition-all outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={newVariantBarcode || ""}
+                      onChange={(e) => setNewVariantBarcode(e.target.value)}
+                      placeholder="Barcode / UPC"
+                      className="sm:col-span-3 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 transition-all outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddVariant}
+                      className="sm:col-span-2 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 shadow-xs shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add
+                    </button>
+                  </div>
                 </div>
 
                 {/* Quick Presets for Sizes & Colors */}
@@ -1388,7 +1434,7 @@ export default function AdminProductsPage() {
                   <div className="space-y-1.5 pt-1">
                     {formVariants.map((v, idx) => (
                       <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
                           {v.color_hex && (
                             <span
                               className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0"
@@ -1403,9 +1449,19 @@ export default function AdminProductsPage() {
                           )}
                           {v.price_modifier && v.price_modifier > 0 ? (
                             <span className="text-[10px] text-emerald-400 font-mono">
-                              (+${v.price_modifier.toFixed(2)})
+                              (+৳{v.price_modifier.toFixed(2)})
                             </span>
                           ) : null}
+                          {v.cost_price && (
+                            <span className="text-[10px] text-amber-300 font-mono bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                              Cost: ৳{Number(v.cost_price).toFixed(2)}
+                            </span>
+                          )}
+                          {v.barcode && (
+                            <span className="text-[10px] text-slate-400 font-mono bg-white/5 px-1.5 py-0.5 rounded">
+                              BC: {v.barcode}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-[11px] text-slate-400">Stock:</span>

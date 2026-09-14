@@ -40,12 +40,22 @@ export default function HomePage() {
           api.getFeatured(),
           api.getHomepageBanners().catch(() => null),
         ]);
-        setFeaturedProducts(data.featured_products || []);
-        setNewArrivals(data.new_arrivals || []);
-        setBestSellers(data.best_sellers || []);
-        setCategories(data.featured_categories || []);
+        setFeaturedProducts(Array.isArray(data?.featured_products) ? data.featured_products : []);
+        setNewArrivals(Array.isArray(data?.new_arrivals) ? data.new_arrivals : []);
+        setBestSellers(Array.isArray(data?.best_sellers) ? data.best_sellers : []);
+
+        const rawCats = data?.featured_categories ?? (data as any)?.categories;
+        const safeCats = Array.isArray(rawCats)
+          ? rawCats
+          : rawCats && typeof rawCats === "object"
+            ? Array.isArray((rawCats as any).data)
+              ? (rawCats as any).data
+              : Object.values(rawCats).filter((c: any) => c && typeof c === "object" && "id" in c)
+            : [];
+        setCategories(safeCats as Category[]);
+
         const bBanners = bannerData?.bottom_banners || bannerData?.middle_banners || [];
-        setBottomBanners(bBanners);
+        setBottomBanners(Array.isArray(bBanners) ? bBanners : []);
       } catch (err) {
         console.warn("Notice: Storefront data fetch fallback:", err);
       } finally {
