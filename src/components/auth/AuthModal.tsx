@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { toast } from "sonner";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
+import { BrandLogoImage } from "@/components/shared/BrandLogoImage";
 
 export function AuthModal() {
   const { isAuthModalOpen, authModalTab, closeAuthModal, openAuthModal, setAuth } = useAuthStore();
@@ -121,10 +122,8 @@ export function AuthModal() {
 
             {/* Header */}
             <div className="mb-4 pr-6">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-500 p-0.5 shadow-md mb-2">
-                <div className="w-full h-full bg-[#0d1017] rounded-[6px] flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-cyan-400" />
-                </div>
+              <div className="mb-3">
+                <BrandLogoImage placement="auth_modal" />
               </div>
               <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
                 {authModalTab === "login"

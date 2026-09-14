@@ -39,7 +39,8 @@ import {
 import { useCartStore } from "@/store/useCartStore";
 import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useThemeStore, resolveLogo } from "@/store/useThemeStore";
+import { useThemeStore } from "@/store/useThemeStore";
+import { BrandLogoImage } from "@/components/shared/BrandLogoImage";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
 import { formatPrice } from "@/lib/utils";
 import { toast } from "sonner";
@@ -358,61 +359,11 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
 
       {/* ===================== NON-STICKY TIER 1: BRAND LOGO + CENTER SEARCH + UTILITIES ===================== */}
       <div className="bg-white dark:bg-[#090b14]/95 border-b border-gray-200 dark:border-white/5 text-slate-900 dark:text-slate-100 transition-colors">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3 sm:gap-4 lg:gap-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-20 sm:h-[82px] lg:h-[88px] flex items-center justify-between gap-3 sm:gap-4 lg:gap-8">
           {/* Left: Brand Identity Logo & Store Department Switcher */}
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <Link href="/" suppressHydrationWarning className="flex items-center gap-2.5 group select-none">
-              {(() => {
-                const desktopLogo = resolveLogo(theme, "navbar", "");
-                const mobileLogo = resolveLogo(theme, "mobile_navbar", "");
-                const activeLogo = desktopLogo || mobileLogo;
-
-                if (activeLogo) {
-                  return (
-                    <div 
-                      className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full p-1 border-2 border-emerald-600/40 bg-white shadow-sm flex items-center justify-center shrink-0 group-hover:border-[#005826] group-hover:scale-105 transition-all duration-300"
-                      suppressHydrationWarning
-                    >
-                      <img
-                        src={desktopLogo || activeLogo}
-                        alt={theme.store_brand_name || "Company Logo"}
-                        className={`w-full h-full object-contain rounded-full ${mobileLogo && mobileLogo !== desktopLogo ? "hidden sm:block" : ""}`}
-                        suppressHydrationWarning
-                      />
-                      {mobileLogo && mobileLogo !== desktopLogo && (
-                        <img
-                          src={mobileLogo}
-                          alt={theme.store_brand_name || "Company Logo"}
-                          className="w-full h-full object-contain rounded-full block sm:hidden"
-                          suppressHydrationWarning
-                        />
-                      )}
-                    </div>
-                  );
-                }
-
-                return (
-                  <div
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full p-0.5 shadow-sm border border-emerald-600/30 group-hover:scale-105 transition-transform duration-300 bg-gradient-to-br from-[#005826] to-[#2da54b]"
-                  >
-                    <div className="w-full h-full bg-[#005826] dark:bg-[#0d1017] rounded-full flex items-center justify-center">
-                      <span className="font-black text-sm text-white">
-                        {theme.store_brand_name?.charAt(0) || "I"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })()}
-              <div className="flex flex-col">
-                <span className="font-black text-base sm:text-lg tracking-wider text-slate-900 dark:text-white group-hover:text-[#005826] dark:group-hover:text-cyan-400 transition-colors leading-tight">
-                  {theme.store_brand_name || "INHALIQ"}
-                </span>
-                <span className="text-[8px] sm:text-[8.5px] tracking-widest text-slate-500 dark:text-slate-400 uppercase font-semibold">
-                  {theme.store_brand_tagline || "ELEVATE EVERY INHALE"}
-                </span>
-              </div>
-            </Link>
-          </div>
+          <Link href="/" suppressHydrationWarning className="h-full flex items-center group select-none shrink-0 py-1 -translate-y-0.5">
+            <BrandLogoImage placement="navbar" priority={true} />
+          </Link>
 
           {/* Middle: Big Prominent Search Area */}
           <div className="flex-1 max-w-xl mx-2 sm:mx-4 hidden sm:block">

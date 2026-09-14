@@ -365,7 +365,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="h-screen w-full bg-[#07090e] text-slate-100 flex overflow-hidden fixed inset-0">
-      
       {/* Sidebar Desktop */}
       <aside 
         className={`hidden lg:flex flex-col justify-between bg-[#090b10] border-r border-white/[0.06] shrink-0 h-full transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[width] overflow-hidden z-20 ${
@@ -376,38 +375,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           
           {/* Admin Brand Header */}
           <div className="flex items-center gap-2.5 pb-3 border-b border-white/10 mb-3 w-full shrink-0">
-            {companyBrandLogo ? (
-              <div 
-                className="w-8 h-8 rounded-full border border-cyan-400/40 bg-white/5 p-0.5 flex items-center justify-center shrink-0 overflow-hidden shadow-sm"
-                suppressHydrationWarning
-              >
-                <img
-                  src={companyBrandLogo}
-                  alt={companyBrandName}
-                  className="w-full h-full object-contain rounded-full"
-                  suppressHydrationWarning
-                />
-              </div>
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/40 flex items-center justify-center shadow-xs shrink-0">
+            {sidebarCollapsed ? (
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/40 flex items-center justify-center shadow-xs shrink-0 mx-auto">
                 <span className="font-black text-amber-400 text-sm font-mono">
                   {companyBrandName.charAt(0)}
                 </span>
               </div>
+            ) : companyBrandLogo ? (
+              <div className="flex flex-col gap-0.5 overflow-hidden">
+                <img
+                  src={companyBrandLogo}
+                  alt={companyBrandName}
+                  className="h-6 w-auto max-w-[150px] object-contain object-left"
+                  suppressHydrationWarning
+                />
+                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
+                  Admin Console
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/40 flex items-center justify-center shadow-xs shrink-0">
+                  <span className="font-black text-amber-400 text-xs font-mono">
+                    {companyBrandName.charAt(0)}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-bold text-xs text-white tracking-tight block truncate uppercase">
+                    {companyBrandName}
+                  </span>
+                  <span className="text-[9px] uppercase tracking-wider text-slate-400 block truncate font-bold">
+                    Admin Console
+                  </span>
+                </div>
+              </div>
             )}
-            
-            <div 
-              className={`overflow-hidden transition-opacity duration-200 whitespace-nowrap ${
-                sidebarCollapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100 max-w-[170px]"
-              }`}
-            >
-              <span className="font-bold text-xs text-white tracking-tight block truncate uppercase">
-                {companyBrandName}
-              </span>
-              <span className="text-[10px] text-slate-400 block truncate">
-                Admin Console
-              </span>
-            </div>
           </div>
 
           {/* Navigation Links */}

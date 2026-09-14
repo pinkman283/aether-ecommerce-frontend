@@ -22,6 +22,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
 import { getThemeCardRadiusPx, getThemeInputRadiusPx } from "@/store/useThemeStore";
+import { BrandLogoImage } from "@/components/shared/BrandLogoImage";
 import { DepthText } from "@/components/DepthText";
 
 interface CustomerAuthViewProps {
@@ -234,15 +235,16 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
             }}
             className="w-full border p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.12)] transition-all relative overflow-hidden"
           >
-            {/* Top Pill Badge: Customer Portal (Synchronized with Theme) */}
-            <div className="mb-2.5">
+            {/* Brand Logo & Top Pill Badge: Customer Portal */}
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <BrandLogoImage placement="auth" />
               <span 
                 style={{
                   backgroundColor: `color-mix(in srgb, ${theme.theme_primary_color || "#059669"} 10%, transparent)`,
                   color: theme.theme_primary_color || "#059669",
                   borderColor: `color-mix(in srgb, ${theme.theme_primary_color || "#059669"} 25%, transparent)`,
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-bold tracking-wide transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-bold tracking-wide transition-colors shadow-xs w-fit"
               >
                 <ShieldCheck 
                   className="w-3.5 h-3.5 shrink-0" 

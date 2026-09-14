@@ -170,6 +170,9 @@ export default function AdminBrandingPage() {
       await adminApi.updateFavicon(uploadRes.image_url);
       setFaviconUrl(uploadRes.image_url);
       updateClientTheme({ store_favicon: uploadRes.image_url });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("store_favicon_updated", { detail: uploadRes.image_url }));
+      }
       toast.success("Store favicon updated successfully! Browser tabs will display the new icon.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to upload favicon.");
@@ -184,6 +187,9 @@ export default function AdminBrandingPage() {
       await adminApi.removeFavicon();
       setFaviconUrl("");
       updateClientTheme({ store_favicon: "" });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("store_favicon_updated", { detail: "" }));
+      }
       toast.info("Favicon removed. Default browser icon restored.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to remove favicon.");

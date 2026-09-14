@@ -206,22 +206,18 @@ export function OrderInvoiceModal({ invoice, loading, onClose }: OrderInvoiceMod
                   <div className="flex justify-between items-start gap-2.5 pb-3 border-b border-slate-100 print:border-slate-200 avoid-break">
                     
                     {/* Left: Brand Identity */}
-                    <div className="space-y-0.5 max-w-[190px]">
+                    <div className="space-y-0.5 max-w-[210px]">
                       {storeLogo ? (
                         <img 
                           src={storeLogo} 
                           alt={storeName} 
                           onError={() => setLogoError(true)}
-                          className="max-h-7 w-auto object-contain object-left mb-1"
+                          className="max-h-9 sm:max-h-10 w-auto max-w-[190px] sm:max-w-[210px] object-contain object-left mb-1"
                         />
                       ) : (
                         <h1 className="text-sm font-bold tracking-tight text-slate-900 uppercase">
                           {storeName}
                         </h1>
-                      )}
-
-                      {storeLogo && (
-                        <p className="text-xs font-semibold text-slate-900 leading-tight">{storeName}</p>
                       )}
 
                       {storeTagline && !storeLogo && (

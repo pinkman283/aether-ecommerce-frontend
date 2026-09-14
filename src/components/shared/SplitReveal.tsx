@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, animate } from "framer-motion";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
 import { ThemeSettings, resolveLogo } from "@/store/useThemeStore";
+import { BrandLogoImage } from "@/components/shared/BrandLogoImage";
 import { Sparkles } from "lucide-react";
 
 export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) {
@@ -135,42 +136,10 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
     return null;
   }
 
-  // Unified single-line logo + brand title component (splits cleanly with the shutters)
+  // Unified logo or brand title component (splits cleanly with the shutters)
   const renderBrandLine = () => (
-    <div className="flex items-center justify-center gap-3 sm:gap-4 whitespace-nowrap pointer-events-none select-none px-4">
-      {logoUrl ? (
-        <div 
-          className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full p-2 border-2 sm:border-3 border-cyan-400/50 bg-black/40 backdrop-blur-md shadow-[0_0_25px_rgba(6,182,212,0.35)] flex items-center justify-center shrink-0 ring-1 ring-white/20"
-          suppressHydrationWarning
-        >
-          <img
-            src={logoUrl}
-            alt={brandTitle}
-            fetchPriority="high"
-            decoding="sync"
-            className="w-full h-full object-contain rounded-full filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]"
-            suppressHydrationWarning
-          />
-        </div>
-      ) : (
-        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border-2 sm:border-3 border-cyan-400/50 backdrop-blur-md p-2 flex items-center justify-center bg-black/70 shadow-2xl relative shrink-0 ring-1 ring-white/20">
-          <div
-            className="w-full h-full rounded-full flex items-center justify-center shadow-inner"
-            style={{
-              background: "linear-gradient(135deg, var(--theme-primary, #06b6d4), var(--theme-secondary, #6366f1))",
-            }}
-          >
-            <span className="font-black text-sm sm:text-xl tracking-tighter text-slate-950">
-              {brandTitle.substring(0, 2).toUpperCase()}
-            </span>
-          </div>
-          <Sparkles className="w-3.5 h-3.5 text-cyan-300 absolute -top-1 -right-1 animate-spin duration-3000" />
-        </div>
-      )}
-
-      <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-widest text-white uppercase leading-none drop-shadow-[0_4px_20px_rgba(0,0,0,0.9)]">
-        {brandTitle}
-      </h1>
+    <div className="flex items-center justify-center whitespace-nowrap pointer-events-none select-none px-4">
+      <BrandLogoImage placement="split_reveal" priority={true} theme={activeTheme} />
     </div>
   );
 
@@ -240,8 +209,8 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
                 }}
               />
 
-              {/* Top Half of Logo + Brand Name (centered on split seam) */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 pointer-events-none">
+              {/* Top Half of Logo + Brand Name (elevated above split seam) */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[calc(50%-32px)] z-20 pointer-events-none">
                 {renderBrandLine()}
               </div>
             </motion.div>
@@ -282,13 +251,13 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
                 }}
               />
 
-              {/* Bottom Half of Logo + Brand Name (centered on split seam) */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+              {/* Bottom Half of Logo + Brand Name (elevated above split seam) */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+32px)] z-20 pointer-events-none">
                 {renderBrandLine()}
               </div>
 
               {/* Clean Minimal Progress Loader Bar (positioned below the split line) */}
-              <div className="absolute top-14 sm:top-18 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
+              <div className="absolute top-10 sm:top-14 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
                 {renderLoaderBar()}
               </div>
             </motion.div>
@@ -329,7 +298,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
               />
 
               {/* Left Half of Logo + Brand Name */}
-              <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 z-20 pointer-events-none">
+              <div className="absolute top-1/2 right-0 -translate-y-[calc(50%+32px)] translate-x-1/2 z-20 pointer-events-none">
                 {renderBrandLine()}
               </div>
 
@@ -370,7 +339,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
               />
 
               {/* Right Half of Logo + Brand Name */}
-              <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 z-20 pointer-events-none">
+              <div className="absolute top-1/2 left-0 -translate-y-[calc(50%+32px)] -translate-x-1/2 z-20 pointer-events-none">
                 {renderBrandLine()}
               </div>
 

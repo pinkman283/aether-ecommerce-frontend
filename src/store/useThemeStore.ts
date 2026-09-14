@@ -413,9 +413,21 @@ export function initThemeFromCache(): boolean {
   return false;
 }
 
+const getInitialClientTheme = (): ThemeSettings => {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("aether_active_theme_cache");
+      if (cached) {
+        return { ...DEFAULT_THEME_SETTINGS, ...JSON.parse(cached) };
+      }
+    } catch (e) {}
+  }
+  return DEFAULT_THEME_SETTINGS;
+};
+
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  theme: DEFAULT_THEME_SETTINGS,
-  isLoaded: false,
+  theme: getInitialClientTheme(),
+  isLoaded: typeof window !== "undefined" && Boolean(localStorage.getItem("aether_active_theme_cache")),
 
   setTheme: (partialTheme) => {
     const updated = { ...get().theme, ...partialTheme };

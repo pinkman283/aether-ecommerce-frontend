@@ -235,25 +235,14 @@ export function LiveStorefrontPreview({
           >
             <div className="flex items-center gap-2">
               {brandLogo ? (
-                <div className="h-5 max-w-[60px] flex items-center justify-center shrink-0">
-                  <img src={brandLogo} alt={brandName} className="max-h-5 w-auto object-contain rounded" />
+                <div className="h-5 max-w-[110px] flex items-center shrink-0">
+                  <img src={brandLogo} alt={brandName} className="max-h-5 w-auto object-contain object-left" />
                 </div>
               ) : (
-                <div
-                  className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-[11px] text-white shadow-sm"
-                  style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
-                >
-                  {brandName?.charAt(0) || "Æ"}
-                </div>
-              )}
-              <div>
                 <span className={`font-black text-xs block leading-tight ${isLightCanvas ? "text-slate-900" : "text-white"}`}>
-                  {brandName}
+                  {brandName || "AETHER"}
                 </span>
-                <span className={`text-[8px] uppercase tracking-wider ${isLightCanvas ? "text-slate-500" : "text-slate-400"}`}>
-                  {brandTagline}
-                </span>
-              </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
