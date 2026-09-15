@@ -13,6 +13,7 @@ interface PasswordInputProps {
   inputClassName?: string;
   iconLeft?: boolean;
   autoComplete?: string;
+  autoFocus?: boolean;
   id?: string;
 }
 
@@ -26,6 +27,7 @@ export function PasswordInput({
   inputClassName = "",
   iconLeft = false,
   autoComplete = "current-password",
+  autoFocus = false,
   id,
 }: PasswordInputProps) {
   const [showPassword, setShowPassword] = useState(false);
@@ -41,6 +43,7 @@ export function PasswordInput({
         type={showPassword ? "text" : "password"}
         required={required}
         disabled={disabled}
+        autoFocus={autoFocus}
         value={value}
         onChange={onChange}
         placeholder={placeholder}

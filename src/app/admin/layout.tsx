@@ -61,6 +61,7 @@ import { adminApi } from "@/lib/adminApi";
 import { SidebarNavGroup, SidebarNavLink, NavChildItem } from "@/components/admin/SidebarNavGroup";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { CursorScrollProvider } from "@/components/admin/CursorScrollProvider";
+import { AdminAccountDropdown } from "@/components/admin/AdminAccountDropdown";
 
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -572,21 +573,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <ExternalLink className="w-3 h-3 text-cyan-400" />
             </Link>
 
-            <Link
-              href="/admin/theme"
-              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] transition-colors"
-              title="Theme Studio"
-            >
-              <Palette className="w-3.5 h-3.5 text-amber-400" />
-            </Link>
-
-            <Link
-              href="/admin/settings"
-              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] transition-colors"
-              title="Settings"
-            >
-              <Settings className="w-3.5 h-3.5 text-slate-300" />
-            </Link>
+            <AdminAccountDropdown />
           </div>
         </header>
 

@@ -41,6 +41,7 @@ import { useWishlistStore } from "@/store/useWishlistStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { BrandLogoImage } from "@/components/shared/BrandLogoImage";
+import { CustomerAccountDropdown } from "@/components/shared/CustomerAccountDropdown";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
 import { formatPrice } from "@/lib/utils";
 import { toast } from "sonner";
@@ -277,7 +278,6 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
   const [activeHoverCategory, setActiveHoverCategory] = useState<string | null>(null);
   const [activeSubcategorySlug, setActiveSubcategorySlug] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileExpandedCat, setMobileExpandedCat] = useState<string | null>(null);
   const [mobileExpandedSubCat, setMobileExpandedSubCat] = useState<string | null>(null);
@@ -443,103 +443,9 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
             </button>
 
             {/* User Account / Auth Dropdown */}
-            <div className="relative">
+            <div className="relative flex items-center">
               {isAuthenticated && user ? (
-                <div>
-                  <button
-                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-lg border border-gray-200 dark:border-white/10 hover:border-emerald-600/40 bg-gray-100 dark:bg-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 transition-all text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer"
-                  >
-                    {user.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="w-6 h-6 rounded-md object-cover ring-1 ring-emerald-600/40"
-                      />
-                    ) : (
-                      <div className="w-6 h-6 rounded-md bg-emerald-600/20 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-600/40 flex items-center justify-center font-black text-xs">
-                        {user.name ? user.name.trim().slice(0, 1).toUpperCase() : "U"}
-                      </div>
-                    )}
-                    <span className="hidden sm:inline font-bold pr-0.5 text-xs">
-                      {user.name?.trim().split(" ")[0] || user.name}
-                    </span>
-                  </button>
-
-                  <AnimatePresence>
-                    {userDropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-[#0e121e]/95 border border-gray-200 dark:border-white/10 shadow-2xl p-2 z-50 text-slate-800 dark:text-slate-200"
-                        onMouseLeave={() => setUserDropdownOpen(false)}
-                      >
-                        <div className="px-3 py-2 border-b border-gray-100 dark:border-white/10 mb-1">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                            {user.name?.trim().split(" ")[0] || user.name}
-                          </p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
-                          {user.role === "admin" && (
-                            <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                              Admin Access
-                            </span>
-                          )}
-                        </div>
-
-                        {user.role === "admin" && (
-                          <Link
-                            href="/admin"
-                            onClick={() => setUserDropdownOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors"
-                          >
-                            <LayoutDashboard className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                            Admin Console
-                          </Link>
-                        )}
-
-                        <Link
-                          href="/dashboard"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-colors"
-                        >
-                          <UserIcon className="w-4 h-4 text-emerald-600 dark:text-purple-400" />
-                          Profile & Settings
-                        </Link>
-
-                        <Link
-                          href="/dashboard"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-colors"
-                        >
-                          <Package className="w-4 h-4 text-emerald-600 dark:text-indigo-400" />
-                          My Orders
-                        </Link>
-
-                        <Link
-                          href="/dashboard/addresses"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-colors"
-                        >
-                          <MapPin className="w-4 h-4 text-emerald-600 dark:text-cyan-400" />
-                          Saved Addresses
-                        </Link>
-
-                        <button
-                          onClick={() => {
-                            logout();
-                            setUserDropdownOpen(false);
-                            router.push("/");
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors text-left mt-1 border-t border-gray-100 dark:border-white/5 cursor-pointer"
-                        >
-                          <LogOut className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                          Sign Out
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                <CustomerAccountDropdown />
               ) : (
                 <Link
                   href="/login"

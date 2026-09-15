@@ -13,20 +13,29 @@ export function DynamicFavicon() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const faviconUrl = theme?.store_favicon;
-    if (!faviconUrl || !faviconUrl.trim()) return;
-
-    const updateFaviconInDOM = (url: string) => {
+    const updateFaviconInDOM = (url?: string) => {
       try {
-        const cacheBuster = url.startsWith("http") || url.startsWith("/storage")
-          ? (url.includes("?") ? `${url}&v=${Date.now()}` : `${url}?v=${Date.now()}`)
-          : url;
+        const rawUrl = url?.trim() || "";
+        const targetUrl = rawUrl || "/favicon.ico";
+        const cacheBuster = targetUrl.startsWith("http") || targetUrl.startsWith("/storage")
+          ? (targetUrl.includes("?") ? `${targetUrl}&v=${Date.now()}` : `${targetUrl}?v=${Date.now()}`)
+          : `${targetUrl}?v=${Date.now()}`;
 
-        // 1. Update standard icon without removing any node
-        const iconLinks = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+        // Select all icon links (icon, shortcut icon, apple-touch-icon)
+        const iconLinks = Array.from(document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']"));
+
         if (iconLinks.length > 0) {
-          iconLinks.forEach((link) => {
-            link.href = cacheBuster;
+          iconLinks.forEach((link, index) => {
+            // Remove sizes attribute to prevent browser preferring a stale dimension
+            link.removeAttribute("sizes");
+            if (index === 0) {
+              link.href = cacheBuster;
+            } else if (!link.rel.includes("apple")) {
+              // Remove redundant duplicate icon links so they never overlap
+              link.remove();
+            } else {
+              link.href = cacheBuster;
+            }
           });
         } else {
           const newLink = document.createElement("link");
@@ -34,26 +43,15 @@ export function DynamicFavicon() {
           newLink.href = cacheBuster;
           document.head.appendChild(newLink);
         }
-
-        // 2. Update apple-touch-icon
-        const appleLinks = document.querySelectorAll<HTMLLinkElement>("link[rel='apple-touch-icon']");
-        if (appleLinks.length > 0) {
-          appleLinks.forEach((link) => {
-            link.href = cacheBuster;
-          });
-        }
       } catch (e) {
-        // Silently catch to avoid crashing user UI
         console.warn("Favicon update notice:", e);
       }
     };
 
-    updateFaviconInDOM(faviconUrl);
+    updateFaviconInDOM(theme?.store_favicon);
 
     const handleCustomFavicon = (e: any) => {
-      if (e.detail) {
-        updateFaviconInDOM(e.detail);
-      }
+      updateFaviconInDOM(e.detail);
     };
 
     window.addEventListener("store_favicon_updated", handleCustomFavicon);

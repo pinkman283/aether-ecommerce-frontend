@@ -28,10 +28,10 @@ export function ImageUploadAvatar({
   const [isHovered, setIsHovered] = useState(false);
 
   const sizeClasses = {
-    sm: "w-12 h-12 text-sm",
-    md: "w-16 h-16 text-base",
-    lg: "w-24 h-24 text-xl",
-    xl: "w-32 h-32 text-2xl",
+    sm: "w-10 h-10 text-xs",
+    md: "w-14 h-14 text-sm",
+    lg: "w-20 h-20 text-lg",
+    xl: "w-24 h-24 text-xl",
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,21 +80,21 @@ export function ImageUploadAvatar({
   };
 
   return (
-    <div className={`flex flex-col items-center sm:items-start gap-2.5 ${className}`}>
-      {label && <label className="text-[11px] font-bold text-slate-300 block">{label}</label>}
+    <div className={`flex flex-col items-center sm:items-start gap-2 ${className}`}>
+      {label && <label className="text-xs font-medium text-slate-300 block">{label}</label>}
 
       <div className="flex items-center gap-4">
-        {/* Avatar Circle Container with Upload Overlay */}
+        {/* Circular Avatar Container with Hover Overlay */}
         <div
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={() => !disabled && fileInputRef.current?.click()}
-          className={`relative rounded-3xl overflow-hidden cursor-pointer border-2 transition-all group shrink-0 ${
+          className={`relative rounded-full overflow-hidden cursor-pointer ring-2 transition-all group shrink-0 ${
             sizeClasses[size]
           } ${
             isHovered
-              ? "border-amber-400 shadow-xl shadow-amber-500/10 scale-105"
-              : "border-white/10 bg-[#0e121e]"
+              ? "ring-amber-400 shadow-lg shadow-amber-500/10 scale-105"
+              : "ring-white/10 bg-slate-900"
           } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           {value ? (
@@ -104,19 +104,19 @@ export function ImageUploadAvatar({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500/20 via-slate-900 to-slate-950 text-amber-300 font-black">
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-slate-200 font-bold">
               {name ? getInitials(name) : <UserIcon className="w-6 h-6 text-slate-500" />}
             </div>
           )}
 
           {/* Hover Overlay with Camera Icon */}
           <div
-            className={`absolute inset-0 bg-black/70 backdrop-blur-xs flex flex-col items-center justify-center text-white transition-opacity ${
+            className={`absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-white transition-opacity ${
               isHovered && !disabled ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
           >
-            <Camera className="w-5 h-5 text-amber-400 mb-0.5" />
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-200">
+            <Camera className="w-4 h-4 text-white mb-0.5" />
+            <span className="text-[9px] font-semibold text-slate-200">
               {value ? "Change" : "Upload"}
             </span>
           </div>
@@ -131,17 +131,17 @@ export function ImageUploadAvatar({
           />
         </div>
 
-        {/* Action Buttons & Help Text */}
+        {/* Action Buttons & Guidance Text */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={disabled}
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Upload className="w-3.5 h-3.5 text-amber-400" />
-              <span>{value ? "Upload New" : "Upload Picture"}</span>
+              <Upload className="w-3.5 h-3.5 text-slate-300" />
+              <span>{value ? "Change photo" : "Upload photo"}</span>
             </button>
 
             {value && (
@@ -149,7 +149,7 @@ export function ImageUploadAvatar({
                 type="button"
                 disabled={disabled}
                 onClick={handleRemove}
-                className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
                 title="Remove current avatar"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -158,12 +158,9 @@ export function ImageUploadAvatar({
             )}
           </div>
 
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] text-slate-500">
-              JPG, PNG, WebP up to 5MB. Live preview updates immediately.
-            </span>
-            <ImageUploadGuidance slotKey="admin_profile_avatar" layout="inline" />
-          </div>
+          <span className="text-xs text-slate-400">
+            JPG, PNG or WebP · Max 5MB · 400 × 400 px recommended
+          </span>
         </div>
       </div>
     </div>

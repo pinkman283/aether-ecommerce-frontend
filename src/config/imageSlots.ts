@@ -284,6 +284,16 @@ export const IMAGE_SLOTS: Record<string, ImageSlotConfig> = {
     tip: "Installable app splash screen high-resolution icon.",
     desktopRecommended: "Recommended: 512 × 512 px · 1:1",
   },
+  admin_profile_avatar: {
+    key: "admin_profile_avatar",
+    name: "Admin Profile Avatar",
+    width: 400,
+    height: 400,
+    aspectRatio: "1:1",
+    ratioValue: 1.0,
+    tip: "Square portrait avatar. Center-cropped for circle display.",
+    desktopRecommended: "Recommended: 400 × 400 px · 1:1",
+  },
 };
 
 export function getImageSlot(key: string): ImageSlotConfig {
