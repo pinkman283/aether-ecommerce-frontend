@@ -35,7 +35,8 @@ import {
   Loader2,
   Receipt,
   BadgeDollarSign,
-  Printer
+  Printer,
+  Calculator
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { Order, Product, SalesInvoice, SalesSummary } from "@/types";
@@ -177,6 +178,16 @@ function OrdersContent() {
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingZones, setLoadingZones] = useState(false);
   const [loadingAreas, setLoadingAreas] = useState(false);
+  const [calculatingPrice, setCalculatingPrice] = useState(false);
+  const [estimatedPrice, setEstimatedPrice] = useState<{
+    price: number;
+    delivery_charge: number;
+    additional_charge: number;
+    cod_charge: number;
+    total_charge: number;
+    plan: string;
+  } | null>(null);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   // Thermal Shipping Label Modal
   const [shippingLabelData, setShippingLabelData] = useState<any | null>(null);
@@ -222,6 +233,8 @@ function OrdersContent() {
     setSelectedAreaId(null);
     setPathaoZones([]);
     setPathaoAreas([]);
+    setEstimatedPrice(null);
+    setPriceError(null);
     if (!cityId) return;
     setLoadingZones(true);
     try {
@@ -238,6 +251,8 @@ function OrdersContent() {
     setSelectedZoneId(zoneId);
     setSelectedAreaId(null);
     setPathaoAreas([]);
+    setEstimatedPrice(null);
+    setPriceError(null);
     if (!zoneId) return;
     setLoadingAreas(true);
     try {
@@ -255,6 +270,8 @@ function OrdersContent() {
     setSelectedCityId((order as any).shipping_city_id || null);
     setSelectedZoneId((order as any).shipping_zone_id || null);
     setSelectedAreaId((order as any).shipping_area_id || null);
+    setEstimatedPrice(null);
+    setPriceError(null);
     setLoadingCourierOptions(true);
     try {
       const res = await adminApi.getCourierOptions(order.id);
@@ -272,6 +289,38 @@ function OrdersContent() {
       toast.error(err?.response?.data?.message || "Failed to load courier options.");
     } finally {
       setLoadingCourierOptions(false);
+    }
+  };
+
+  const handleCalculatePrice = async () => {
+    if (!bookingOrder) return;
+    if (!selectedCityId || !selectedZoneId) {
+      toast.error("Please select both City and Zone to calculate Pathao rate.");
+      return;
+    }
+    setCalculatingPrice(true);
+    setPriceError(null);
+    try {
+      const res = await adminApi.calculateCourierPrice(bookingOrder.id, {
+        provider: "pathao",
+        recipient_city_id: selectedCityId,
+        recipient_zone_id: selectedZoneId,
+        recipient_area_id: selectedAreaId || undefined,
+        weight: Number(bookingWeight) || 0.5,
+        pickup_store_id: bookingPickupStore || undefined,
+      });
+      if (res.success && res.pricing) {
+        setEstimatedPrice(res.pricing);
+        toast.success(`Estimated delivery: ৳${res.pricing.delivery_charge} · Total: ৳${res.pricing.total_charge}`);
+      } else {
+        setPriceError(res.pricing?.message || "Unable to calculate Pathao delivery charge.");
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Unable to calculate Pathao delivery charge. Please try again.";
+      setPriceError(msg);
+      toast.error(msg);
+    } finally {
+      setCalculatingPrice(false);
     }
   };
 
@@ -2026,6 +2075,61 @@ function OrdersContent() {
                         </select>
                       </div>
                     )}
+
+                    {/* Pathao Price Plan Calculator */}
+                    <div className="pt-2 border-t border-amber-500/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-slate-300">Delivery Cost Estimation</span>
+                        <button
+                          type="button"
+                          onClick={handleCalculatePrice}
+                          disabled={calculatingPrice || !selectedCityId || !selectedZoneId}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer"
+                        >
+                          {calculatingPrice ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin text-amber-400" />
+                              <span>Calculating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Calculator className="w-3 h-3 text-amber-400" />
+                              <span>Calculate Price</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {estimatedPrice && (
+                        <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">Plan:</span>
+                            <span className="font-bold text-amber-200">{estimatedPrice.plan}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">Delivery Fee:</span>
+                            <span className="font-mono text-white">৳{estimatedPrice.delivery_charge}</span>
+                          </div>
+                          {estimatedPrice.cod_charge > 0 && (
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-400">COD / Addl Fee:</span>
+                              <span className="font-mono text-white">৳{estimatedPrice.cod_charge}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-amber-500/20">
+                            <span className="text-amber-300">Estimated Total:</span>
+                            <span className="font-mono text-amber-400 text-sm">৳{estimatedPrice.total_charge}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {priceError && (
+                        <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                          <span>{priceError}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-1">

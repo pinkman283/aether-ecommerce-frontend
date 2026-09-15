@@ -72,8 +72,8 @@ const PLACEMENT_CONFIG: Record<
   },
   split_reveal: {
     // Bounded splash reveal (hero presence without overflowing viewport)
-    container: "h-20 sm:h-24 md:h-28 lg:h-32 w-auto max-w-[300px] sm:max-w-[420px] md:max-w-[520px] lg:max-w-[600px] flex items-center justify-center shrink-0",
-    image: "h-full max-h-[72px] sm:max-h-[92px] md:max-h-[108px] lg:max-h-[124px] w-auto max-w-full object-contain object-center filter drop-shadow-[0_8px_32px_rgba(0,0,0,0.9)]",
+    container: "h-30 sm:h-34 md:h-38 lg:h-42 w-auto max-w-[350px] sm:max-w-[480px] md:max-w-[600px] lg:max-w-[720px] flex items-center justify-center shrink-0",
+    image: "h-full max-h-[82px] sm:max-h-[102px] md:max-h-[128px] lg:max-h-[158px] w-auto max-w-full object-contain object-center filter drop-shadow-[0_8px_32px_rgba(0,0,0,0.9)]",
     fallback: "text-3xl sm:text-5xl font-black tracking-widest text-white uppercase leading-none",
   },
   admin_sidebar: {

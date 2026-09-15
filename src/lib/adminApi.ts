@@ -422,6 +422,33 @@ export const adminApi = {
     return res.data;
   },
 
+  async calculateCourierPrice(orderId: number, data: {
+    provider: string;
+    recipient_city_id: number;
+    recipient_zone_id: number;
+    recipient_area_id?: number;
+    weight: number;
+    pickup_store_id?: string;
+    delivery_type?: number;
+  }): Promise<{
+    success: boolean;
+    order_id: number;
+    order_number: string;
+    pricing: {
+      success: boolean;
+      price: number;
+      delivery_charge: number;
+      additional_charge: number;
+      cod_charge: number;
+      total_charge: number;
+      plan: string;
+      message?: string;
+    };
+  }> {
+    const res = await adminClient.post(`/admin/orders/${orderId}/courier/calculate-price`, data);
+    return res.data;
+  },
+
   async trackShipment(orderId: number, shipmentId: number): Promise<{
     message: string;
     shipment: Shipment;
