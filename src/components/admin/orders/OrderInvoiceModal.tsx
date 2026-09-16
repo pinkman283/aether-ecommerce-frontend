@@ -38,8 +38,8 @@ export function OrderInvoiceModal({ invoice, loading, onClose }: OrderInvoiceMod
   };
 
   // Determine dynamic brand details
-  const storeName = invoice?.company?.name || theme?.store_brand_name || "Store";
-  const storeLogo = !logoError ? (invoice?.company?.logo || resolveLogo(theme, "invoice", "") || "") : "";
+  const storeName = invoice?.company?.name || theme?.store_brand_name || "INHALIQ";
+  const storeLogo = !logoError ? (invoice?.company?.logo || resolveLogo(theme, "invoice", "/branding/logo.png") || "/branding/logo.png") : "";
   const storeTagline = invoice?.company?.tagline || theme?.store_brand_tagline || "";
 
   // Order Tracking ID: Guarantee tracking ID is always present
@@ -211,7 +211,14 @@ export function OrderInvoiceModal({ invoice, loading, onClose }: OrderInvoiceMod
                         <img 
                           src={storeLogo} 
                           alt={storeName} 
-                          onError={() => setLogoError(true)}
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (!target.src.endsWith("/branding/logo.png")) {
+                              target.src = "/branding/logo.png";
+                            } else {
+                              setLogoError(true);
+                            }
+                          }}
                           className="max-h-9 sm:max-h-10 w-auto max-w-[190px] sm:max-w-[210px] object-contain object-left mb-1"
                         />
                       ) : (

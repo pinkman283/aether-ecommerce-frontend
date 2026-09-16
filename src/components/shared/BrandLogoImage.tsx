@@ -94,14 +94,21 @@ export function BrandLogoImage({
   const context = useAppTheme();
   const theme = propTheme || context?.theme || useThemeStore.getState().theme;
   const isLoaded = propTheme ? true : (context?.isLoaded ?? useThemeStore.getState().isLoaded);
-
   const config = PLACEMENT_CONFIG[placement] || PLACEMENT_CONFIG.navbar;
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.currentTarget;
+    const defaultLogo = "/branding/logo.png";
+    if (target.src !== defaultLogo && !target.src.endsWith(defaultLogo)) {
+      target.src = defaultLogo;
+    }
+  };
 
   // Specific handling for navbar responsive behavior:
   // Can serve desktopLogo for sm+ and mobileLogo for < sm
   if (placement === "navbar") {
-    const desktopLogo = resolveLogo(theme, "navbar", "");
-    const mobileLogo = resolveLogo(theme, "mobile_navbar", "");
+    const desktopLogo = resolveLogo(theme, "navbar", "/branding/logo.png");
+    const mobileLogo = resolveLogo(theme, "mobile_navbar", "/branding/logo.png");
     const activeLogo = desktopLogo || mobileLogo;
 
     if (activeLogo) {
@@ -115,6 +122,7 @@ export function BrandLogoImage({
             src={desktopLogo || activeLogo}
             alt={theme.store_brand_name || "Company Logo"}
             fetchPriority={priority ? "high" : "auto"}
+            onError={handleImageError}
             className={`${config.image} ${imageClassName} ${mobileLogo && mobileLogo !== desktopLogo ? "hidden sm:block" : ""
               }`}
             suppressHydrationWarning
@@ -126,6 +134,7 @@ export function BrandLogoImage({
               src={mobileLogo}
               alt={theme.store_brand_name || "Company Logo"}
               fetchPriority={priority ? "high" : "auto"}
+              onError={handleImageError}
               className={`${PLACEMENT_CONFIG.mobile_navbar.image} ${imageClassName} block sm:hidden`}
               suppressHydrationWarning
             />
@@ -149,13 +158,13 @@ export function BrandLogoImage({
         className={`${config.fallback} ${fallbackTextClassName}`}
         suppressHydrationWarning
       >
-        {theme.store_brand_name || "AETHER"}
+        {theme.store_brand_name || "INHALIQ"}
       </span>
     );
   }
 
   // Generic placement resolver
-  const logoUrl = resolveLogo(theme, placement, "");
+  const logoUrl = resolveLogo(theme, placement, "/branding/logo.png");
 
   if (logoUrl) {
     return (
@@ -167,6 +176,7 @@ export function BrandLogoImage({
           src={logoUrl}
           alt={theme.store_brand_name || "Company Logo"}
           fetchPriority={priority ? "high" : "auto"}
+          onError={handleImageError}
           className={`${config.image} ${imageClassName}`}
           suppressHydrationWarning
         />
@@ -190,7 +200,7 @@ export function BrandLogoImage({
       className={`${config.fallback} ${fallbackTextClassName}`}
       suppressHydrationWarning
     >
-      {theme.store_brand_name || "AETHER"}
+      {theme.store_brand_name || "INHALIQ"}
     </span>
   );
 }

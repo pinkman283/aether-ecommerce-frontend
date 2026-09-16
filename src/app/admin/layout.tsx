@@ -321,8 +321,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/admin/login");
   };
 
-  const companyBrandName = theme?.store_brand_name || "AETHER";
-  const companyBrandLogo = resolveLogo(theme, "navbar", "") || theme?.store_brand_logo;
+  const companyBrandName = theme?.store_brand_name || "INHALIQ";
+  const companyBrandLogo = resolveLogo(theme, "admin_sidebar", "/branding/logo.png") || theme?.store_brand_logo || "/branding/logo.png";
 
   // Additional sub-pages for breadcrumb and command palette indexing
   const additionalSubPages = [
@@ -387,6 +387,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <img
                   src={companyBrandLogo}
                   alt={companyBrandName}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.src.endsWith("/branding/logo.png")) {
+                      target.src = "/branding/logo.png";
+                    }
+                  }}
                   className="h-6 w-auto max-w-[150px] object-contain object-left"
                   suppressHydrationWarning
                 />

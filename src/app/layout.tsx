@@ -10,13 +10,13 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export async function generateMetadata(): Promise<Metadata> {
   const serverTheme = await getServerTheme();
-  const brand = serverTheme.store_brand_name || "AETHER";
-  const tagline = serverTheme.store_brand_tagline || "Official Store";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://aether.studio";
-  const hasCustomFavicon = Boolean(serverTheme.store_favicon && serverTheme.store_favicon.trim() !== "");
-  const faviconUrl = hasCustomFavicon ? serverTheme.store_favicon! : "/favicon.ico";
-  const logoUrl = serverTheme.store_brand_logo || `${siteUrl}/favicon.ico`;
-  const defaultDesc = `Official ${brand} online store. Premium hardware, custom audio acoustics, and modular daily essentials.`;
+  const brand = serverTheme.store_brand_name || "INHALIQ";
+  const tagline = serverTheme.store_brand_tagline || "ELEVATE EVERY INHALE";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://inhaliq.com";
+  const hasCustomFavicon = Boolean(serverTheme.store_favicon && serverTheme.store_favicon.trim() !== "" && serverTheme.store_favicon !== "/favicon.png" && serverTheme.store_favicon !== "/favicon.ico");
+  const faviconUrl = hasCustomFavicon ? serverTheme.store_favicon! : "/favicon.png";
+  const logoUrl = serverTheme.store_brand_logo || `${siteUrl}/branding/logo.png`;
+  const defaultDesc = `Official ${brand} online store. Premium lifestyle, accessories, and essentials.`;
 
   return {
     metadataBase: new URL(siteUrl),
@@ -25,17 +25,28 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s | ${brand}`,
     },
     description: defaultDesc,
-    keywords: [brand, "Studio Equipment", "Audio Gear", "Online Store", "Hardware"],
     icons: hasCustomFavicon
       ? {
-          icon: [{ url: faviconUrl }],
+          icon: [
+            { url: faviconUrl },
+            { url: faviconUrl, sizes: "32x32" },
+            { url: faviconUrl, sizes: "16x16" },
+            { url: faviconUrl, sizes: "512x512" },
+          ],
           shortcut: [faviconUrl],
-          apple: [{ url: faviconUrl }],
+          apple: [{ url: faviconUrl, sizes: "180x180" }],
         }
       : {
-          icon: [{ url: "/favicon.ico" }],
-          shortcut: ["/favicon.ico"],
-          apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+          icon: [
+            { url: "/favicon.png" },
+            { url: "/favicon.png", sizes: "512x512", type: "image/png" },
+            { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+            { url: "/favicon.ico" },
+          ],
+          shortcut: ["/favicon.png"],
+          apple: [
+            { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+          ],
         },
     openGraph: {
       type: "website",
@@ -108,6 +119,9 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {serverTheme.store_favicon && serverTheme.store_favicon !== "/favicon.png" && (
+          <link rel="icon" href={serverTheme.store_favicon} sizes="any" />
+        )}
         {serverTheme.store_brand_logo && (
           <link rel="preload" as="image" href={serverTheme.store_brand_logo} fetchPriority="high" />
         )}
