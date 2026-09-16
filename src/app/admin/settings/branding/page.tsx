@@ -467,7 +467,7 @@ export default function AdminBrandingPage() {
               type="file"
               ref={faviconInputRef}
               onChange={handleFaviconUpload}
-              accept="image/png,image/x-icon,image/svg+xml,image/webp,image/jpeg"
+              accept="image/png,image/x-icon,image/webp,image/jpeg"
               className="hidden"
             />
 
@@ -588,7 +588,7 @@ export default function AdminBrandingPage() {
                         <span>{isUploadingThis ? "Replacing..." : "Replace"}</span>
                         <input
                           type="file"
-                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                          accept="image/png,image/jpeg,image/webp"
                           className="hidden"
                           disabled={isUploadingThis}
                           onChange={(e) => {
@@ -760,7 +760,7 @@ export default function AdminBrandingPage() {
                   <input
                     type="file"
                     ref={newLogoFileRef}
-                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    accept="image/png,image/jpeg,image/webp"
                     className="hidden"
                     onChange={handleNewLogoFileUpload}
                   />

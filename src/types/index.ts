@@ -9,6 +9,9 @@ export interface Category {
   badge?: string | null;
   is_featured: boolean;
   display_order: number;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  image_alt?: string | null;
   products_count?: number;
   parent?: Category | null;
   children?: Category[];
@@ -86,6 +89,8 @@ export interface Product {
   is_active: boolean;
   rating_average: number;
   review_count: number;
+  meta_title?: string | null;
+  meta_description?: string | null;
   tags?: string[] | null;
   specifications?: Record<string, string> | null;
   thumbnail?: string | null;
@@ -1324,6 +1329,8 @@ export interface BlogCategory {
   name: string;
   slug: string;
   description?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
   posts_count?: number;
   created_at?: string;
   updated_at?: string;
@@ -1347,9 +1354,12 @@ export interface BlogPost {
   excerpt?: string | null;
   content: string;
   featured_image?: string | null;
+  featured_image_alt?: string | null;
   status: 'published' | 'draft' | 'archived';
   views_count: number;
   published_at?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
   category?: BlogCategory;
   tags?: BlogTag[];
   author?: { id: number; name: string; email?: string };

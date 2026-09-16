@@ -31,6 +31,8 @@ export default function AdminBlogCategoriesPage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Delete State
@@ -58,6 +60,8 @@ export default function AdminBlogCategoriesPage() {
     setName("");
     setSlug("");
     setDescription("");
+    setMetaTitle("");
+    setMetaDescription("");
     setIsModalOpen(true);
   };
 
@@ -66,6 +70,8 @@ export default function AdminBlogCategoriesPage() {
     setName(cat.name);
     setSlug(cat.slug);
     setDescription(cat.description || "");
+    setMetaTitle(cat.meta_title || "");
+    setMetaDescription(cat.meta_description || "");
     setIsModalOpen(true);
   };
 
@@ -83,6 +89,8 @@ export default function AdminBlogCategoriesPage() {
           name: name.trim(),
           slug: slug.trim() || undefined,
           description: description.trim() || undefined,
+          meta_title: metaTitle || null,
+          meta_description: metaDescription || null,
         });
         toast.success(`Category "${name}" updated.`);
       } else {
@@ -90,6 +98,8 @@ export default function AdminBlogCategoriesPage() {
           name: name.trim(),
           slug: slug.trim() || undefined,
           description: description.trim() || undefined,
+          meta_title: metaTitle || null,
+          meta_description: metaDescription || null,
         });
         toast.success(`Category "${name}" created.`);
       }
@@ -344,6 +354,39 @@ export default function AdminBlogCategoriesPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-[#161a26] border border-white/[0.08] rounded-lg text-white placeholder:text-slate-500 focus:outline-hidden focus:border-cyan-400/50"
                 />
+              </div>
+
+              {/* SEO Configuration */}
+              <div className="pt-4 mt-4 border-t border-white/[0.08] space-y-4">
+                <h4 className="text-[13px] font-medium text-white flex items-center gap-2">
+                  <Search className="w-3.5 h-3.5 text-cyan-400" />
+                  Search Engine Optimization
+                </h4>
+                <p className="text-xs text-slate-400">
+                  Leave blank to automatically use the category name and description as fallbacks.
+                </p>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">Meta Title</label>
+                  <input
+                    type="text"
+                    value={metaTitle}
+                    onChange={(e) => setMetaTitle(e.target.value)}
+                    placeholder="Custom SEO title..."
+                    className="w-full px-3 py-2 text-xs bg-[#161a26] border border-white/[0.08] rounded-lg text-white placeholder:text-slate-500 focus:outline-hidden focus:border-cyan-400/50"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">Meta Description</label>
+                  <textarea
+                    rows={2}
+                    value={metaDescription}
+                    onChange={(e) => setMetaDescription(e.target.value)}
+                    placeholder="Custom SEO description..."
+                    className="w-full px-3 py-2 text-xs bg-[#161a26] border border-white/[0.08] rounded-lg text-white placeholder:text-slate-500 focus:outline-hidden focus:border-cyan-400/50 resize-y leading-relaxed"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/[0.08]">

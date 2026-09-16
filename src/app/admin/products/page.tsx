@@ -122,6 +122,8 @@ export default function AdminProductsPage() {
   const [comparePrice, setComparePrice] = useState("0");
   const [stock, setStock] = useState("0");
   const [description, setDescription] = useState("");
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
   const [formImages, setFormImages] = useState<ProductFormImage[]>([]);
   const [newImageUrl, setNewImageUrl] = useState("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -198,6 +200,8 @@ export default function AdminProductsPage() {
     setComparePrice("0");
     setStock("0");
     setDescription("");
+    setMetaTitle("");
+    setMetaDescription("");
     setFormImages([]);
     setNewImageUrl("");
     setImageInputMode("upload");
@@ -224,6 +228,8 @@ export default function AdminProductsPage() {
     setComparePrice(product.compare_at_price ? product.compare_at_price.toString() : "0");
     setStock(product.stock_quantity.toString());
     setDescription(product.description || "");
+    setMetaTitle(product.meta_title || "");
+    setMetaDescription(product.meta_description || "");
 
     let initialImages: ProductFormImage[] = [];
     if (product.images && product.images.length > 0) {
@@ -580,6 +586,8 @@ export default function AdminProductsPage() {
         cost_price: v.cost_price ? Number(v.cost_price) : null,
         barcode: v.barcode || null,
       })),
+      meta_title: metaTitle || null,
+      meta_description: metaDescription || null,
     };
 
     try {
@@ -1086,6 +1094,39 @@ export default function AdminProductsPage() {
                     className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 transition-all outline-none resize-y leading-relaxed"
                   />
                 </div>
+
+                {/* SEO Configuration */}
+                <div className="pt-4 mt-4 border-t border-white/[0.06] space-y-4">
+                  <h4 className="text-[13px] font-medium text-white flex items-center gap-2">
+                    <Search className="w-3.5 h-3.5 text-amber-400" />
+                    Search Engine Optimization
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Leave blank to automatically use the product name and description as fallbacks.
+                  </p>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-300 block">Meta Title</label>
+                    <input
+                      type="text"
+                      value={metaTitle || ""}
+                      onChange={(e) => setMetaTitle(e.target.value)}
+                      placeholder="Custom SEO title..."
+                      className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 transition-all outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-300 block">Meta Description</label>
+                    <textarea
+                      rows={2}
+                      value={metaDescription || ""}
+                      onChange={(e) => setMetaDescription(e.target.value)}
+                      placeholder="Custom SEO description..."
+                      className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 focus:border-amber-400/50 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 transition-all outline-none resize-y leading-relaxed"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Section 2: Pricing & Stock */}
@@ -1289,6 +1330,22 @@ export default function AdminProductsPage() {
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
+                        </div>
+                        
+                        {/* Alt Text Input */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <input
+                            type="text"
+                            value={img.alt_text || ""}
+                            onChange={(e) => {
+                              const newImages = [...formImages];
+                              newImages[idx].alt_text = e.target.value;
+                              setFormImages(newImages);
+                            }}
+                            placeholder="Alt text..."
+                            className="w-full bg-white/10 hover:bg-white/20 focus:bg-white/20 rounded px-1.5 py-1 text-[10px] text-white placeholder:text-white/50 outline-none"
+                            title="Image Alt Text (SEO)"
+                          />
                         </div>
                       </div>
                     ))}

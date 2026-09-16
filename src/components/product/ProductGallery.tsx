@@ -345,7 +345,7 @@ export function ProductGallery({ images = [], productName }: ProductGalleryProps
                       >
                         <img
                           src={img.image_url}
-                          alt=""
+                          alt={`${productName} full view thumbnail ${idx + 1}`}
                           className="w-full h-full object-cover rounded-md"
                         />
                       </button>

@@ -12,12 +12,19 @@ export async function generateMetadata(): Promise<Metadata> {
   const serverTheme = await getServerTheme();
   const brand = serverTheme.store_brand_name || "AETHER";
   const tagline = serverTheme.store_brand_tagline || "Official Store";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://aether.studio";
   const hasCustomFavicon = Boolean(serverTheme.store_favicon && serverTheme.store_favicon.trim() !== "");
   const faviconUrl = hasCustomFavicon ? serverTheme.store_favicon! : "/favicon.ico";
+  const logoUrl = serverTheme.store_brand_logo || `${siteUrl}/favicon.ico`;
+  const defaultDesc = `Official ${brand} online store. Premium hardware, custom audio acoustics, and modular daily essentials.`;
 
   return {
-    title: `${brand} | ${tagline}`,
-    description: `Official ${brand} online store. Premium hardware, custom audio acoustics, and modular daily essentials.`,
+    metadataBase: new URL(siteUrl),
+    title: {
+      default: `${brand} | ${tagline}`,
+      template: `%s | ${brand}`,
+    },
+    description: defaultDesc,
     keywords: [brand, "Studio Equipment", "Audio Gear", "Online Store", "Hardware"],
     icons: hasCustomFavicon
       ? {
@@ -30,6 +37,28 @@ export async function generateMetadata(): Promise<Metadata> {
           shortcut: ["/favicon.ico"],
           apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
         },
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: siteUrl,
+      siteName: brand,
+      title: `${brand} | ${tagline}`,
+      description: defaultDesc,
+      images: [
+        {
+          url: logoUrl,
+          width: 1200,
+          height: 630,
+          alt: brand,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${brand} | ${tagline}`,
+      description: defaultDesc,
+      images: [logoUrl],
+    },
   };
 }
 

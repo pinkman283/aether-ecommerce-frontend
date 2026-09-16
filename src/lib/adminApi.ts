@@ -1569,6 +1569,9 @@ export const adminApi = {
     category_id?: number | null;
     status?: 'published' | 'draft' | 'archived';
     tag_ids?: number[];
+    meta_title?: string | null;
+    meta_description?: string | null;
+    featured_image_alt?: string | null;
   }): Promise<{ message: string; post: BlogPost }> {
     const res = await adminClient.post("/admin/blog/posts", data);
     return res.data;
@@ -1583,6 +1586,9 @@ export const adminApi = {
     category_id?: number | null;
     status?: 'published' | 'draft' | 'archived';
     tag_ids?: number[];
+    meta_title?: string | null;
+    meta_description?: string | null;
+    featured_image_alt?: string | null;
   }): Promise<{ message: string; post: BlogPost }> {
     const res = await adminClient.put(`/admin/blog/posts/${id}`, data);
     return res.data;
@@ -1603,12 +1609,12 @@ export const adminApi = {
     return res.data;
   },
 
-  async createBlogCategory(data: { name: string; slug?: string; description?: string }): Promise<{ message: string; category: BlogCategory }> {
+  async createBlogCategory(data: { name: string; slug?: string; description?: string; meta_title?: string | null; meta_description?: string | null }): Promise<{ message: string; category: BlogCategory }> {
     const res = await adminClient.post("/admin/blog/categories", data);
     return res.data;
   },
 
-  async updateBlogCategory(id: number, data: { name: string; slug?: string; description?: string }): Promise<{ message: string; category: BlogCategory }> {
+  async updateBlogCategory(id: number, data: { name: string; slug?: string; description?: string; meta_title?: string | null; meta_description?: string | null }): Promise<{ message: string; category: BlogCategory }> {
     const res = await adminClient.put(`/admin/blog/categories/${id}`, data);
     return res.data;
   },

@@ -55,6 +55,9 @@ export default function AdminBlogPostsPage() {
   const [formCategoryId, setFormCategoryId] = useState<string>("");
   const [formSelectedTags, setFormSelectedTags] = useState<number[]>([]);
   const [formStatus, setFormStatus] = useState<"published" | "draft" | "archived">("draft");
+  const [formMetaTitle, setFormMetaTitle] = useState("");
+  const [formMetaDescription, setFormMetaDescription] = useState("");
+  const [formFeaturedImageAlt, setFormFeaturedImageAlt] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Delete State
@@ -111,6 +114,9 @@ export default function AdminBlogPostsPage() {
     setFormCategoryId(categories[0]?.id ? String(categories[0].id) : "");
     setFormSelectedTags([]);
     setFormStatus("draft");
+    setFormMetaTitle("");
+    setFormMetaDescription("");
+    setFormFeaturedImageAlt("");
     setIsModalOpen(true);
   };
 
@@ -124,6 +130,9 @@ export default function AdminBlogPostsPage() {
     setFormCategoryId(post.category_id ? String(post.category_id) : "");
     setFormSelectedTags(post.tags?.map((t) => t.id) || []);
     setFormStatus(post.status);
+    setFormMetaTitle(post.meta_title || "");
+    setFormMetaDescription(post.meta_description || "");
+    setFormFeaturedImageAlt(post.featured_image_alt || "");
     setIsModalOpen(true);
   };
 
@@ -149,6 +158,9 @@ export default function AdminBlogPostsPage() {
         category_id: formCategoryId ? Number(formCategoryId) : null,
         status: formStatus,
         tag_ids: formSelectedTags,
+        meta_title: formMetaTitle || null,
+        meta_description: formMetaDescription || null,
+        featured_image_alt: formFeaturedImageAlt || null,
       };
 
       if (editingPost) {
@@ -549,6 +561,39 @@ export default function AdminBlogPostsPage() {
                 />
               </div>
 
+              {/* SEO Configuration */}
+              <div className="pt-4 mt-4 border-t border-white/[0.08] space-y-4">
+                <h4 className="text-[13px] font-medium text-white flex items-center gap-2">
+                  <Search className="w-3.5 h-3.5 text-amber-400" />
+                  Search Engine Optimization
+                </h4>
+                <p className="text-xs text-slate-400">
+                  Leave blank to automatically use the article title and excerpt as fallbacks.
+                </p>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">Meta Title</label>
+                  <input
+                    type="text"
+                    value={formMetaTitle}
+                    onChange={(e) => setFormMetaTitle(e.target.value)}
+                    placeholder="Custom SEO title..."
+                    className="w-full px-3 py-2 text-xs bg-[#161a26] border border-white/[0.08] rounded-lg text-white placeholder:text-slate-500 focus:outline-hidden focus:border-amber-400/50"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">Meta Description</label>
+                  <textarea
+                    rows={2}
+                    value={formMetaDescription}
+                    onChange={(e) => setFormMetaDescription(e.target.value)}
+                    placeholder="Custom SEO description..."
+                    className="w-full px-3 py-2 text-xs bg-[#161a26] border border-white/[0.08] rounded-lg text-white placeholder:text-slate-500 focus:outline-hidden focus:border-amber-400/50 resize-y leading-relaxed"
+                  />
+                </div>
+              </div>
+
               {/* Category, Status & Image */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="space-y-1">
@@ -592,6 +637,18 @@ export default function AdminBlogPostsPage() {
                     onChange={(e) => setFormImage(e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-[#161a26] border border-white/[0.08] rounded-lg text-white placeholder:text-slate-500 focus:outline-hidden focus:border-amber-400/50"
                   />
+                  
+                  {/* Featured Image Alt Text */}
+                  <div className="pt-2">
+                    <label className="text-[11px] font-medium text-slate-300 block mb-1">Image Alt Text (SEO)</label>
+                    <input
+                      type="text"
+                      value={formFeaturedImageAlt}
+                      onChange={(e) => setFormFeaturedImageAlt(e.target.value)}
+                      placeholder="Leave blank to use article title..."
+                      className="w-full px-3 py-1.5 text-xs bg-[#161a26] border border-white/[0.08] rounded-lg text-white placeholder:text-slate-500 focus:outline-hidden focus:border-amber-400/50"
+                    />
+                  </div>
                 </div>
               </div>
 

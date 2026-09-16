@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -78,11 +79,13 @@ export function ProductCard({ product }: ProductCardProps) {
       <div>
         {/* Image Container with Badges */}
         <div className="relative aspect-square w-full rounded-xl overflow-hidden theme-img-bg bg-gray-50 dark:bg-slate-950 mb-2 sm:mb-2.5 border border-gray-100 dark:border-white/5">
-          <Link href={`/products/${product.slug}`}>
-            <img
+          <Link href={`/products/${product.slug}`} className="block w-full h-full relative">
+            <Image
               src={img}
-              alt={product.name}
-              className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ${
+              alt={product.name || "Product image"}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
+              className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 ${
                 isOutOfStock ? "grayscale opacity-60" : ""
               }`}
             />

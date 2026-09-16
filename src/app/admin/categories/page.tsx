@@ -62,6 +62,9 @@ export default function AdminCategoriesPage() {
   const [badge, setBadge] = useState("");
   const [displayOrder, setDisplayOrder] = useState("0");
   const [isFeatured, setIsFeatured] = useState(true);
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [imageAlt, setImageAlt] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -259,6 +262,9 @@ export default function AdminCategoriesPage() {
     setBadge(parentCat ? "" : "Flagship Line");
     setDisplayOrder("0");
     setIsFeatured(true);
+    setMetaTitle("");
+    setMetaDescription("");
+    setImageAlt("");
     setIsModalOpen(true);
   };
 
@@ -272,6 +278,9 @@ export default function AdminCategoriesPage() {
     setBadge(c.badge || "");
     setDisplayOrder((c.display_order ?? 0).toString());
     setIsFeatured(c.is_featured ?? false);
+    setMetaTitle(c.meta_title || "");
+    setMetaDescription(c.meta_description || "");
+    setImageAlt(c.image_alt || "");
     setIsModalOpen(true);
   };
 
@@ -311,7 +320,10 @@ export default function AdminCategoriesPage() {
       icon.trim() !== (editingCategory.icon || "Sparkles").trim() ||
       badge.trim() !== (editingCategory.badge || "").trim() ||
       displayOrder !== (editingCategory.display_order ?? 0).toString() ||
-      isFeatured !== (editingCategory.is_featured ?? false)
+      isFeatured !== (editingCategory.is_featured ?? false) ||
+      metaTitle.trim() !== (editingCategory.meta_title || "").trim() ||
+      metaDescription.trim() !== (editingCategory.meta_description || "").trim() ||
+      imageAlt.trim() !== (editingCategory.image_alt || "").trim()
     )
   );
 
@@ -332,6 +344,9 @@ export default function AdminCategoriesPage() {
       badge: badge || null,
       display_order: Number(displayOrder),
       is_featured: isFeatured,
+      meta_title: metaTitle || null,
+      meta_description: metaDescription || null,
+      image_alt: imageAlt || null,
     };
 
     try {
@@ -1227,6 +1242,39 @@ export default function AdminCategoriesPage() {
                 />
               </div>
 
+              {/* SEO Configuration */}
+              <div className="pt-4 mt-4 border-t border-white/[0.06] space-y-4">
+                <h4 className="text-[13px] font-medium text-white flex items-center gap-2">
+                  <Search className="w-3.5 h-3.5 text-amber-400" />
+                  Search Engine Optimization
+                </h4>
+                <p className="text-xs text-slate-400">
+                  Leave blank to automatically use the category name and description as fallbacks.
+                </p>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">Meta Title</label>
+                  <input
+                    type="text"
+                    value={metaTitle || ""}
+                    onChange={(e) => setMetaTitle(e.target.value)}
+                    placeholder="Custom SEO title..."
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-amber-400/50 focus:outline-none transition"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300 block">Meta Description</label>
+                  <textarea
+                    rows={2}
+                    value={metaDescription || ""}
+                    onChange={(e) => setMetaDescription(e.target.value)}
+                    placeholder="Custom SEO description..."
+                    className="w-full rounded-lg border border-white/10 bg-[#131722] p-3 text-xs text-white placeholder:text-slate-500 focus:border-amber-400/50 focus:outline-none transition resize-none"
+                  />
+                </div>
+              </div>
+
               {/* Minimal Device Image Upload & Delete Section */}
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
@@ -1315,6 +1363,18 @@ export default function AdminCategoriesPage() {
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
+                </div>
+                
+                {/* Image Alt Text */}
+                <div className="space-y-1.5 mt-2">
+                  <label className="text-xs font-medium text-slate-300">Image Alt Text (SEO)</label>
+                  <input
+                    type="text"
+                    value={imageAlt || ""}
+                    onChange={(e) => setImageAlt(e.target.value)}
+                    placeholder="Leave blank to use category name..."
+                    className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-amber-400/50 focus:outline-none transition"
+                  />
                 </div>
               </div>
 
