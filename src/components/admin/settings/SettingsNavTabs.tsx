@@ -17,7 +17,8 @@ import {
   FileText,
   BookOpen,
   Layers,
-  ExternalLink
+  ExternalLink,
+  Mail
 } from "lucide-react";
 
 export function SettingsNavTabs() {
@@ -39,6 +40,7 @@ export function SettingsNavTabs() {
     { label: "Mobile & PWA", href: "/admin/settings/pwa", icon: Smartphone },
     { label: "Notifications", href: "/admin/settings/notifications", icon: Bell },
     { label: "Integrations Hub", href: "/admin/integrations", icon: Puzzle },
+    { label: "Mail Config", href: "/admin/settings/mail", icon: Mail },
     { label: "System & Cache", href: "/admin/settings/system", icon: Cpu },
   ];
 

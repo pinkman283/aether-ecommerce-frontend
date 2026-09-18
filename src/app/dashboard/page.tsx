@@ -105,16 +105,13 @@ export default function CustomerDashboardPage() {
   const origParts = (user?.name || "").trim().split(" ");
   const origFirst = origParts[0] || "";
   const origLast = origParts.slice(1).join(" ") || "";
-  const isChangingEmail = Boolean(user?.email && email.trim().toLowerCase() !== user.email.trim().toLowerCase());
   
   const hasProfileChanges = Boolean(
     firstName.trim() !== origFirst ||
     lastName.trim() !== origLast ||
-    isChangingEmail ||
     (phone.trim() || "") !== (user?.phone || "").trim() ||
     (avatar || null) !== (user?.avatar || null) ||
-    (showPasswordChange && (currentPassword.length > 0 || password.length > 0 || confirmPassword.length > 0)) ||
-    (isChangingEmail && currentPassword.length > 0)
+    (showPasswordChange && (currentPassword.length > 0 || password.length > 0 || confirmPassword.length > 0))
   );
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -125,11 +122,6 @@ export default function CustomerDashboardPage() {
     }
     if (!firstName.trim()) {
       toast.error("First Name is mandatory.");
-      return;
-    }
-
-    if (isChangingEmail && !currentPassword) {
-      toast.error("Please enter your current password to authorize changing your email address.");
       return;
     }
 
@@ -157,7 +149,6 @@ export default function CustomerDashboardPage() {
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
       const payload: any = {
         name: fullName,
-        email: email.trim(),
         phone: phone || null,
         avatar: avatar
       };
@@ -412,40 +403,19 @@ export default function CustomerDashboardPage() {
 
                   <div>
                     <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                      Account Email <span className="text-rose-400 font-bold">*</span>
+                      Account Email
                     </label>
                     <div className="relative">
                       <Mail className="w-3.5 h-3.5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="email"
-                        required
+                        disabled
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
                         placeholder="customer@domain.test"
-                        className="w-full bg-[#080a10] border border-white/10 focus:border-indigo-500 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none transition-colors"
+                        className="w-full bg-[#080a10]/50 border border-white/5 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed focus:outline-none"
                       />
                     </div>
                   </div>
-
-                  {/* Conditionally appeared section for email change password */}
-                  {isChangingEmail && (
-                    <div className="sm:col-span-2 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-indigo-200 flex items-center gap-1.5">
-                          <Lock className="w-3.5 h-3.5 text-indigo-400" />
-                          Enter Password <span className="text-rose-400 font-black">*</span>
-                        </label>
-                        <span className="text-[10px] text-indigo-300/80">Required to authorize new email</span>
-                      </div>
-                      <PasswordInput
-                        required
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="Enter your current password"
-                        inputClassName="bg-[#080a10] border border-indigo-500/40 focus:border-indigo-400 rounded-xl py-2.5 text-xs text-white placeholder:text-slate-500"
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -489,9 +459,7 @@ export default function CustomerDashboardPage() {
                           setShowPasswordChange(false);
                           setPassword("");
                           setConfirmPassword("");
-                          if (!isChangingEmail) {
-                            setCurrentPassword("");
-                          }
+                          setCurrentPassword("");
                         }}
                         className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-white/5 transition-all flex items-center gap-1 cursor-pointer"
                       >

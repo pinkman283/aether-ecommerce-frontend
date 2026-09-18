@@ -272,12 +272,41 @@ export const api = {
     email: string;
     password: string;
     phone?: string;
-  }): Promise<{
+  }): Promise<{ message: string }> {
+    return this.registerRequest(userData);
+  },
+
+  async registerRequest(userData: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+  }): Promise<{ message: string }> {
+    const res = await apiClient.post("/auth/register/request", userData);
+    return res.data;
+  },
+
+  async registerVerify(data: { email: string; otp: string }): Promise<{
     message: string;
     token: string;
     user: User;
   }> {
-    const res = await apiClient.post("/auth/register", userData);
+    const res = await apiClient.post("/auth/register/verify", data);
+    return res.data;
+  },
+
+  async forgotPassword(data: { email: string }): Promise<{ message: string }> {
+    const res = await apiClient.post("/auth/password/forgot", data);
+    return res.data;
+  },
+
+  async verifyResetOtp(data: { email: string; otp: string }): Promise<{ message: string; reset_token: string }> {
+    const res = await apiClient.post("/auth/password/verify-reset-otp", data);
+    return res.data;
+  },
+
+  async resetPassword(data: { email: string; reset_token: string; password: string; password_confirmation: string }): Promise<{ message: string }> {
+    const res = await apiClient.post("/auth/password/reset", data);
     return res.data;
   },
 

@@ -1576,6 +1576,12 @@ export interface BusinessContactSettings {
   currency_code?: string;
 }
 
+export interface MailSenderEntry {
+  address: string;
+  name: string;
+  reply_to?: string;
+}
+
 export interface ExtendedSettingsResponse {
   shipping_zones: ShippingZone[];
   order_statuses: OrderStatusConfig[];
@@ -1583,6 +1589,8 @@ export interface ExtendedSettingsResponse {
   pwa_manifest: PwaSettings;
   notification_templates: Record<string, NotificationTemplate>;
   business_contact: BusinessContactSettings;
+  mail_senders?: Record<string, MailSenderEntry>;
+  mail_configuration?: Record<string, string>;
   general: Record<string, any>;
   system_info: {
     php_version: string;

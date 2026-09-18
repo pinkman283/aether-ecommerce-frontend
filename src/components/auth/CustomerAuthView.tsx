@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   AlertCircle, 
   CheckCircle2, 
@@ -15,7 +15,9 @@ import {
   Mail,
   Phone,
   LogIn,
-  UserPlus
+  UserPlus,
+  KeyRound,
+  Timer
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api } from "@/lib/api";
@@ -38,6 +40,8 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
   const { theme } = useAppTheme();
 
   const [activeTab, setActiveTab] = useState<"login" | "register" | "forgot_password">(defaultTab);
+  const [registerStep, setRegisterStep] = useState<1 | 2>(1);
+  const [forgotStep, setForgotStep] = useState<1 | 2 | 3>(1);
   
   // Form State
   const [email, setEmail] = useState("");
@@ -46,6 +50,8 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [resetToken, setResetToken] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -53,6 +59,30 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Lockout State
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null);
+  const [lockedCountdown, setLockedCountdown] = useState<string>("");
+
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const updateCountdown = () => {
+      const now = new Date();
+      const target = new Date(lockedUntil);
+      const diff = target.getTime() - now.getTime();
+      if (diff <= 0) {
+        setLockedUntil(null);
+        setLockedCountdown("");
+        return;
+      }
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setLockedCountdown(`${minutes}m ${seconds}s`);
+    };
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [lockedUntil]);
 
   // If already authenticated, redirect to destination
   useEffect(() => {
@@ -82,6 +112,8 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
   // Sync tab with props if prop changes
   useEffect(() => {
     setActiveTab(defaultTab);
+    setRegisterStep(1);
+    setForgotStep(1);
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     }
@@ -91,6 +123,8 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
     setError(null);
     setSuccessMessage(null);
     setActiveTab(tab);
+    setRegisterStep(1);
+    setForgotStep(1);
     if (typeof window !== "undefined") {
       const newPath = tab === "register" ? "/signup" : "/login";
       if (window.location.pathname !== newPath) {
@@ -116,6 +150,12 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
 
     try {
       if (activeTab === "login") {
+        if (lockedUntil) {
+          setError("Account is temporarily locked. Please wait.");
+          setLoading(false);
+          return;
+        }
+
         const res = await api.login({ email: email.trim(), password, remember: rememberMe });
         
         // Handle remember me persistence
@@ -131,56 +171,91 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
         toast.success(`Welcome back, ${res.user.name.split(" ")[0]}!`);
         router.push(redirectUrl);
       } else if (activeTab === "register") {
-        if (password !== confirmPassword) {
-          setError("Passwords do not match. Please re-enter.");
-          setLoading(false);
-          return;
-        }
-        if (password.length < 6) {
-          setError("Password must be at least 6 characters long.");
-          setLoading(false);
-          return;
-        }
+        if (registerStep === 1) {
+          if (password !== confirmPassword) {
+            setError("Passwords do not match.");
+            setLoading(false);
+            return;
+          }
+          if (password.length < 6) {
+            setError("Password must be at least 6 characters.");
+            setLoading(false);
+            return;
+          }
+          const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+          if (!fullName) {
+            setError("Please provide your full name.");
+            setLoading(false);
+            return;
+          }
 
-        const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-        if (!fullName) {
-          setError("Please provide your full name.");
-          setLoading(false);
-          return;
-        }
+          const res = await api.registerRequest({ name: fullName, email: email.trim(), password, phone: phone.trim() });
+          setSuccessMessage(res.message);
+          setRegisterStep(2);
+        } else if (registerStep === 2) {
+          if (otp.length !== 6) {
+            setError("OTP must be exactly 6 digits.");
+            setLoading(false);
+            return;
+          }
+          const res = await api.registerVerify({ email: email.trim(), otp });
+          
+          if (typeof window !== "undefined") {
+            localStorage.setItem("ecom_remember_login", email.trim());
+          }
 
-        await api.register({ name: fullName, email: email.trim(), password, phone: phone.trim() });
-        
-        // Remember registered email for seamless next sign in
-        if (typeof window !== "undefined") {
-          localStorage.setItem("ecom_remember_login", email.trim());
+          setAuth(res.user, res.token);
+          toast.success("Account created successfully!");
+          router.push(redirectUrl);
         }
-
-        setPassword("");
-        setConfirmPassword("");
-        setFirstName("");
-        setLastName("");
-        setPhone("");
-        setSuccessMessage("Account created successfully! Please sign in.");
-        toast.success("Account created successfully! Please sign in.");
-        switchTab("login");
       } else if (activeTab === "forgot_password") {
-        if (!email.trim()) {
-          setError("Please enter your registered account email.");
-          setLoading(false);
-          return;
+        if (forgotStep === 1) {
+          if (!email.trim()) {
+            setError("Please enter your registered account email.");
+            setLoading(false);
+            return;
+          }
+          const res = await api.forgotPassword({ email: email.trim() });
+          setSuccessMessage(res.message);
+          setForgotStep(2);
+        } else if (forgotStep === 2) {
+          if (otp.length !== 6) {
+            setError("OTP must be exactly 6 digits.");
+            setLoading(false);
+            return;
+          }
+          const res = await api.verifyResetOtp({ email: email.trim(), otp });
+          setResetToken(res.reset_token);
+          setSuccessMessage("OTP verified. Please set a new password.");
+          setForgotStep(3);
+        } else if (forgotStep === 3) {
+          if (password !== confirmPassword) {
+            setError("Passwords do not match.");
+            setLoading(false);
+            return;
+          }
+          if (password.length < 6) {
+            setError("Password must be at least 6 characters.");
+            setLoading(false);
+            return;
+          }
+          const res = await api.resetPassword({ 
+            email: email.trim(), 
+            reset_token: resetToken, 
+            password, 
+            password_confirmation: confirmPassword 
+          });
+          setSuccessMessage(res.message);
+          toast.success("Password reset successfully!");
+          switchTab("login");
         }
-        try {
-          await api.client.post("/forgot-password", { email: email.trim() });
-        } catch {
-          // Graceful fallback
-        }
-        setSuccessMessage(`Password recovery instructions dispatched to ${email.trim()}.`);
-        toast.success("Recovery instructions sent!");
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Authentication failed. Please check your credentials.";
+      const msg = err.response?.data?.message || err.response?.data?.errors?.email?.[0] || err.response?.data?.errors?.otp?.[0] || "Authentication failed. Please check your details.";
       setError(msg);
+      if (err.response?.status === 403 && err.response?.data?.locked_until) {
+        setLockedUntil(err.response.data.locked_until);
+      }
     } finally {
       setLoading(false);
     }
@@ -222,9 +297,9 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
             <span className="text-white tracking-wide">Return</span>
           </button>
 
-          {/* Clean Redesigned Card (Border radius dynamically synchronized with theme) */}
+          {/* Clean Redesigned Card */}
           <motion.div
-            key={activeTab}
+            key={activeTab + registerStep + forgotStep}
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
@@ -235,7 +310,7 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
             }}
             className="w-full border p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.12)] transition-all relative overflow-hidden"
           >
-            {/* Brand Logo & Top Pill Badge: Customer Portal */}
+            {/* Brand Logo & Top Pill Badge */}
             <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <BrandLogoImage placement="auth" />
               <span 
@@ -263,8 +338,8 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
                 {activeTab === "login" 
                   ? "Sign In" 
                   : activeTab === "register" 
-                  ? "Create an Account" 
-                  : "Reset Password"}
+                  ? (registerStep === 1 ? "Create Account" : "Verify Email")
+                  : (forgotStep === 1 ? "Reset Password" : forgotStep === 2 ? "Verify OTP" : "New Password")}
               </h1>
               <p 
                 style={{ color: theme.theme_text_body_color || "var(--theme-text-body, #475569)" }}
@@ -273,8 +348,8 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
                 {activeTab === "login"
                   ? "Welcome back! Access your orders and account."
                   : activeTab === "register"
-                  ? `Join ${theme.store_brand_name || "us"} to track orders and save your favorites.`
-                  : "Enter your registered email to receive password reset instructions."}
+                  ? (registerStep === 1 ? `Join ${theme.store_brand_name || "us"} to track orders.` : `Enter the 6-digit code sent to ${email}`)
+                  : (forgotStep === 1 ? "Enter your email to receive recovery instructions." : forgotStep === 2 ? `Enter the 6-digit code sent to ${email}` : "Set a new strong password.")}
               </p>
             </div>
 
@@ -300,197 +375,171 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
               </div>
             )}
 
+            {/* Locked Countdown */}
+            {activeTab === "login" && lockedUntil && (
+              <div 
+                style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }}
+                className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <Timer className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="font-medium">Account Locked</span>
+                </div>
+                <span className="font-bold text-amber-600 dark:text-amber-400 font-mono tracking-wider">
+                  {lockedCountdown}
+                </span>
+              </div>
+            )}
+
             {/* Form Content */}
             <form onSubmit={handleSubmit} className="space-y-3.5">
-              {/* REGISTER: Name Fields */}
-              {activeTab === "register" && (
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      First Name
-                    </label>
-                    <div 
-                      style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }}
-                      className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs"
-                    >
-                      <input
-                        type="text"
-                        required
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="John"
-                        className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0"
-                      />
+              
+              {/* === REGISTER FLOW === */}
+              {activeTab === "register" && registerStep === 1 && (
+                <>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">First Name</label>
+                      <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                        <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Last Name</label>
+                      <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                        <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Wick" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0" />
+                      </div>
                     </div>
                   </div>
-
                   <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      Last Name
-                    </label>
-                    <div 
-                      style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }}
-                      className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs"
-                    >
-                      <input
-                        type="text"
-                        required
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        placeholder="Wick"
-                        className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0"
-                      />
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email Address</label>
+                    <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                      <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                      <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@email.com" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0" />
                     </div>
                   </div>
-                </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Phone (Optional)</label>
+                    <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                      <Phone className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                      <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+880 1700-000000" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Password</label>
+                    <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                      <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                      <input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0 pr-6" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors shrink-0">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Confirm Password</label>
+                    <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                      <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                      <input type={showConfirmPassword ? "text" : "password"} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm Password" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0 pr-6" />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors shrink-0">
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
 
-              {/* Email Address Field (Mandatory) */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Email Address
-                </label>
-                <div 
-                  style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }}
-                  className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs"
-                >
-                  <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@email.com"
-                    className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0"
-                  />
-                </div>
-              </div>
-
-              {/* Phone Number Field (Optional - Separate Field) */}
-              {activeTab !== "forgot_password" && (
+              {activeTab === "register" && registerStep === 2 && (
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Phone Number (Optional)
-                  </label>
-                  <div 
-                    style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }}
-                    className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs"
-                  >
-                    <Phone className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+880 1700-000000"
-                      className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0"
-                    />
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">OTP Code</label>
+                  <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                    <KeyRound className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                    <input type="text" required value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456" maxLength={6} className="auth-seamless-input w-full text-xs sm:text-sm tracking-widest font-mono font-bold text-slate-900 dark:text-white placeholder:text-slate-400 bg-transparent border-0 outline-none shadow-none focus:ring-0 text-center" />
                   </div>
                 </div>
               )}
 
-              {/* Password Field */}
-              {activeTab !== "forgot_password" && (
+              {/* === FORGOT PASSWORD FLOW === */}
+              {activeTab === "forgot_password" && forgotStep === 1 && (
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Password
-                  </label>
-                  <div 
-                    style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }}
-                    className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs"
-                  >
-                    <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0 pr-6"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer shrink-0"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email Address</label>
+                  <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                    <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@email.com" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0" />
                   </div>
                 </div>
               )}
 
-              {/* REGISTER: Confirm Password */}
-              {activeTab === "register" && (
+              {activeTab === "forgot_password" && forgotStep === 2 && (
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Confirm Password
-                  </label>
-                  <div 
-                    style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }}
-                    className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs"
-                  >
-                    <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter your password"
-                      className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0 pr-6"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer shrink-0"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">OTP Code</label>
+                  <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                    <KeyRound className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                    <input type="text" required value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456" maxLength={6} className="auth-seamless-input w-full text-xs sm:text-sm tracking-widest font-mono font-bold text-slate-900 dark:text-white placeholder:text-slate-400 bg-transparent border-0 outline-none shadow-none focus:ring-0 text-center" />
                   </div>
                 </div>
               )}
 
-              {/* Remember Me & Forgot Password Row (Login Only) */}
+              {activeTab === "forgot_password" && forgotStep === 3 && (
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">New Password</label>
+                    <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                      <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                      <input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New Password" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0 pr-6" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors shrink-0">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Confirm New Password</label>
+                    <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                      <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                      <input type={showConfirmPassword ? "text" : "password"} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm Password" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0 pr-6" />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors shrink-0">
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* === LOGIN FLOW === */}
               {activeTab === "login" && (
-                <div className="flex items-center justify-between pt-0.5">
-                  <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      style={{ accentColor: theme.theme_primary_color || "#059669" }}
-                      className="w-4 h-4 rounded cursor-pointer"
-                    />
-                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                      Remember me
-                    </span>
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError(null);
-                      setSuccessMessage(null);
-                      setActiveTab("forgot_password");
-                    }}
-                    style={{ color: theme.theme_primary_color || "#059669" }}
-                    className="text-xs font-bold hover:underline hover:brightness-110 transition-colors cursor-pointer"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email Address</label>
+                    <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                      <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                      <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@email.com" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Password</label>
+                    <div style={{ borderRadius: `${getThemeInputRadiusPx(theme.theme_radius)}px` }} className="theme-auth-input-box relative flex items-center px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 shadow-xs">
+                      <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 mr-2.5 shrink-0" />
+                      <input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" className="auth-seamless-input w-full text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium bg-transparent border-0 outline-none shadow-none focus:ring-0 pr-6" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer shrink-0">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-0.5">
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                      <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ accentColor: theme.theme_primary_color || "#059669" }} className="w-4 h-4 rounded cursor-pointer" />
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Remember me</span>
+                    </label>
+                    <button type="button" onClick={() => switchTab("forgot_password")} style={{ color: theme.theme_primary_color || "#059669" }} className="text-xs font-bold hover:underline hover:brightness-110 transition-colors cursor-pointer">
+                      Forgot Password?
+                    </button>
+                  </div>
+                </>
               )}
 
               {/* Main Action Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !!lockedUntil}
                 style={{
                   backgroundColor: theme.theme_btn_primary_bg || theme.theme_primary_color || "var(--theme-primary, #059669)",
                   color: theme.theme_btn_primary_text || "var(--theme-btn-primary-text, #ffffff)",
@@ -501,26 +550,17 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
                 {loading ? (
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : activeTab === "login" ? (
-                  <>
-                    <LogIn className="w-4 h-4" />
-                    <span>Sign In</span>
-                  </>
+                  <><LogIn className="w-4 h-4" /><span>Sign In</span></>
                 ) : activeTab === "register" ? (
-                  <>
-                    <UserPlus className="w-4 h-4" />
-                    <span>Create</span>
-                  </>
+                  <>{registerStep === 1 ? <><UserPlus className="w-4 h-4" /><span>Request OTP</span></> : <><CheckCircle2 className="w-4 h-4" /><span>Verify & Create Account</span></>}</>
                 ) : (
-                  <>
-                    <Mail className="w-4 h-4" />
-                    <span>Send Reset Instructions</span>
-                  </>
+                  <>{forgotStep === 1 ? <><Mail className="w-4 h-4" /><span>Send Reset OTP</span></> : forgotStep === 2 ? <><CheckCircle2 className="w-4 h-4" /><span>Verify OTP</span></> : <><KeyRound className="w-4 h-4" /><span>Set New Password</span></>}</>
                 )}
               </button>
             </form>
 
             {/* Divider with Text */}
-            <div className="relative flex py-3 items-center">
+            <div className="relative flex py-3 items-center mt-3">
               <div className="flex-grow border-t border-slate-200 dark:border-white/10" />
               <span className="flex-shrink mx-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                 {activeTab === "login" 

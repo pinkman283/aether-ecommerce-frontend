@@ -23,7 +23,8 @@ import {
   FileText,
   BookOpen,
   Layers,
-  ExternalLink
+  ExternalLink,
+  Mail
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
@@ -453,6 +454,13 @@ export default function AdminSettingsPage() {
               href: "/admin/settings/notifications",
               icon: Bell,
               color: "text-yellow-400",
+            },
+            {
+              title: "Mail Configuration",
+              desc: "Configure SMTP transport for system outbound emails",
+              href: "/admin/settings/mail",
+              icon: Mail,
+              color: "text-rose-400",
             },
             {
               title: "Integrations & Tracking",

@@ -55,12 +55,24 @@ const INTEGRATION_SCHEMAS: Record<string, IntegrationSchema> = {
     ],
     settings: [
       { key: "store_id", label: "Pickup Store ID (Optional)", type: "text", placeholder: "e.g. 84920" },
+      { key: "item_type", label: "Item Type", type: "text", placeholder: "Parcel" },
     ],
   },
   steadfast: {
     credentials: [
       { key: "api_key", label: "API Key", type: "text", placeholder: "Enter Steadfast API key", required: true },
       { key: "secret_key", label: "Secret Key", type: "password", placeholder: "Enter Steadfast secret key", required: true },
+    ],
+    settings: [
+      { key: "default_pickup_address", label: "Default Pickup Address", type: "text", placeholder: "e.g. Banani, Dhaka" },
+    ],
+  },
+  redx: {
+    credentials: [
+      { key: "api_token", label: "API Token", type: "password", placeholder: "Enter RedX API token", required: true },
+    ],
+    settings: [
+      { key: "pickup_store_id", label: "Pickup Store ID", type: "text", placeholder: "e.g. RDX_STR_091" },
     ],
   },
   bkash: {
@@ -69,6 +81,10 @@ const INTEGRATION_SCHEMAS: Record<string, IntegrationSchema> = {
       { key: "app_secret", label: "App Secret", type: "password", required: true },
       { key: "username", label: "Merchant Username", type: "text", required: true },
       { key: "password", label: "Merchant Password", type: "password", required: true },
+    ],
+    settings: [
+      { key: "currency", label: "Currency", type: "text", placeholder: "BDT" },
+      { key: "intent", label: "Payment Intent", type: "text", placeholder: "sale" },
     ],
   },
   nagad: {
@@ -88,6 +104,77 @@ const INTEGRATION_SCHEMAS: Record<string, IntegrationSchema> = {
     credentials: [
       { key: "publishable_key", label: "Publishable Key", type: "text", required: true },
       { key: "secret_key", label: "Secret Key", type: "password", required: true },
+      { key: "webhook_secret", label: "Webhook Secret (Optional)", type: "password" },
+    ],
+    settings: [
+      { key: "capture_method", label: "Capture Method", type: "text", placeholder: "automatic" },
+    ],
+  },
+  cod: {
+    credentials: [],
+    settings: [
+      { key: "max_cod_amount", label: "Max COD Order Amount", type: "number", placeholder: "50000" },
+      { key: "extra_fee", label: "COD Extra Processing Fee", type: "number", placeholder: "0" },
+    ],
+  },
+  bulksms_bd: {
+    credentials: [
+      { key: "api_key", label: "API Key", type: "password", required: true },
+      { key: "sender_id", label: "Sender ID (Mask)", type: "text", required: true },
+    ],
+  },
+  greenweb: {
+    credentials: [
+      { key: "token", label: "API Token", type: "password", required: true },
+    ],
+  },
+  twilio: {
+    credentials: [
+      { key: "account_sid", label: "Account SID", type: "text", required: true },
+      { key: "auth_token", label: "Auth Token", type: "password", required: true },
+      { key: "from_number", label: "From Phone Number", type: "text", placeholder: "+15550192834" },
+    ],
+  },
+  smtp: {
+    credentials: [
+      { key: "host", label: "SMTP Host", type: "text", placeholder: "smtp.mailgun.org", required: true },
+      { key: "port", label: "Port", type: "text", placeholder: "587", required: true },
+      { key: "encryption", label: "Encryption (tls/ssl)", type: "text", placeholder: "tls" },
+      { key: "username", label: "SMTP Username", type: "text", required: true },
+      { key: "password", label: "SMTP Password", type: "password", required: true },
+      { key: "from_name", label: "From Name", type: "text", placeholder: "Store Admin" },
+      { key: "from_email", label: "From Email", type: "text", placeholder: "no-reply@store.com" },
+    ],
+  },
+  whatsapp_business: {
+    credentials: [
+      { key: "phone_number_id", label: "Phone Number ID", type: "text", required: true },
+      { key: "whatsapp_business_account_id", label: "WhatsApp Business Account ID", type: "text", required: true },
+      { key: "access_token", label: "System User Access Token", type: "password", required: true },
+      { key: "webhook_verify_token", label: "Webhook Verify Token", type: "password" },
+    ],
+  },
+  google_tag_manager: {
+    credentials: [
+      { key: "container_id", label: "GTM Container ID", type: "text", placeholder: "GTM-XXXXXX", required: true },
+    ],
+    settings: [
+      { key: "data_layer_name", label: "Data Layer Name", type: "text", placeholder: "dataLayer" },
+    ],
+  },
+  meta_pixel: {
+    credentials: [
+      { key: "pixel_id", label: "Meta Pixel ID", type: "text", placeholder: "123456789012345", required: true },
+      { key: "access_token", label: "Conversions API (CAPI) Access Token", type: "password" },
+    ],
+  },
+  fraud_checker: {
+    credentials: [
+      { key: "api_key", label: "Fraud Check API Key", type: "password", required: true },
+    ],
+    settings: [
+      { key: "auto_flag_threshold_percent", label: "Auto Flag Return Rate Threshold (%)", type: "number", placeholder: "35" },
+      { key: "minimum_deliveries_to_evaluate", label: "Minimum Deliveries to Evaluate", type: "number", placeholder: "3" },
     ],
   },
 };

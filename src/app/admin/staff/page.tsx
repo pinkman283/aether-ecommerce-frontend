@@ -65,6 +65,13 @@ export default function AdminStaffPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<User | null>(null);
 
+  // Invite Modal State
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteRole, setInviteRole] = useState("admin");
+  const [inviting, setInviting] = useState(false);
+
   // Bulk Selection & Deletion State
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -270,6 +277,24 @@ export default function AdminStaffPage() {
     }
   };
 
+  const handleInviteAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviting(true);
+    try {
+      const res = await adminApi.inviteAdmin({
+        email: inviteEmail,
+        name: inviteName || undefined,
+        role: inviteRole,
+      });
+      toast.success(res.message || "Invitation sent successfully.");
+      setIsInviteModalOpen(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to send invitation.");
+    } finally {
+      setInviting(false);
+    }
+  };
+
   const handleConfirmSuspension = async (payload: SuspensionPayload) => {
     if (!suspendingStaff) return;
     setIsSubmittingSuspension(true);
@@ -382,12 +407,27 @@ export default function AdminStaffPage() {
           <h1 className="text-2xl font-black text-white">Staff & Administrator Directory ({filteredStaff.length})</h1>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/20"
-        >
-          <Plus className="w-4 h-4" /> Add Personnel
-        </button>
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <button
+              onClick={() => {
+                setInviteEmail("");
+                setInviteName("");
+                setInviteRole("admin");
+                setIsInviteModalOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-black flex items-center gap-1.5 transition-all shadow-lg"
+            >
+              <Mail className="w-4 h-4" /> Invite Admin
+            </button>
+          )}
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/20"
+          >
+            <Plus className="w-4 h-4" /> Add Personnel
+          </button>
+        </div>
       </div>
 
       {/* Filter & Search Bar */}
@@ -1156,6 +1196,81 @@ export default function AdminStaffPage() {
           </div>
         </div>
       )}
+
+      {/* Invite Admin Modal */}
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div onClick={() => setIsInviteModalOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+
+          <div className="relative w-full max-w-md rounded-3xl bg-[#0e121e] border border-purple-500/30 p-6 z-10 space-y-4 text-xs">
+            <h3 className="text-base font-black text-white flex items-center gap-2">
+              <Mail className="w-5 h-5 text-purple-400" />
+              Invite Administrator
+            </h3>
+            <p className="text-slate-300">
+              Send an email invitation. The recipient will receive a secure activation link to set their password and join the staff directory.
+            </p>
+
+            <form onSubmit={handleInviteAdmin} className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">Name (Optional)</label>
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-white/20 focus:outline-none transition"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">Email Address <span className="text-rose-400">*</span></label>
+                <input
+                  type="email"
+                  required
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="john@example.com"
+                  className="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white placeholder:text-slate-500 focus:border-white/20 focus:outline-none transition"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-300 block">System Role</label>
+                <AdminDropdown
+                  value={inviteRole}
+                  onChange={(val) => setInviteRole(val)}
+                  className="w-full"
+                  buttonClassName="w-full h-9 rounded-lg border border-white/10 bg-[#131722] px-3 text-xs text-white"
+                  options={[
+                    { value: "admin", label: "Admin (Full Operations)" },
+                    { value: "staff", label: "Staff Member (Custom RBAC)" },
+                    { value: "super_admin", label: "Super Administrator (Master)" },
+                  ]}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={inviting}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
+                >
+                  {inviting ? "Sending..." : "Send Invitation"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Floating Bulk Action Bar */}
       <BulkActionBar
         selectedCount={selectedIds.length}

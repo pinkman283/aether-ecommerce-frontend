@@ -145,6 +145,16 @@ export const adminApi = {
     return res.data;
   },
 
+  async inviteAdmin(data: { email: string; role: string; name?: string }): Promise<{ message: string }> {
+    const res = await adminClient.post("/admin/auth/invite", data);
+    return res.data;
+  },
+
+  async activateAdmin(data: { token: string; email: string; password: string; password_confirmation: string }): Promise<{ message: string }> {
+    const res = await adminClient.post("/admin/auth/activate", data);
+    return res.data;
+  },
+
   async logout(): Promise<void> {
     try {
       await adminClient.post("/admin/auth/logout");

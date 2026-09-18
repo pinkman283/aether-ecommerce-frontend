@@ -54,6 +54,7 @@ import {
   History,
   Sparkles,
   RotateCcw,
+  Mail,
 } from "lucide-react";
 import { useAdminAuthStore } from "@/store/useAdminAuthStore";
 import { useThemeStore, resolveLogo } from "@/store/useThemeStore";
@@ -291,6 +292,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             { label: "SEO & Search", href: "/admin/settings/seo", icon: Search, permission: "settings.manage" },
             { label: "Mobile & PWA", href: "/admin/settings/pwa", icon: LayoutDashboard, permission: "settings.manage" },
             { label: "Notification Templates", href: "/admin/settings/notifications", icon: FileText, permission: "settings.manage" },
+            { label: "Mail Configuration", href: "/admin/settings/mail", icon: Mail, permission: "settings.manage" },
             { label: "Integrations Hub", href: "/admin/integrations", icon: Puzzle, permission: "settings.manage" },
             { label: "System & Cache", href: "/admin/settings/system", icon: Settings, permission: "settings.manage" },
           ],
