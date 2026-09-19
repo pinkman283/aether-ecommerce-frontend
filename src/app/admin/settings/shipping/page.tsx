@@ -77,6 +77,7 @@ export default function AdminShippingSettingsPage() {
   }, [isDirty]);
 
   const handleDiscard = () => {
+    if (!isDirty) return;
     setZones(initialZones);
     toast.info("Unsaved changes discarded.");
   };

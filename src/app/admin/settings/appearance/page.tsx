@@ -1231,7 +1231,7 @@ export default function AdminAppearancePage() {
   };
 
   const handleDiscardChanges = () => {
-    if (!initialSettings) return;
+    if (!isDirty || !initialSettings) return;
     const s = initialSettings;
     if (s.theme_default_preset) setDefaultThemeId(s.theme_default_preset);
     setPrimaryColor(s.theme_primary_color || DEFAULT_THEME_SETTINGS.theme_primary_color);

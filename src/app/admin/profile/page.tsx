@@ -77,7 +77,7 @@ export default function AdminProfilePage() {
     avatar !== (adminUser?.avatar || null);
 
   const handleDiscardChanges = () => {
-    if (!adminUser) return;
+    if (!hasUnsavedChanges || !adminUser) return;
     setFirstName(originalFirst);
     setLastName(originalLast);
     setPhone(adminUser.phone || "");

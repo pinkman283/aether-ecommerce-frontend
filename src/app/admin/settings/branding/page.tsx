@@ -293,6 +293,7 @@ export default function AdminBrandingPage() {
 
   // Discard all unstaged changes across identity and placements
   const handleDiscardAll = () => {
+    if (!isDirty) return;
     setLogos(JSON.parse(JSON.stringify(savedLogos)));
     setBrandName(initialIdentity.name);
     setBrandTagline(initialIdentity.tagline);

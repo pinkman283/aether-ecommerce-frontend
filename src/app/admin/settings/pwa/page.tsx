@@ -83,6 +83,7 @@ export default function AdminPwaSettingsPage() {
   }, [isDirty]);
 
   const handleDiscard = () => {
+    if (!isDirty) return;
     setPwa(initialPwa);
     toast.info("Unsaved PWA changes discarded.");
   };

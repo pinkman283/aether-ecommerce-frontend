@@ -80,6 +80,7 @@ export default function AdminOrderStatusesPage() {
   }, [isDirty]);
 
   const handleDiscard = () => {
+    if (!isDirty) return;
     setStatuses(initialStatuses);
     toast.info("Unsaved pipeline changes discarded.");
   };

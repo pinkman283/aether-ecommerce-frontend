@@ -101,6 +101,7 @@ export default function AdminNotificationTemplatesPage() {
   };
 
   const handleDiscard = () => {
+    if (!isDirty) return;
     setTemplates(initialTemplates);
     toast.info("Unsaved notification changes discarded.");
   };

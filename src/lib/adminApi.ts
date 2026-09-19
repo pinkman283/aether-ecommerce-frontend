@@ -1274,11 +1274,25 @@ export const adminApi = {
 
   async updateThemeSettings(themeData: Record<string, any>): Promise<{ message: string; settings: Record<string, any> }> {
     const res = await adminClient.put("/admin/theme", themeData);
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["theme"] }),
+      }).catch(() => {});
+    }
     return res.data;
   },
 
   async resetThemeSettings(): Promise<{ message: string; settings: Record<string, any> }> {
     const res = await adminClient.post("/admin/theme/reset");
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["theme"] }),
+      }).catch(() => {});
+    }
     return res.data;
   },
 

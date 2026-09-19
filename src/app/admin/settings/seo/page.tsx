@@ -77,6 +77,7 @@ export default function AdminSeoSettingsPage() {
   }, [isDirty]);
 
   const handleDiscard = () => {
+    if (!isDirty) return;
     setSeo(initialSeo);
     toast.info("Unsaved SEO changes discarded.");
   };

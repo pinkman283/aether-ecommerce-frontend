@@ -106,7 +106,7 @@ export default function AdminSettingsPage() {
   );
 
   const handleReset = () => {
-    if (!initialSettings) return;
+    if (!isDirty || !initialSettings) return;
     setStoreName(initialSettings.store_name);
     setSupportEmail(initialSettings.support_email);
     setCurrency(initialSettings.currency);

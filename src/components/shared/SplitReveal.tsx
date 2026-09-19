@@ -2,175 +2,281 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence, animate } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
 import { ThemeSettings, resolveLogo } from "@/store/useThemeStore";
 import { BrandLogoImage } from "@/components/shared/BrandLogoImage";
-import { Sparkles } from "lucide-react";
+
+function sanitizeAssetUrl(url?: string): string {
+  if (!url) return "";
+  if (
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    url.startsWith("http://") &&
+    !url.includes("localhost") &&
+    !url.includes("127.0.0.1")
+  ) {
+    return url.replace(/^http:\/\//i, "https://");
+  }
+  return url;
+}
 
 export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) {
   const pathname = usePathname();
   const { theme } = useAppTheme();
   const isAdmin = pathname?.startsWith("/admin");
-  const hasStartedRef = useRef(false);
-  const activeAnimRef = useRef<{ stop: () => void } | null>(null);
+  const [previewTheme, setPreviewTheme] = useState<Partial<ThemeSettings> | null>(null);
 
-  // Determine initial visibility strictly from SSR-provided theme to guarantee 100% server/client parity
-  const [isVisible, setIsVisible] = useState(() => {
-    if (pathname?.startsWith("/admin")) return false;
-    const enabled = initialTheme?.split_reveal_enabled ?? theme.split_reveal_enabled ?? true;
-    if (enabled === false) return false;
-    return true;
-  });
+  // Active merged theme: preview overrides theme, which overrides initialTheme
+  const activeTheme: ThemeSettings = {
+    ...(initialTheme || {}),
+    ...theme,
+    ...(previewTheme || {}),
+  };
 
-  // During the reveal animation, SSR initialTheme takes priority over zustand store
-  // (which may still hold stale localStorage/default values until fetchTheme completes).
-  // After the reveal finishes, theme store values take over for live admin updates.
-  const activeTheme = isVisible
-    ? { ...theme, ...(initialTheme || {}) }
-    : { ...(initialTheme || {}), ...theme };
+  const mode = activeTheme.split_reveal_mode || "every_time";
+  const splitRevealEnabled = activeTheme.split_reveal_enabled ?? true;
 
-  // Prefer initialTheme for the enabled check to prevent zustand defaults (false) from
-  // immediately hiding the splash before the store hydrates with fresh API data.
-  const splitRevealEnabled = initialTheme?.split_reveal_enabled ?? activeTheme.split_reveal_enabled ?? true;
-
-  const [loaderProgress, setLoaderProgress] = useState(0);
+  // Frame-0 SSR Parity: Server and Client evaluate identical boolean on initial render
+  const shouldShowOnMount = !isAdmin && splitRevealEnabled;
+  const [isVisible, setIsVisible] = useState(shouldShowOnMount);
   const [isOpening, setIsOpening] = useState(false);
+  const isFinishedRef = useRef(false);
 
-  // Active image: always use latest active image so newly uploaded images cleanly replace previous ones
-  const bgImage = activeTheme.split_reveal_image || "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=2000&q=85";
-  const brandTitle = (activeTheme.split_reveal_title && activeTheme.split_reveal_title !== "AETHER")
-    ? activeTheme.split_reveal_title
-    : (activeTheme.store_brand_name || "AETHER");
-  const duration = activeTheme.split_reveal_duration || 2.2;
+  // Real-Time Progress State (0% to 100%)
+  const [loaderProgress, setLoaderProgress] = useState(15);
+  const targetProgressRef = useRef(20);
+  const startTimeRef = useRef(0);
+
+  // Active assets
+  const rawBg =
+    activeTheme.split_reveal_image ||
+    "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=2000&q=85";
+  const bgImage = sanitizeAssetUrl(rawBg);
+  const rawLogo = resolveLogo(activeTheme, "split_reveal", "/branding/logo.png");
+  const logoUrl = sanitizeAssetUrl(rawLogo);
+  const isVertical = (activeTheme.split_reveal_direction || "vertical") === "vertical";
   const dimOpacity = activeTheme.split_reveal_dim ?? 0.45;
-  const logoUrl = resolveLogo(activeTheme, "split_reveal", "/branding/logo.png");
-  const isVertical = ((activeTheme.split_reveal_direction || "vertical") === "vertical");
-
-  // Keep image highly visible and bright, reduce dim overlay drastically
   const effectiveDim = Math.min(dimOpacity * 0.1, 0.04);
 
-  // Increased opening duration for grand, cinematic feel
-  const openingDuration = Math.max(Number(duration) || 3.2, 3.0);
-  // Ultra-smooth cubic-bezier curve (starts gently, glides smoothly, decelerates with supreme grace)
-  const cinematicEase = [0.65, 0, 0.35, 1] as const;
+  // Configured duration (e.g. 2.5s)
+  const rawDuration = Number(activeTheme.split_reveal_duration);
+  const openingDuration = !isNaN(rawDuration) && rawDuration > 0 ? Math.max(rawDuration, 1.2) : 2.5;
+  const cinematicEase = [0.76, 0, 0.24, 1] as const;
 
-  const startRevealAnimation = useCallback(() => {
-    setIsVisible(true);
+  // Completion handler to unmount curtain and release interactions
+  const handleComplete = useCallback(() => {
+    if (isFinishedRef.current) return;
+    isFinishedRef.current = true;
+
+    setIsVisible(false);
     setIsOpening(false);
-    setLoaderProgress(0);
+    setPreviewTheme(null);
 
-    let openTimer: NodeJS.Timeout | null = null;
-    let finishTimer: NodeJS.Timeout | null = null;
-
-    // Framer Motion precision loader: animates 0% -> 100% over 1.8s
-    const controls = animate(0, 100, {
-      duration: 1.8,
-      ease: [0.25, 0.1, 0.25, 1],
-      onUpdate: (latest) => {
-        setLoaderProgress(Math.round(latest));
-      },
-      onComplete: () => {
-        // Once loader finishes, pause briefly (250ms), then smoothly open the shutters
-        openTimer = setTimeout(() => {
-          setIsOpening(true);
-        }, 250);
-      },
-    });
-
-    // Total animation runtime before unmounting split screen curtain
-    const totalAnimDuration = 1800 + 250 + (openingDuration * 1000) + 400;
-    finishTimer = setTimeout(() => {
-      setIsVisible(false);
-      setIsOpening(false);
-      hasStartedRef.current = false;
-
-      // Only mark session seen after the animation has successfully completed
-      if (typeof window !== "undefined") {
-        try {
-          const currentMode = initialTheme?.split_reveal_mode || theme.split_reveal_mode;
-          if (currentMode === "once_per_session") {
-            sessionStorage.setItem("aether_split_reveal_seen", "true");
-            document.cookie = "aether_split_reveal_seen=true; path=/; SameSite=Lax";
-          }
-        } catch (e) {}
-      }
-    }, totalAnimDuration);
-
-    activeAnimRef.current = {
-      stop: () => {
-        controls.stop();
-        if (openTimer) clearTimeout(openTimer);
-        if (finishTimer) clearTimeout(finishTimer);
-      },
-    };
-
-    return () => {
-      if (activeAnimRef.current) {
-        activeAnimRef.current.stop();
-      }
-    };
-  }, [openingDuration, initialTheme?.split_reveal_mode, theme.split_reveal_mode]);
-
-  useEffect(() => {
-    if (isAdmin) {
-      setIsVisible(false);
-      return;
-    }
-    if (splitRevealEnabled === false) {
-      setIsVisible(false);
-      return;
+    // Release body scroll lock
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "";
     }
 
-    // Check session mode
-    const mode = initialTheme?.split_reveal_mode || theme.split_reveal_mode;
-    if (mode === "once_per_session" && typeof window !== "undefined") {
+    // Persist seen cookie and sessionStorage flag
+    if (typeof window !== "undefined") {
       try {
-        const hasSeen = sessionStorage.getItem("aether_split_reveal_seen") || document.cookie.includes("aether_split_reveal_seen=true");
-        if (hasSeen) {
-          setIsVisible(false);
+        if (mode === "once_per_session") {
+          sessionStorage.setItem("aether_split_reveal_seen", "true");
+          // Pure session cookie without max-age: automatically purges when session closes
+          document.cookie = "aether_split_reveal_seen=true; path=/; SameSite=Lax";
+        }
+      } catch (e) {}
+    }
+  }, [mode]);
+
+  // Hybrid Real-Time Asset & Hydration Engine
+  useEffect(() => {
+    if (!isVisible) return;
+    if (isAdmin && !previewTheme) return;
+
+    // Lock body scroll
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "hidden";
+    }
+
+    // Check once_per_session in sessionStorage as fallback guard
+    if (mode === "once_per_session" && !previewTheme && typeof window !== "undefined") {
+      try {
+        if (sessionStorage.getItem("aether_split_reveal_seen") === "true") {
+          handleComplete();
           return;
         }
       } catch (e) {}
     }
 
-    // Preload logo and background images immediately for instant frame-1 display on cold reload
-    if (typeof window !== "undefined") {
-      if (logoUrl) {
-        const img = new Image();
-        img.src = logoUrl;
-      }
-      if (bgImage) {
-        const imgBg = new Image();
-        imgBg.src = bgImage;
+    isFinishedRef.current = false;
+    startTimeRef.current = Date.now();
+    targetProgressRef.current = 25;
+    setLoaderProgress(15);
+
+    let animFrameId: number;
+    let currentP = 15;
+    let isFullReady = false;
+
+    // 1. Track Typography (document.fonts.ready)
+    if (typeof document !== "undefined" && document.fonts) {
+      document.fonts.ready
+        .then(() => {
+          targetProgressRef.current = Math.max(targetProgressRef.current, 40);
+        })
+        .catch(() => {});
+    }
+
+    // 2. Track DOM lifecycle (document.readyState)
+    if (typeof document !== "undefined") {
+      if (document.readyState === "complete") {
+        targetProgressRef.current = Math.max(targetProgressRef.current, 50);
+      } else {
+        const onDomLoaded = () => {
+          targetProgressRef.current = Math.max(targetProgressRef.current, 50);
+          window.removeEventListener("load", onDomLoaded);
+        };
+        window.addEventListener("load", onDomLoaded);
       }
     }
 
-    // If animation has already started, do not restart or tear down
-    if (hasStartedRef.current) {
-      return;
-    }
-    hasStartedRef.current = true;
+    // 3. Track Critical Images (Wallpaper & Brand Logo)
+    const imagesToPreload: string[] = [];
+    if (bgImage) imagesToPreload.push(bgImage);
+    if (logoUrl) imagesToPreload.push(logoUrl);
 
-    const cleanup = startRevealAnimation();
-    return () => {
-      cleanup();
+    let imagesLoadedCount = 0;
+    const totalImages = Math.max(imagesToPreload.length, 1);
+
+    const triggerFullReadiness = () => {
+      if (isFullReady) return;
+      isFullReady = true;
+
+      // Minimum aesthetic floor: 800ms to preserve brand intro perception
+      const elapsed = Date.now() - startTimeRef.current;
+      const minFloorMs = 800;
+      const remainingDelay = Math.max(0, minFloorMs - elapsed);
+
+      setTimeout(() => {
+        targetProgressRef.current = 100;
+      }, remainingDelay);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, splitRevealEnabled]);
 
-  // Global event listener for admin live preview testing
+    const handleSingleImageLoaded = () => {
+      imagesLoadedCount++;
+      const imageProgress = 50 + Math.round((imagesLoadedCount / totalImages) * 35); // 50% -> 85%
+      targetProgressRef.current = Math.max(targetProgressRef.current, imageProgress);
+
+      if (imagesLoadedCount >= totalImages) {
+        triggerFullReadiness();
+      }
+    };
+
+    if (imagesToPreload.length === 0) {
+      triggerFullReadiness();
+    } else {
+      imagesToPreload.forEach((src) => {
+        const img = new Image();
+        img.src = src;
+        if (img.complete) {
+          handleSingleImageLoaded();
+        } else {
+          img.onload = handleSingleImageLoaded;
+          img.onerror = handleSingleImageLoaded;
+        }
+      });
+    }
+
+    // 4. Safety Ceiling Timer: Never block customer longer than 3.0s under any network condition
+    const safetyCeilingTimer = setTimeout(() => {
+      triggerFullReadiness();
+    }, 3000);
+
+    // 5. Watchdog Timeout to guarantee unmount even if transition events are dropped
+    const totalWatchdogMs = 3000 + Math.round(openingDuration * 1000) + 1200;
+    const watchdogTimer = setTimeout(() => {
+      handleComplete();
+    }, totalWatchdogMs);
+
+    // 6. High-Frequency Smooth Interpolation Loop
+    const runInterpolationLoop = () => {
+      const target = targetProgressRef.current;
+      if (currentP < target) {
+        // High speed when target is 100%, smooth realistic easing when awaiting assets
+        const delta = target === 100 ? Math.max((target - currentP) * 0.18, 1.8) : Math.max((target - currentP) * 0.08, 0.4);
+        currentP = Math.min(currentP + delta, target);
+        setLoaderProgress(Math.round(currentP));
+      }
+
+      if (currentP < 100) {
+        animFrameId = requestAnimationFrame(runInterpolationLoop);
+      } else {
+        // 100% reached: 120ms settle pause, then trigger shutter split
+        setTimeout(() => {
+          setIsOpening(true);
+        }, 120);
+      }
+    };
+
+    animFrameId = requestAnimationFrame(runInterpolationLoop);
+
+    return () => {
+      cancelAnimationFrame(animFrameId);
+      clearTimeout(safetyCeilingTimer);
+      clearTimeout(watchdogTimer);
+    };
+  }, [isVisible, openingDuration, isAdmin, previewTheme, mode, bgImage, logoUrl, handleComplete]);
+
+  // Admin live preview event listener
   useEffect(() => {
-    const handlePreviewEvent = () => {
-      hasStartedRef.current = false;
-      startRevealAnimation();
+    const handlePreviewEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<Partial<ThemeSettings>>;
+      if (customEvent.detail) {
+        setPreviewTheme(customEvent.detail);
+      }
+      isFinishedRef.current = false;
+      setIsOpening(false);
+      setIsVisible(true);
+      setLoaderProgress(15);
+      targetProgressRef.current = 100;
+
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = "hidden";
+      }
+
+      // Smooth simulation for preview
+      let p = 15;
+      const previewLoop = () => {
+        p = Math.min(p + 3, 100);
+        setLoaderProgress(p);
+        if (p < 100) {
+          requestAnimationFrame(previewLoop);
+        } else {
+          setTimeout(() => {
+            setIsOpening(true);
+          }, 120);
+        }
+      };
+      requestAnimationFrame(previewLoop);
     };
 
     window.addEventListener("preview-split-reveal", handlePreviewEvent);
-    return () => window.removeEventListener("preview-split-reveal", handlePreviewEvent);
-  }, [startRevealAnimation]);
+    return () => {
+      window.removeEventListener("preview-split-reveal", handlePreviewEvent);
+    };
+  }, []);
 
-  if (isAdmin || !isVisible) {
+  // Cleanup body scroll lock on unmount
+  useEffect(() => {
+    return () => {
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = "";
+      }
+    };
+  }, []);
+
+  if (!isVisible) {
     return null;
   }
 
@@ -181,19 +287,19 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
     </div>
   );
 
-  // Clean minimal loader bar (no percentage numbers, no status text)
+  // Real-Time Smooth Loader Bar
   const renderLoaderBar = () => (
-    <div 
+    <div
       className="w-48 sm:w-64 h-1 sm:h-1.5 rounded-full bg-white/20 overflow-hidden relative border border-white/30 shadow-lg backdrop-blur-sm pointer-events-none transition-opacity duration-300"
       style={{ opacity: isOpening ? 0 : 1 }}
     >
       <div
-        className="h-full rounded-full transition-all"
+        className="h-full rounded-full"
         style={{
           width: `${loaderProgress}%`,
           background: "linear-gradient(90deg, var(--theme-primary, #06b6d4), var(--theme-secondary, #6366f1))",
           boxShadow: "0 0 12px var(--theme-primary, #06b6d4)",
-          transitionDuration: "0.05s",
+          transition: "width 0.06s linear",
         }}
       />
     </div>
@@ -201,11 +307,21 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
 
   return (
     <AnimatePresence>
-      <div 
+      <div
         id="split-reveal-curtain"
-        className="fixed inset-0 z-[99999] pointer-events-none overflow-hidden select-none"
+        className="fixed inset-0 z-[99999] pointer-events-auto overflow-hidden select-none cursor-default"
         aria-hidden="true"
-        suppressHydrationWarning
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+        }}
       >
         {/* ========================================================================= */}
         {/* VERTICAL SPLIT: TOP & BOTTOM SHUTTERS */}
@@ -217,7 +333,12 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
               initial={{ y: "0%" }}
               animate={{ y: isOpening ? "-100%" : "0%" }}
               transition={{ duration: openingDuration, ease: cinematicEase }}
-              className="absolute top-0 left-0 right-0 h-1/2 overflow-hidden border-b shadow-2xl"
+              onAnimationComplete={() => {
+                if (isOpening) {
+                  handleComplete();
+                }
+              }}
+              className="absolute top-0 left-0 right-0 h-1/2 overflow-hidden border-b shadow-2xl pointer-events-auto"
               style={{
                 backgroundColor: "var(--theme-bg, #090a0f)",
                 borderBottomColor: "color-mix(in srgb, var(--theme-primary, #06b6d4) 40%, transparent)",
@@ -236,7 +357,6 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
                 className="absolute inset-0"
                 style={{ backgroundColor: "var(--theme-bg, #090a0f)", opacity: effectiveDim }}
               />
-              {/* Greatly reduced edge vignette (no heavy black blur) */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-transparent" />
 
               {/* Seam Glow Line at Bottom Edge */}
@@ -259,7 +379,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
               initial={{ y: "0%" }}
               animate={{ y: isOpening ? "100%" : "0%" }}
               transition={{ duration: openingDuration, ease: cinematicEase }}
-              className="absolute bottom-0 left-0 right-0 h-1/2 overflow-hidden border-t shadow-2xl"
+              className="absolute bottom-0 left-0 right-0 h-1/2 overflow-hidden border-t shadow-2xl pointer-events-auto"
               style={{
                 backgroundColor: "var(--theme-bg, #090a0f)",
                 borderTopColor: "color-mix(in srgb, var(--theme-primary, #06b6d4) 40%, transparent)",
@@ -278,7 +398,6 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
                 className="absolute inset-0"
                 style={{ backgroundColor: "var(--theme-bg, #090a0f)", opacity: effectiveDim }}
               />
-              {/* Greatly reduced edge vignette (no heavy black blur) */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent" />
 
               {/* Seam Glow Line at Top Edge */}
@@ -295,7 +414,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
                 {renderBrandLine()}
               </div>
 
-              {/* Clean Minimal Progress Loader Bar (positioned below the split line) */}
+              {/* Real-Time Progress Loader Bar (positioned below the split line) */}
               <div className="absolute top-10 sm:top-14 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
                 {renderLoaderBar()}
               </div>
@@ -311,7 +430,12 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
               initial={{ x: "0%" }}
               animate={{ x: isOpening ? "-100%" : "0%" }}
               transition={{ duration: openingDuration, ease: cinematicEase }}
-              className="absolute top-0 bottom-0 left-0 w-1/2 overflow-hidden border-r shadow-2xl"
+              onAnimationComplete={() => {
+                if (isOpening) {
+                  handleComplete();
+                }
+              }}
+              className="absolute top-0 bottom-0 left-0 w-1/2 overflow-hidden border-r shadow-2xl pointer-events-auto"
               style={{
                 backgroundColor: "var(--theme-bg, #090a0f)",
                 borderRightColor: "color-mix(in srgb, var(--theme-primary, #06b6d4) 40%, transparent)",
@@ -341,7 +465,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
                 {renderBrandLine()}
               </div>
 
-              {/* Left Half of Minimal Loader Bar */}
+              {/* Left Half of Real-Time Loader Bar */}
               <div className="absolute bottom-16 right-0 translate-x-1/2 z-20 pointer-events-none">
                 {renderLoaderBar()}
               </div>
@@ -352,7 +476,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
               initial={{ x: "0%" }}
               animate={{ x: isOpening ? "100%" : "0%" }}
               transition={{ duration: openingDuration, ease: cinematicEase }}
-              className="absolute top-0 bottom-0 right-0 w-1/2 overflow-hidden border-l shadow-2xl"
+              className="absolute top-0 bottom-0 right-0 w-1/2 overflow-hidden border-l shadow-2xl pointer-events-auto"
               style={{
                 backgroundColor: "var(--theme-bg, #090a0f)",
                 borderLeftColor: "color-mix(in srgb, var(--theme-primary, #06b6d4) 40%, transparent)",
@@ -382,7 +506,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
                 {renderBrandLine()}
               </div>
 
-              {/* Right Half of Minimal Loader Bar */}
+              {/* Right Half of Real-Time Loader Bar */}
               <div className="absolute bottom-16 left-0 -translate-x-1/2 z-20 pointer-events-none">
                 {renderLoaderBar()}
               </div>

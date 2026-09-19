@@ -16,8 +16,10 @@ import {
   Truck,
   CheckCircle2,
   UserCheck,
-  ExternalLink,
-  RotateCcw
+  RotateCcw,
+  Play,
+  Image as ImageIcon,
+  ExternalLink
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { useThemeStore, DEFAULT_THEME_SETTINGS } from "@/store/useThemeStore";
@@ -336,6 +338,24 @@ export default function AdminStorefrontPage() {
     toast.info("Split reveal logo removed.");
   };
 
+  const handleLivePreview = () => {
+    window.dispatchEvent(
+      new CustomEvent("preview-split-reveal", {
+        detail: {
+          split_reveal_enabled: true,
+          split_reveal_image: splitRevealImage,
+          split_reveal_logo: splitRevealLogo,
+          split_reveal_title: splitRevealTitle,
+          split_reveal_subtitle: splitRevealSubtitle,
+          split_reveal_duration: splitRevealDuration,
+          split_reveal_direction: splitRevealDirection,
+          split_reveal_dim: splitRevealDim,
+        },
+      })
+    );
+    toast.success("Playing live split-reveal preview...");
+  };
+
   const isDirty = useMemo(() => {
     if (!initialSettings) return false;
     const norm = (v: any) => (v === undefined || v === null ? "" : String(v).trim());
@@ -469,7 +489,7 @@ export default function AdminStorefrontPage() {
   }, [isDirty]);
 
   const handleReset = () => {
-    if (!initialSettings) return;
+    if (!isDirty || !initialSettings) return;
     setAnnouncementEnabled(initialSettings.announcement_enabled ?? DEFAULT_THEME_SETTINGS.announcement_enabled);
     setAnnouncementText(initialSettings.announcement_text || DEFAULT_THEME_SETTINGS.announcement_text);
     setAnnouncementBadge(initialSettings.announcement_badge || DEFAULT_THEME_SETTINGS.announcement_badge);
@@ -597,11 +617,87 @@ export default function AdminStorefrontPage() {
 
     try {
       const res = await adminApi.updateThemeSettings(payload);
+      const serverSettings = res?.settings || {};
+
+      // If server converted an uploaded base64 data URL to a persistent disk URL, update state
+      const savedSplitImage = serverSettings.split_reveal_image || splitRevealImage;
+      const savedSplitLogo = serverSettings.split_reveal_logo !== undefined ? serverSettings.split_reveal_logo : splitRevealLogo;
+      const savedAuthBg = serverSettings.customer_auth_bg_image || customerAuthBgImage;
+      const savedTitle = serverSettings.split_reveal_title || splitRevealTitle;
+
+      if (serverSettings.split_reveal_image && serverSettings.split_reveal_image !== splitRevealImage) {
+        setSplitRevealImage(serverSettings.split_reveal_image);
+      }
+      if (serverSettings.split_reveal_logo !== undefined && serverSettings.split_reveal_logo !== splitRevealLogo) {
+        setSplitRevealLogo(serverSettings.split_reveal_logo);
+      }
+      if (serverSettings.customer_auth_bg_image && serverSettings.customer_auth_bg_image !== customerAuthBgImage) {
+        setCustomerAuthBgImage(serverSettings.customer_auth_bg_image);
+      }
+      if (serverSettings.split_reveal_title && serverSettings.split_reveal_title !== splitRevealTitle) {
+        setSplitRevealTitle(serverSettings.split_reveal_title);
+      }
+
       const updatedBaseline = {
         ...initialSettings,
-        ...payload,
-        ...(res?.settings || {}),
+        announcement_enabled: Boolean(announcementEnabled),
+        announcement_text: announcementText,
+        announcement_badge: announcementBadge,
+        navbar_promo_enabled: Boolean(navbarPromoEnabled),
+        navbar_promo_discount_text: navbarPromoDiscountText,
+        navbar_promo_code: navbarPromoCode,
+        navbar_promo_link: navbarPromoLink,
+        nav_deals_enabled: Boolean(navDealsEnabled),
+        nav_deals_text: navDealsText,
+        nav_deals_link: navDealsLink,
+        category_deals_card_enabled: Boolean(categoryDealsCardEnabled),
+        category_deals_card_title: categoryDealsCardTitle,
+        category_deals_card_subtitle: categoryDealsCardSubtitle,
+        category_deals_card_link: categoryDealsCardLink,
+        hero_headline_line1: heroHeadline1,
+        hero_headline_line2_gradient: heroHeadline2Gradient,
+        hero_headline_line3: heroHeadline3,
+        hero_subheading: heroSubheading,
+        hero_badge_text: heroBadgeText,
+        split_reveal_enabled: Boolean(splitRevealEnabled),
+        split_reveal_image: savedSplitImage,
+        split_reveal_logo: savedSplitLogo,
+        split_reveal_title: savedTitle,
+        split_reveal_subtitle: splitRevealSubtitle,
+        split_reveal_duration: Number(splitRevealDuration),
+        split_reveal_mode: splitRevealMode,
+        split_reveal_dim: Number(splitRevealDim),
+        split_reveal_direction: splitRevealDirection,
+        flash_deals_enabled: Boolean(flashDealsEnabled),
+        flash_deals_title: flashDealsTitle,
+        flash_deals_badge: flashDealsBadge,
+        trust_ribbon_enabled: Boolean(trustRibbonEnabled),
+        trust_ribbon_title_1: trustRibbonTitle1,
+        trust_ribbon_desc_1: trustRibbonDesc1,
+        trust_ribbon_title_2: trustRibbonTitle2,
+        trust_ribbon_desc_2: trustRibbonDesc2,
+        trust_ribbon_title_3: trustRibbonTitle3,
+        trust_ribbon_desc_3: trustRibbonDesc3,
+        trust_ribbon_title_4: trustRibbonTitle4,
+        trust_ribbon_desc_4: trustRibbonDesc4,
+        footer_features_enabled: Boolean(footerFeaturesEnabled),
+        footer_feature_title_1: footerFeatureTitle1,
+        footer_feature_desc_1: footerFeatureDesc1,
+        footer_feature_link_1: footerFeatureLink1,
+        footer_feature_title_2: footerFeatureTitle2,
+        footer_feature_desc_2: footerFeatureDesc2,
+        footer_feature_link_2: footerFeatureLink2,
+        footer_feature_title_3: footerFeatureTitle3,
+        footer_feature_desc_3: footerFeatureDesc3,
+        footer_feature_link_3: footerFeatureLink3,
+        footer_feature_title_4: footerFeatureTitle4,
+        footer_feature_desc_4: footerFeatureDesc4,
+        footer_feature_link_4: footerFeatureLink4,
+        customer_auth_bg_image: savedAuthBg,
+        customer_auth_bg_color: customerAuthBgColor,
+        customer_auth_card_position: customerAuthCardPosition,
       };
+
       setInitialSettings(updatedBaseline);
       updateClientTheme(payload);
       toast.success("Storefront & homepage content saved successfully!");
@@ -964,195 +1060,250 @@ export default function AdminStorefrontPage() {
         </div>
 
         {/* 3. Split-Reveal Splash Intro Animation */}
-        <div className="p-5 rounded-xl bg-[#0b0e17] border border-white/10 space-y-4">
-          <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
-            <div className="flex items-center gap-2">
-              <Split className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold text-white">Split-Reveal Splash Intro Animation</h3>
+        <div className="rounded-2xl bg-[#0b0e17] border border-white/10 p-5 sm:p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 shadow-sm">
+                <Split className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-white tracking-tight">Split-Reveal Splash Screen</h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    splitRevealEnabled ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-white/5 text-slate-500 border border-white/10"
+                  }`}>
+                    {splitRevealEnabled ? "Active" : "Disabled"}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Cinematic two-shutter entrance animation displayed to visitors entering your storefront.
+                </p>
+              </div>
             </div>
 
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={splitRevealEnabled}
-                onChange={(e) => setSplitRevealEnabled(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
-            </label>
+            <div className="flex items-center gap-3 self-end sm:self-center">
+              {splitRevealEnabled && (
+                <button
+                  type="button"
+                  onClick={handleLivePreview}
+                  className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                  title="Test animation in this browser window"
+                >
+                  <Play className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
+                  <span>Preview Intro</span>
+                </button>
+              )}
+
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={splitRevealEnabled}
+                  onChange={(e) => setSplitRevealEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
           </div>
 
           {splitRevealEnabled && (
-            <div className="space-y-4 pt-1">
+            <div className="space-y-6 pt-1 animate-in fade-in duration-200">
+              {/* Text Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-300 block">Intro Title</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Intro Title</label>
                   <input
                     type="text"
                     value={splitRevealTitle}
                     onChange={(e) => setSplitRevealTitle(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-amber-400"
+                    placeholder="e.g. INHALIQ"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-amber-400 focus:bg-white/[0.07] transition-all"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-300 block">Intro Subtitle</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Intro Subtitle / Tagline</label>
                   <input
                     type="text"
                     value={splitRevealSubtitle}
                     onChange={(e) => setSplitRevealSubtitle(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-amber-400"
+                    placeholder="e.g. PRECISION ACOUSTICS & HARDWARE"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-amber-400 focus:bg-white/[0.07] transition-all"
                   />
                 </div>
               </div>
 
-              {/* Wallpaper Upload & Manager */}
-              <div className="space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                  <label className="text-[11px] font-bold text-slate-300 block">Splash Wallpaper Image</label>
-                  <ImageUploadGuidance slotKey="admin_storefront_wallpaper" imageUrl={splitRevealImage} layout="inline" />
-                </div>
-                <input
-                  type="file"
-                  ref={splitFileInputRef}
-                  onChange={handleSplitFileUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                  {splitRevealImage && (
-                    <div className="w-20 h-12 rounded-lg border border-white/15 overflow-hidden bg-black/50 shrink-0 relative group">
+              {/* Minimal Visual Dropzones: Wallpaper & Logo */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Wallpaper Dropzone Card */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-300">Splash Wallpaper Image</label>
+                  <input
+                    type="file"
+                    ref={splitFileInputRef}
+                    onChange={handleSplitFileUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  {splitRevealImage ? (
+                    <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/40 h-44 group transition-all">
                       <img
                         src={splitRevealImage}
-                        alt="Split Reveal Wallpaper Preview"
-                        className="w-full h-full object-cover"
+                        alt="Split Wallpaper"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 p-4">
+                        <button
+                          type="button"
+                          onClick={() => splitFileInputRef.current?.click()}
+                          className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white backdrop-blur-md text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Change Wallpaper</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveSplitImage}
+                          className="p-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 backdrop-blur-md transition-all shadow-lg cursor-pointer border border-rose-500/30"
+                          title="Remove image"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="absolute bottom-2.5 left-3 pointer-events-none group-hover:opacity-0 transition-opacity">
+                        <span className="text-[10px] font-semibold text-slate-300 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10">
+                          Hover to replace or delete
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => splitFileInputRef.current?.click()}
+                      className="rounded-2xl border-2 border-dashed border-white/15 hover:border-amber-400/50 bg-white/[0.02] hover:bg-white/[0.04] h-44 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all p-4 text-center group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-white/5 group-hover:bg-amber-500/10 flex items-center justify-center text-slate-400 group-hover:text-amber-400 transition-all">
+                        <ImageIcon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white">Click or drag image to upload wallpaper</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Recommended 16:9 or fullscreen (PNG, JPG, WebP up to 5MB)</p>
+                      </div>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 w-full">
-                    <button
-                      type="button"
-                      onClick={() => splitFileInputRef.current?.click()}
-                      className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Upload</span>
-                    </button>
-                    {splitRevealImage && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveSplitImage}
-                        className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
-                        title="Delete current wallpaper image"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
-                      </button>
-                    )}
-                    <input
-                      type="text"
-                      value={splitRevealImage}
-                      onChange={(e) => setSplitRevealImage(e.target.value)}
-                      placeholder="https://..."
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
                 </div>
-              </div>
 
-              {/* Split Screen Brand Logo Manager */}
-              <div className="space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                  <label className="text-[11px] font-bold text-slate-300 block">Split-Reveal Custom Logo (Optional)</label>
-                  <ImageUploadGuidance slotKey="admin_storefront_split_logo" imageUrl={splitRevealLogo} layout="inline" />
-                </div>
-                <input
-                  type="file"
-                  ref={splitLogoInputRef}
-                  onChange={handleSplitLogoUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                  {splitRevealLogo && (
-                    <div className="w-12 h-12 rounded-lg border border-white/15 overflow-hidden bg-black/50 shrink-0 p-1 flex items-center justify-center">
+                {/* Custom Logo Dropzone Card */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-300">Split-Reveal Logo (Optional)</label>
+                  <input
+                    type="file"
+                    ref={splitLogoInputRef}
+                    onChange={handleSplitLogoUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  {splitRevealLogo ? (
+                    <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/40 h-44 group transition-all flex items-center justify-center p-6">
                       <img
                         src={splitRevealLogo}
-                        alt="Split Reveal Logo Preview"
-                        className="max-h-full max-w-full object-contain"
+                        alt="Split Logo"
+                        className="max-h-24 max-w-full object-contain filter drop-shadow-lg transition-transform duration-300 group-hover:scale-105"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 p-4">
+                        <button
+                          type="button"
+                          onClick={() => splitLogoInputRef.current?.click()}
+                          className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white backdrop-blur-md text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Change Logo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveSplitLogo}
+                          className="p-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 backdrop-blur-md transition-all shadow-lg cursor-pointer border border-rose-500/30"
+                          title="Remove custom logo"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="absolute bottom-2.5 left-3 pointer-events-none group-hover:opacity-0 transition-opacity">
+                        <span className="text-[10px] font-semibold text-slate-300 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10">
+                          Custom logo active
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => splitLogoInputRef.current?.click()}
+                      className="rounded-2xl border-2 border-dashed border-white/15 hover:border-amber-400/50 bg-white/[0.02] hover:bg-white/[0.04] h-44 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all p-4 text-center group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-white/5 group-hover:bg-amber-500/10 flex items-center justify-center text-slate-400 group-hover:text-amber-400 transition-all">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white">Upload Dedicated Split Logo</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Leave empty to use primary brand logo (PNG or SVG with transparency)</p>
+                      </div>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 w-full">
-                    <button
-                      type="button"
-                      onClick={() => splitLogoInputRef.current?.click()}
-                      className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Upload Logo</span>
-                    </button>
-                    {splitRevealLogo && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveSplitLogo}
-                        className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
-                        title="Delete current split screen logo"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete Logo</span>
-                      </button>
-                    )}
-                    <input
-                      type="text"
-                      value={splitRevealLogo}
-                      onChange={(e) => setSplitRevealLogo(e.target.value)}
-                      placeholder="Leave empty to use main store brand logo or monogram"
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
                 </div>
               </div>
 
-              {/* Animation Config: Duration, Mode, Direction */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-300 block">Opening Duration ({splitRevealDuration}s)</label>
+              {/* Animation Config Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300">Shutter Duration</label>
+                    <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg">
+                      {splitRevealDuration}s
+                    </span>
+                  </div>
                   <input
                     type="range"
                     min="0.5"
-                    max="5.0"
+                    max="6.0"
                     step="0.1"
                     value={splitRevealDuration}
                     onChange={(e) => setSplitRevealDuration(Number(e.target.value))}
-                    className="w-full accent-amber-400 cursor-pointer"
+                    className="w-full accent-amber-400 cursor-pointer h-1.5 bg-white/10 rounded-lg appearance-none"
                   />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span>Fast (0.5s)</span>
+                    <span>Cinematic (4.2s)</span>
+                    <span>Slow (6.0s)</span>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-300 block">Trigger Frequency</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 block">Trigger Frequency</label>
                   <select
                     value={splitRevealMode}
                     onChange={(e) => setSplitRevealMode(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400 focus:bg-black/60 transition-all cursor-pointer"
                   >
                     <option value="every_time" className="bg-[#0e121e]">Every Page Visit</option>
-                    <option value="once_per_session" className="bg-[#0e121e]">Once Per Session</option>
+                    <option value="once_per_session" className="bg-[#0e121e]">Once Per Session (Recommended)</option>
                   </select>
+                  <p className="text-[10px] text-slate-500">
+                    {splitRevealMode === "once_per_session" ? "Plays once per browser session" : "Plays on every page reload"}
+                  </p>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-300 block">Split Direction</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 block">Split Motion</label>
                   <select
                     value={splitRevealDirection}
                     onChange={(e) => setSplitRevealDirection(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400 focus:bg-black/60 transition-all cursor-pointer"
                   >
-                    <option value="vertical" className="bg-[#0e121e]">Vertical Split (Top/Bottom)</option>
-                    <option value="horizontal" className="bg-[#0e121e]">Horizontal Split (Left/Right)</option>
+                    <option value="vertical" className="bg-[#0e121e]">Vertical Split (Top / Bottom)</option>
+                    <option value="horizontal" className="bg-[#0e121e]">Horizontal Split (Left / Right)</option>
                   </select>
+                  <p className="text-[10px] text-slate-500">
+                    {splitRevealDirection === "vertical" ? "Curtains part vertically (up & down)" : "Curtains slide horizontally (left & right)"}
+                  </p>
                 </div>
               </div>
-
             </div>
           )}
         </div>

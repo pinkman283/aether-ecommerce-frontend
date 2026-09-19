@@ -130,6 +130,7 @@ export default function AdminMailSettingsPage() {
   };
 
   const handleDiscard = () => {
+    if (!isDirty) return;
     setConfig(initialConfig);
     setSenders(initialSenders);
     toast.info("Unsaved mail changes discarded.");
