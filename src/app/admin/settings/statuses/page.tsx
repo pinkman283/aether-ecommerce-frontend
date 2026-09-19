@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { 
   GitCommit, 
   Plus, 
@@ -19,7 +19,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { OrderStatusConfig } from "@/types";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
-import { AdminPageHeader, AdminEmptyState } from "@/components/admin/ui";
+import { AdminPageHeader, AdminEmptyState, AdminSaveBar } from "@/components/admin/ui";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
@@ -28,17 +28,17 @@ const COLOR_PRESETS = [
   { id: "blue", label: "Blue / Info", bg: "bg-blue-500/20", border: "border-blue-500/40", text: "text-blue-300" },
   { id: "purple", label: "Purple / Processing", bg: "bg-purple-500/20", border: "border-purple-500/40", text: "text-purple-300" },
   { id: "sky", label: "Sky / In Transit", bg: "bg-sky-500/20", border: "border-sky-500/40", text: "text-sky-300" },
-  { id: "emerald", label: "Emerald / Delivered", bg: "bg-emerald-500/20", border: "border-emerald-500/40", text: "text-emerald-300" },
+  { id: "emerald", label: "Emerald / Completed", bg: "bg-emerald-500/20", border: "border-emerald-500/40", text: "text-emerald-300" },
   { id: "rose", label: "Rose / Cancelled", bg: "bg-rose-500/20", border: "border-rose-500/40", text: "text-rose-300" },
-  { id: "red", label: "Red / Returned", bg: "bg-red-500/20", border: "border-red-500/40", text: "text-red-300" },
 ];
 
-export default function AdminOrderStatusesSettingsPage() {
+export default function AdminOrderStatusesPage() {
   const [statuses, setStatuses] = useState<OrderStatusConfig[]>([]);
+  const [initialStatuses, setInitialStatuses] = useState<OrderStatusConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // New Status modal
+  // New Status Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newId, setNewId] = useState("");
   const [newLabel, setNewLabel] = useState("");
@@ -50,7 +50,9 @@ export default function AdminOrderStatusesSettingsPage() {
     setLoading(true);
     try {
       const res = await adminApi.getExtendedSettings();
-      setStatuses(res.order_statuses || []);
+      const loaded = res.order_statuses || [];
+      setStatuses(loaded);
+      setInitialStatuses(loaded);
     } catch (err) {
       toast.error("Failed to load order status pipeline.");
     } finally {
@@ -61,6 +63,26 @@ export default function AdminOrderStatusesSettingsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const isDirty = useMemo(() => {
+    return JSON.stringify(statuses) !== JSON.stringify(initialStatuses);
+  }, [statuses, initialStatuses]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleDiscard = () => {
+    setStatuses(initialStatuses);
+    toast.info("Unsaved pipeline changes discarded.");
+  };
 
   const handleToggleSms = (idx: number) => {
     const updated = [...statuses];
@@ -112,9 +134,11 @@ export default function AdminOrderStatusesSettingsPage() {
   };
 
   const handleSaveAll = async () => {
+    if (!isDirty || saving) return;
     setSaving(true);
     try {
       await adminApi.updateSettingsGroup("order_statuses", statuses);
+      setInitialStatuses(statuses);
       toast.success("Order status pipeline saved successfully.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to save order pipeline.");
@@ -133,30 +157,20 @@ export default function AdminOrderStatusesSettingsPage() {
           { label: "Order Pipeline", href: "/admin/settings/statuses" },
         ]}
         actions={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setNewId("");
-                setNewLabel("");
-                setNewColor("blue");
-                setNewSmsTrigger(false);
-                setNewEmailTrigger(true);
-                setIsModalOpen(true);
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Custom Stage
-            </button>
-            <button
-              onClick={handleSaveAll}
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              Save Pipeline
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setNewId("");
+              setNewLabel("");
+              setNewColor("blue");
+              setNewSmsTrigger(false);
+              setNewEmailTrigger(true);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Custom Stage</span>
+          </button>
         }
       />
 
@@ -386,6 +400,17 @@ export default function AdminOrderStatusesSettingsPage() {
           </form>
         </SheetContent>
       </Sheet>
+
+      {/* Floating Contextual Unsaved Changes Dock */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={saving}
+        onSave={handleSaveAll}
+        onDiscard={handleDiscard}
+        saveLabel="Save Pipeline"
+        discardLabel="Discard"
+        message="Unsaved pipeline changes"
+      />
     </div>
   );
 }

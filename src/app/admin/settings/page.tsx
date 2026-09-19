@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
+import { AdminSaveBar } from "@/components/admin/ui";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
@@ -112,8 +113,8 @@ export default function AdminSettingsPage() {
     toast.info("Settings reverted.");
   };
 
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!isDirty) {
       toast.info("No changes were made.");
       return;
@@ -165,35 +166,10 @@ export default function AdminSettingsPage() {
       <SettingsNavTabs />
 
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.06]">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">General Store Settings</h1>
           <p className="text-xs text-slate-400 mt-0.5">Configure official store identity, currency, VAT policies, and default shipping rates</p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          {isDirty && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold border border-white/10 transition-colors cursor-pointer"
-            >
-              Discard Changes
-            </button>
-          )}
-
-          <button
-            onClick={handleSaveSettings}
-            disabled={saving || !isDirty}
-            className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all shadow-sm flex items-center gap-1.5 ${
-              isDirty && !saving
-                ? "bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-amber-500/20 ring-1 ring-amber-400/50"
-                : "bg-white/5 text-slate-500 border border-white/10 cursor-not-allowed opacity-40"
-            }`}
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{saving ? "Saving..." : "Save Settings"}</span>
-          </button>
         </div>
       </div>
 
@@ -340,19 +316,6 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         </div>
-
-        {/* Save Button */}
-        <div className="flex justify-end pt-2">
-          <button
-            type="submit"
-            disabled={saving || !isDirty}
-            className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all shadow-sm cursor-pointer disabled:opacity-40 flex items-center gap-2"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{saving ? "Saving..." : "Save Store Configurations"}</span>
-          </button>
-        </div>
-
       </form>
 
       {/* Settings Hub Directory Grid */}
@@ -504,6 +467,16 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
+      {/* Floating Contextual Unsaved Changes Dock */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={saving}
+        onSave={handleSaveSettings}
+        onDiscard={handleReset}
+        saveLabel="Save Settings"
+        discardLabel="Discard"
+        message="Unsaved store settings"
+      />
     </div>
   );
 }

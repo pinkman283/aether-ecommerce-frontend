@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { 
   Search, 
   Save, 
@@ -16,12 +16,21 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { SeoSettings } from "@/types";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
-import { AdminPageHeader } from "@/components/admin/ui";
+import { AdminPageHeader, AdminSaveBar } from "@/components/admin/ui";
 import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { toast } from "sonner";
 
 export default function AdminSeoSettingsPage() {
   const [seo, setSeo] = useState<SeoSettings>({
+    meta_title: "",
+    meta_description: "",
+    meta_keywords: "",
+    google_site_verification: "",
+    bing_site_verification: "",
+    og_image: "",
+    canonical_base_url: "",
+  });
+  const [initialSeo, setInitialSeo] = useState<SeoSettings>({
     meta_title: "",
     meta_description: "",
     meta_keywords: "",
@@ -39,6 +48,7 @@ export default function AdminSeoSettingsPage() {
       const res = await adminApi.getExtendedSettings();
       if (res.seo_meta) {
         setSeo(res.seo_meta);
+        setInitialSeo(res.seo_meta);
       }
     } catch (err) {
       toast.error("Failed to load SEO settings.");
@@ -51,11 +61,33 @@ export default function AdminSeoSettingsPage() {
     loadData();
   }, []);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const isDirty = useMemo(() => {
+    return JSON.stringify(seo) !== JSON.stringify(initialSeo);
+  }, [seo, initialSeo]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleDiscard = () => {
+    setSeo(initialSeo);
+    toast.info("Unsaved SEO changes discarded.");
+  };
+
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!isDirty || saving) return;
     setSaving(true);
     try {
       await adminApi.updateSettingsGroup("seo_meta", seo);
+      setInitialSeo(seo);
       toast.success("SEO and Webmaster settings successfully saved.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to save SEO configuration.");
@@ -73,16 +105,6 @@ export default function AdminSeoSettingsPage() {
           { label: "Settings", href: "/admin/settings" },
           { label: "SEO & Search", href: "/admin/settings/seo" },
         ]}
-        actions={
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>Save SEO Configuration</span>
-          </button>
-        }
       />
 
       <SettingsNavTabs />
@@ -278,6 +300,17 @@ export default function AdminSeoSettingsPage() {
           </div>
         </form>
       )}
+
+      {/* Floating Contextual Unsaved Changes Dock */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={saving}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+        saveLabel="Save SEO Configuration"
+        discardLabel="Discard"
+        message="Unsaved SEO settings"
+      />
     </div>
   );
 }

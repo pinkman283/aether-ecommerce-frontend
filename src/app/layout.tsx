@@ -5,6 +5,7 @@ import { AppProviders } from "@/components/providers/AppProviders";
 import { DynamicFavicon } from "@/components/shared/DynamicFavicon";
 import { cn } from "@/lib/utils";
 import { cachedFetch } from "@/lib/redis";
+import { cookies } from "next/headers";
 import { DEFAULT_THEME_SETTINGS, ThemeSettings, getHexLuminance, useThemeStore } from "@/store/useThemeStore";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -105,7 +106,17 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const serverTheme = await getServerTheme();
-  useThemeStore.setState({ theme: serverTheme, isLoaded: true });
+  let initialTheme = { ...serverTheme };
+
+  try {
+    const cookieStore = await cookies();
+    const hasSeenSplash = cookieStore.get("aether_split_reveal_seen")?.value === "true";
+    if (hasSeenSplash && serverTheme.split_reveal_mode === "once_per_session") {
+      initialTheme.split_reveal_enabled = false;
+    }
+  } catch (e) {}
+
+  useThemeStore.setState({ theme: initialTheme, isLoaded: true });
   const isLight = getHexLuminance(serverTheme.theme_bg_color) > 0.45;
   const isFooterLight = getHexLuminance(serverTheme.theme_footer_bg_color || "#1f242e") > 0.45;
   const footerBg = serverTheme.theme_footer_bg_color || "#1f242e";
@@ -181,7 +192,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <DynamicFavicon />
-        <AppProviders initialTheme={serverTheme}>
+        <AppProviders initialTheme={initialTheme}>
           {children}
         </AppProviders>
       </body>

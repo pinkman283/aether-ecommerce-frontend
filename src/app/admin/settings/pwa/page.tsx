@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { 
   Smartphone, 
   Save, 
@@ -16,12 +16,24 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { PwaSettings } from "@/types";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
-import { AdminPageHeader } from "@/components/admin/ui";
+import { AdminPageHeader, AdminSaveBar } from "@/components/admin/ui";
 import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
 import { toast } from "sonner";
 
 export default function AdminPwaSettingsPage() {
   const [pwa, setPwa] = useState<PwaSettings>({
+    name: "AETHER Audio Labs",
+    short_name: "AETHER",
+    theme_color: "#090b10",
+    background_color: "#07090e",
+    display: "standalone",
+    orientation: "portrait-primary",
+    start_url: "/?pwa=1",
+    scope: "/",
+    icon_192: "/icons/icon-192x192.png",
+    icon_512: "/icons/icon-512x512.png",
+  });
+  const [initialPwa, setInitialPwa] = useState<PwaSettings>({
     name: "AETHER Audio Labs",
     short_name: "AETHER",
     theme_color: "#090b10",
@@ -42,6 +54,7 @@ export default function AdminPwaSettingsPage() {
       const res = await adminApi.getExtendedSettings();
       if (res.pwa_manifest) {
         setPwa(res.pwa_manifest);
+        setInitialPwa(res.pwa_manifest);
       }
     } catch (err) {
       toast.error("Failed to load PWA manifest settings.");
@@ -54,11 +67,33 @@ export default function AdminPwaSettingsPage() {
     loadData();
   }, []);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const isDirty = useMemo(() => {
+    return JSON.stringify(pwa) !== JSON.stringify(initialPwa);
+  }, [pwa, initialPwa]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleDiscard = () => {
+    setPwa(initialPwa);
+    toast.info("Unsaved PWA changes discarded.");
+  };
+
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!isDirty || saving) return;
     setSaving(true);
     try {
       await adminApi.updateSettingsGroup("pwa_manifest", pwa);
+      setInitialPwa(pwa);
       toast.success("PWA Manifest settings successfully saved.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to save PWA manifest.");
@@ -76,16 +111,6 @@ export default function AdminPwaSettingsPage() {
           { label: "Settings", href: "/admin/settings" },
           { label: "PWA Studio", href: "/admin/settings/pwa" },
         ]}
-        actions={
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>Save PWA Manifest</span>
-          </button>
-        }
       />
 
       <SettingsNavTabs />
@@ -274,6 +299,17 @@ export default function AdminPwaSettingsPage() {
           </div>
         </form>
       )}
+
+      {/* Floating Contextual Unsaved Changes Dock */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={saving}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+        saveLabel="Save PWA Manifest"
+        discardLabel="Discard"
+        message="Unsaved PWA settings"
+      />
     </div>
   );
 }

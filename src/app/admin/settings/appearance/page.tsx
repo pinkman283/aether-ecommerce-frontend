@@ -38,6 +38,7 @@ import {
 } from "@/store/useThemeStore";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
 import { LiveStorefrontPreview } from "@/components/admin/settings/LiveStorefrontPreview";
+import { AdminSaveBar } from "@/components/admin/ui";
 import { toast } from "sonner";
 
 export interface CustomThemeItem {
@@ -817,7 +818,12 @@ export default function AdminAppearancePage() {
 
     try {
       const res = await adminApi.updateThemeSettings(payload);
-      setInitialSettings(res.settings);
+      const updatedBaseline = {
+        ...initialSettings,
+        ...payload,
+        ...(res?.settings || {}),
+      };
+      setInitialSettings(updatedBaseline);
       updateClientTheme(payload);
 
       setActiveThemeName(preset.name);
@@ -1204,7 +1210,12 @@ export default function AdminAppearancePage() {
 
     try {
       const res = await adminApi.updateThemeSettings(payload);
-      setInitialSettings(res.settings);
+      const updatedBaseline = {
+        ...initialSettings,
+        ...payload,
+        ...(res?.settings || {}),
+      };
+      setInitialSettings(updatedBaseline);
       updateClientTheme(payload);
       toast.success("Theme & Appearance settings published successfully!");
     } catch (err: any) {
@@ -1213,6 +1224,47 @@ export default function AdminAppearancePage() {
       setSaving(false);
     }
   };
+
+  const handleDiscardChanges = () => {
+    if (!initialSettings) return;
+    const s = initialSettings;
+    if (s.theme_default_preset) setDefaultThemeId(s.theme_default_preset);
+    setPrimaryColor(s.theme_primary_color || DEFAULT_THEME_SETTINGS.theme_primary_color);
+    setSecondaryColor(s.theme_secondary_color || DEFAULT_THEME_SETTINGS.theme_secondary_color);
+    setAccentGradient(s.theme_accent_gradient || DEFAULT_THEME_SETTINGS.theme_accent_gradient);
+    setBgColor(s.theme_bg_color || DEFAULT_THEME_SETTINGS.theme_bg_color);
+    setCardBgColor(s.theme_card_bg_color || DEFAULT_THEME_SETTINGS.theme_card_bg_color);
+    setCardBorderColor(s.theme_card_border_color || DEFAULT_THEME_SETTINGS.theme_card_border_color || "rgba(255, 255, 255, 0.1)");
+    setTextHeadingColor(s.theme_text_heading_color || DEFAULT_THEME_SETTINGS.theme_text_heading_color || "#ffffff");
+    setTextBodyColor(s.theme_text_body_color || DEFAULT_THEME_SETTINGS.theme_text_body_color || "#94a3b8");
+    setBtnPrimaryBg(s.theme_btn_primary_bg || DEFAULT_THEME_SETTINGS.theme_btn_primary_bg || "#06b6d4");
+    setBtnPrimaryText(s.theme_btn_primary_text || DEFAULT_THEME_SETTINGS.theme_btn_primary_text || "#ffffff");
+    setBtnSecondaryBg(s.theme_btn_secondary_bg || DEFAULT_THEME_SETTINGS.theme_btn_secondary_bg || "rgba(255, 255, 255, 0.05)");
+    setBtnSecondaryText(s.theme_btn_secondary_text || DEFAULT_THEME_SETTINGS.theme_btn_secondary_text || "#ffffff");
+    setTabActiveBg(s.theme_tab_active_bg || DEFAULT_THEME_SETTINGS.theme_tab_active_bg || "#06b6d4");
+    setTabActiveText(s.theme_tab_active_text || DEFAULT_THEME_SETTINGS.theme_tab_active_text || "#ffffff");
+    setViewAllColor(s.theme_view_all_color || s.theme_tab_active_bg || "#06b6d4");
+    setHoverBg(s.theme_hover_bg || DEFAULT_THEME_SETTINGS.theme_hover_bg || "rgba(6, 182, 212, 0.15)");
+    setHoverText(s.theme_hover_text || DEFAULT_THEME_SETTINGS.theme_hover_text || "#06b6d4");
+    setRadius(s.theme_radius || DEFAULT_THEME_SETTINGS.theme_radius || "rounded-lg");
+    setFooterBgColor(s.theme_footer_bg_color || DEFAULT_THEME_SETTINGS.theme_footer_bg_color || "#1f242e");
+    setFooterTextColor(s.theme_footer_text_color || DEFAULT_THEME_SETTINGS.theme_footer_text_color || "#94a3b8");
+    setCustomThemes(Array.isArray(s.custom_themes) ? s.custom_themes : []);
+    setDeletedThemeIds(Array.isArray(s.deleted_theme_ids) ? s.deleted_theme_ids : []);
+    setEditingThemeId(null);
+    toast.info("Theme changes discarded.");
+  };
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
 
   // Ensure any legacy custom active settings in database are never lost unless explicitly deleted
   const activeCustomSynthesizedTheme: CustomThemeItem | null = useMemo(() => {
@@ -1360,7 +1412,7 @@ export default function AdminAppearancePage() {
           <button
             type="button"
             onClick={togglePreview}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               showPreview 
                 ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm"
                 : "bg-white/5 text-slate-400 hover:text-white border-white/10"
@@ -1374,25 +1426,10 @@ export default function AdminAppearancePage() {
           <button
             type="button"
             onClick={() => setCreateModalOpen(true)}
-            className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create Theme</span>
-          </button>
-
-          {/* Publish / Save Button */}
-          <button
-            type="button"
-            onClick={handleSaveTheme}
-            disabled={saving || !isDirty}
-            className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all shadow-sm flex items-center gap-1.5 ${
-              isDirty && !saving
-                ? "bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-amber-500/20 ring-1 ring-amber-400/50"
-                : "bg-white/5 text-slate-500 border border-white/10 cursor-not-allowed opacity-40"
-            }`}
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{saving ? "Publishing..." : "Publish Changes"}</span>
           </button>
         </div>
       </div>
@@ -2169,6 +2206,16 @@ export default function AdminAppearancePage() {
           </div>
         </div>
       )}
+
+      {/* Floating Contextual Save Bar */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={saving}
+        onSave={handleSaveTheme}
+        onDiscard={handleDiscardChanges}
+        saveLabel="Publish Changes"
+        message="Unsaved theme changes"
+      />
 
     </div>
   );

@@ -16,12 +16,14 @@ import {
   Truck,
   CheckCircle2,
   UserCheck,
-  ExternalLink
+  ExternalLink,
+  RotateCcw
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { useThemeStore, DEFAULT_THEME_SETTINGS } from "@/store/useThemeStore";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
 import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
+import { AdminSaveBar } from "@/components/admin/ui";
 import { toast } from "sonner";
 
 export default function AdminStorefrontPage() {
@@ -113,82 +115,138 @@ export default function AdminStorefrontPage() {
     async function loadStorefrontSettings() {
       try {
         const res = await adminApi.getThemeSettings();
-        const s = res.settings;
-        setInitialSettings(s);
+        const s = res.settings || {};
 
-        if (s.announcement_enabled !== undefined) setAnnouncementEnabled(Boolean(s.announcement_enabled));
-        if (s.announcement_text) setAnnouncementText(s.announcement_text);
-        if (s.announcement_badge) setAnnouncementBadge(s.announcement_badge);
+        const resolvedTitle = (s.split_reveal_title && s.split_reveal_title !== "AETHER")
+          ? s.split_reveal_title
+          : (s.store_brand_name || s.split_reveal_title || DEFAULT_THEME_SETTINGS.split_reveal_title);
 
-        if (s.navbar_promo_enabled !== undefined) setNavbarPromoEnabled(Boolean(s.navbar_promo_enabled));
-        if (s.navbar_promo_discount_text !== undefined) setNavbarPromoDiscountText(s.navbar_promo_discount_text);
-        if (s.navbar_promo_code !== undefined) setNavbarPromoCode(s.navbar_promo_code);
-        if (s.navbar_promo_link !== undefined) setNavbarPromoLink(s.navbar_promo_link);
+        const initialNormalized = {
+          ...s,
+          announcement_enabled: s.announcement_enabled !== undefined ? Boolean(s.announcement_enabled) : DEFAULT_THEME_SETTINGS.announcement_enabled,
+          announcement_text: s.announcement_text || DEFAULT_THEME_SETTINGS.announcement_text,
+          announcement_badge: s.announcement_badge || DEFAULT_THEME_SETTINGS.announcement_badge,
+          navbar_promo_enabled: s.navbar_promo_enabled !== undefined ? Boolean(s.navbar_promo_enabled) : true,
+          navbar_promo_discount_text: s.navbar_promo_discount_text || "20% OFF",
+          navbar_promo_code: s.navbar_promo_code || "AETHER10",
+          navbar_promo_link: s.navbar_promo_link || "/promotions",
+          nav_deals_enabled: s.nav_deals_enabled !== undefined ? Boolean(s.nav_deals_enabled) : true,
+          nav_deals_text: s.nav_deals_text || "Deals",
+          nav_deals_link: s.nav_deals_link || "/products?discounted=true",
+          category_deals_card_enabled: s.category_deals_card_enabled !== undefined ? Boolean(s.category_deals_card_enabled) : true,
+          category_deals_card_title: s.category_deals_card_title || "Top Deals",
+          category_deals_card_subtitle: s.category_deals_card_subtitle || "Up to 20% Off",
+          category_deals_card_link: s.category_deals_card_link || "/products?discounted=true",
+          hero_headline_line1: s.hero_headline_line1 || DEFAULT_THEME_SETTINGS.hero_headline_line1,
+          hero_headline_line2_gradient: s.hero_headline_line2_gradient || DEFAULT_THEME_SETTINGS.hero_headline_line2_gradient,
+          hero_headline_line3: s.hero_headline_line3 || DEFAULT_THEME_SETTINGS.hero_headline_line3,
+          hero_subheading: s.hero_subheading || DEFAULT_THEME_SETTINGS.hero_subheading,
+          hero_badge_text: s.hero_badge_text || DEFAULT_THEME_SETTINGS.hero_badge_text,
+          split_reveal_enabled: s.split_reveal_enabled !== undefined ? Boolean(s.split_reveal_enabled) : DEFAULT_THEME_SETTINGS.split_reveal_enabled,
+          split_reveal_image: s.split_reveal_image || DEFAULT_THEME_SETTINGS.split_reveal_image,
+          split_reveal_logo: s.split_reveal_logo || "",
+          split_reveal_title: resolvedTitle,
+          split_reveal_subtitle: s.split_reveal_subtitle || DEFAULT_THEME_SETTINGS.split_reveal_subtitle,
+          split_reveal_duration: s.split_reveal_duration !== undefined ? Number(s.split_reveal_duration) : DEFAULT_THEME_SETTINGS.split_reveal_duration,
+          split_reveal_mode: s.split_reveal_mode || DEFAULT_THEME_SETTINGS.split_reveal_mode,
+          split_reveal_dim: s.split_reveal_dim !== undefined ? Number(s.split_reveal_dim) : DEFAULT_THEME_SETTINGS.split_reveal_dim,
+          split_reveal_direction: s.split_reveal_direction || DEFAULT_THEME_SETTINGS.split_reveal_direction,
+          flash_deals_enabled: s.flash_deals_enabled !== undefined ? Boolean(s.flash_deals_enabled) : true,
+          flash_deals_title: s.flash_deals_title || "Limited Time Deals",
+          flash_deals_badge: s.flash_deals_badge || "Flash Deal Drop",
+          trust_ribbon_enabled: s.trust_ribbon_enabled !== undefined ? Boolean(s.trust_ribbon_enabled) : true,
+          trust_ribbon_title_1: s.trust_ribbon_title_1 || "Fast Express Delivery",
+          trust_ribbon_desc_1: s.trust_ribbon_desc_1 || "Dispatched within 24-48 hours",
+          trust_ribbon_title_2: s.trust_ribbon_title_2 || "Cash on Delivery (COD)",
+          trust_ribbon_desc_2: s.trust_ribbon_desc_2 || "Pay safely upon product arrival",
+          trust_ribbon_title_3: s.trust_ribbon_title_3 || "100% Genuine & Authentic",
+          trust_ribbon_desc_3: s.trust_ribbon_desc_3 || "Official manufacturer warranty coverage",
+          trust_ribbon_title_4: s.trust_ribbon_title_4 || "7-Day Easy Replacement",
+          trust_ribbon_desc_4: s.trust_ribbon_desc_4 || "Hassle-free returns & replacement policy",
+          footer_features_enabled: s.footer_features_enabled !== undefined ? Boolean(s.footer_features_enabled) : true,
+          footer_feature_title_1: s.footer_feature_title_1 || "Free Express Shipping",
+          footer_feature_desc_1: s.footer_feature_desc_1 || "Complimentary delivery inside & outside Dhaka.",
+          footer_feature_link_1: s.footer_feature_link_1 || "/shipping-policy",
+          footer_feature_title_2: s.footer_feature_title_2 || "2-Year Studio Warranty",
+          footer_feature_desc_2: s.footer_feature_desc_2 || "Comprehensive hardware protection & zero-cost repair.",
+          footer_feature_link_2: s.footer_feature_link_2 || "/refund-policy",
+          footer_feature_title_3: s.footer_feature_title_3 || "30-Day Risk-Free Trial",
+          footer_feature_desc_3: s.footer_feature_desc_3 || "Hassle-free evaluation with prepaid RMA labels.",
+          footer_feature_link_3: s.footer_feature_link_3 || "/refund-policy",
+          footer_feature_title_4: s.footer_feature_title_4 || "24/7 Audio Support",
+          footer_feature_desc_4: s.footer_feature_desc_4 || "Direct access to sound engineers & hardware specialists.",
+          footer_feature_link_4: s.footer_feature_link_4 || "/contact",
+          customer_auth_bg_image: s.customer_auth_bg_image || "",
+          customer_auth_bg_color: s.customer_auth_bg_color || "#ffffff",
+          customer_auth_card_position: s.customer_auth_card_position || "left",
+        };
 
-        if (s.nav_deals_enabled !== undefined) setNavDealsEnabled(Boolean(s.nav_deals_enabled));
-        if (s.nav_deals_text !== undefined) setNavDealsText(s.nav_deals_text);
-        if (s.nav_deals_link !== undefined) setNavDealsLink(s.nav_deals_link);
-        if (s.category_deals_card_enabled !== undefined) setCategoryDealsCardEnabled(Boolean(s.category_deals_card_enabled));
-        if (s.category_deals_card_title !== undefined) setCategoryDealsCardTitle(s.category_deals_card_title);
-        if (s.category_deals_card_subtitle !== undefined) setCategoryDealsCardSubtitle(s.category_deals_card_subtitle);
-        if (s.category_deals_card_link !== undefined) setCategoryDealsCardLink(s.category_deals_card_link);
+        setAnnouncementEnabled(initialNormalized.announcement_enabled);
+        setAnnouncementText(initialNormalized.announcement_text);
+        setAnnouncementBadge(initialNormalized.announcement_badge);
 
-        if (s.hero_headline_line1) setHeroHeadline1(s.hero_headline_line1);
-        if (s.hero_headline_line2_gradient) setHeroHeadline2Gradient(s.hero_headline_line2_gradient);
-        if (s.hero_headline_line3) setHeroHeadline3(s.hero_headline_line3);
-        if (s.hero_subheading) setHeroSubheading(s.hero_subheading);
-        if (s.hero_badge_text) setHeroBadgeText(s.hero_badge_text);
+        setNavbarPromoEnabled(initialNormalized.navbar_promo_enabled);
+        setNavbarPromoDiscountText(initialNormalized.navbar_promo_discount_text);
+        setNavbarPromoCode(initialNormalized.navbar_promo_code);
+        setNavbarPromoLink(initialNormalized.navbar_promo_link);
 
-        if (s.split_reveal_enabled !== undefined) setSplitRevealEnabled(Boolean(s.split_reveal_enabled));
-        if (s.split_reveal_image) setSplitRevealImage(s.split_reveal_image);
-        if (s.split_reveal_logo) setSplitRevealLogo(s.split_reveal_logo);
-        if (s.split_reveal_title !== undefined) {
-          const resolvedTitle = (s.split_reveal_title && s.split_reveal_title !== "AETHER")
-            ? s.split_reveal_title
-            : (s.store_brand_name || s.split_reveal_title || DEFAULT_THEME_SETTINGS.split_reveal_title);
-          setSplitRevealTitle(resolvedTitle);
-        }
-        if (s.split_reveal_subtitle) setSplitRevealSubtitle(s.split_reveal_subtitle);
-        if (s.split_reveal_duration) setSplitRevealDuration(Number(s.split_reveal_duration));
-        if (s.split_reveal_mode) setSplitRevealMode(s.split_reveal_mode);
-        if (s.split_reveal_dim) setSplitRevealDim(Number(s.split_reveal_dim));
-        if (s.split_reveal_direction) setSplitRevealDirection(s.split_reveal_direction);
+        setNavDealsEnabled(initialNormalized.nav_deals_enabled);
+        setNavDealsText(initialNormalized.nav_deals_text);
+        setNavDealsLink(initialNormalized.nav_deals_link);
+        setCategoryDealsCardEnabled(initialNormalized.category_deals_card_enabled);
+        setCategoryDealsCardTitle(initialNormalized.category_deals_card_title);
+        setCategoryDealsCardSubtitle(initialNormalized.category_deals_card_subtitle);
+        setCategoryDealsCardLink(initialNormalized.category_deals_card_link);
 
-        // Flash Deals
-        if (s.flash_deals_enabled !== undefined) setFlashDealsEnabled(Boolean(s.flash_deals_enabled));
-        if (s.flash_deals_title) setFlashDealsTitle(s.flash_deals_title);
-        if (s.flash_deals_badge) setFlashDealsBadge(s.flash_deals_badge);
+        setHeroHeadline1(initialNormalized.hero_headline_line1);
+        setHeroHeadline2Gradient(initialNormalized.hero_headline_line2_gradient);
+        setHeroHeadline3(initialNormalized.hero_headline_line3);
+        setHeroSubheading(initialNormalized.hero_subheading);
+        setHeroBadgeText(initialNormalized.hero_badge_text);
 
-        // Trust Ribbon
-        if (s.trust_ribbon_enabled !== undefined) setTrustRibbonEnabled(Boolean(s.trust_ribbon_enabled));
-        if (s.trust_ribbon_title_1) setTrustRibbonTitle1(s.trust_ribbon_title_1);
-        if (s.trust_ribbon_desc_1) setTrustRibbonDesc1(s.trust_ribbon_desc_1);
-        if (s.trust_ribbon_title_2) setTrustRibbonTitle2(s.trust_ribbon_title_2);
-        if (s.trust_ribbon_desc_2) setTrustRibbonDesc2(s.trust_ribbon_desc_2);
-        if (s.trust_ribbon_title_3) setTrustRibbonTitle3(s.trust_ribbon_title_3);
-        if (s.trust_ribbon_desc_3) setTrustRibbonDesc3(s.trust_ribbon_desc_3);
-        if (s.trust_ribbon_title_4) setTrustRibbonTitle4(s.trust_ribbon_title_4);
-        if (s.trust_ribbon_desc_4) setTrustRibbonDesc4(s.trust_ribbon_desc_4);
+        setSplitRevealEnabled(initialNormalized.split_reveal_enabled);
+        setSplitRevealImage(initialNormalized.split_reveal_image);
+        setSplitRevealLogo(initialNormalized.split_reveal_logo);
+        setSplitRevealTitle(initialNormalized.split_reveal_title);
+        setSplitRevealSubtitle(initialNormalized.split_reveal_subtitle);
+        setSplitRevealDuration(initialNormalized.split_reveal_duration);
+        setSplitRevealMode(initialNormalized.split_reveal_mode);
+        setSplitRevealDim(initialNormalized.split_reveal_dim);
+        setSplitRevealDirection(initialNormalized.split_reveal_direction);
 
-        // Footer Guarantees & Features Strip
-        if (s.footer_features_enabled !== undefined) setFooterFeaturesEnabled(Boolean(s.footer_features_enabled));
-        if (s.footer_feature_title_1) setFooterFeatureTitle1(s.footer_feature_title_1);
-        if (s.footer_feature_desc_1) setFooterFeatureDesc1(s.footer_feature_desc_1);
-        if (s.footer_feature_link_1) setFooterFeatureLink1(s.footer_feature_link_1);
-        if (s.footer_feature_title_2) setFooterFeatureTitle2(s.footer_feature_title_2);
-        if (s.footer_feature_desc_2) setFooterFeatureDesc2(s.footer_feature_desc_2);
-        if (s.footer_feature_link_2) setFooterFeatureLink2(s.footer_feature_link_2);
-        if (s.footer_feature_title_3) setFooterFeatureTitle3(s.footer_feature_title_3);
-        if (s.footer_feature_desc_3) setFooterFeatureDesc3(s.footer_feature_desc_3);
-        if (s.footer_feature_link_3) setFooterFeatureLink3(s.footer_feature_link_3);
-        if (s.footer_feature_title_4) setFooterFeatureTitle4(s.footer_feature_title_4);
-        if (s.footer_feature_desc_4) setFooterFeatureDesc4(s.footer_feature_desc_4);
-        if (s.footer_feature_link_4) setFooterFeatureLink4(s.footer_feature_link_4);
+        setFlashDealsEnabled(initialNormalized.flash_deals_enabled);
+        setFlashDealsTitle(initialNormalized.flash_deals_title);
+        setFlashDealsBadge(initialNormalized.flash_deals_badge);
 
-        // Customer Login & Sign Up Page
-        if (s.customer_auth_bg_image !== undefined) setCustomerAuthBgImage(s.customer_auth_bg_image || "");
-        if (s.customer_auth_bg_color !== undefined) setCustomerAuthBgColor(s.customer_auth_bg_color || "#ffffff");
-        if (s.customer_auth_card_position !== undefined) setCustomerAuthCardPosition(s.customer_auth_card_position || "left");
+        setTrustRibbonEnabled(initialNormalized.trust_ribbon_enabled);
+        setTrustRibbonTitle1(initialNormalized.trust_ribbon_title_1);
+        setTrustRibbonDesc1(initialNormalized.trust_ribbon_desc_1);
+        setTrustRibbonTitle2(initialNormalized.trust_ribbon_title_2);
+        setTrustRibbonDesc2(initialNormalized.trust_ribbon_desc_2);
+        setTrustRibbonTitle3(initialNormalized.trust_ribbon_title_3);
+        setTrustRibbonDesc3(initialNormalized.trust_ribbon_desc_3);
+        setTrustRibbonTitle4(initialNormalized.trust_ribbon_title_4);
+        setTrustRibbonDesc4(initialNormalized.trust_ribbon_desc_4);
+
+        setFooterFeaturesEnabled(initialNormalized.footer_features_enabled);
+        setFooterFeatureTitle1(initialNormalized.footer_feature_title_1);
+        setFooterFeatureDesc1(initialNormalized.footer_feature_desc_1);
+        setFooterFeatureLink1(initialNormalized.footer_feature_link_1);
+        setFooterFeatureTitle2(initialNormalized.footer_feature_title_2);
+        setFooterFeatureDesc2(initialNormalized.footer_feature_desc_2);
+        setFooterFeatureLink2(initialNormalized.footer_feature_link_2);
+        setFooterFeatureTitle3(initialNormalized.footer_feature_title_3);
+        setFooterFeatureDesc3(initialNormalized.footer_feature_desc_3);
+        setFooterFeatureLink3(initialNormalized.footer_feature_link_3);
+        setFooterFeatureTitle4(initialNormalized.footer_feature_title_4);
+        setFooterFeatureDesc4(initialNormalized.footer_feature_desc_4);
+        setFooterFeatureLink4(initialNormalized.footer_feature_link_4);
+
+        setCustomerAuthBgImage(initialNormalized.customer_auth_bg_image);
+        setCustomerAuthBgColor(initialNormalized.customer_auth_bg_color);
+        setCustomerAuthCardPosition(initialNormalized.customer_auth_card_position);
+
+        setInitialSettings(initialNormalized);
       } catch (err) {
         console.error(err);
       } finally {
@@ -305,18 +363,18 @@ export default function AdminStorefrontPage() {
       norm(splitRevealMode) !== norm(initialSettings.split_reveal_mode || DEFAULT_THEME_SETTINGS.split_reveal_mode) ||
       Number(splitRevealDim) !== Number(initialSettings.split_reveal_dim || DEFAULT_THEME_SETTINGS.split_reveal_dim) ||
       norm(splitRevealDirection) !== norm(initialSettings.split_reveal_direction || DEFAULT_THEME_SETTINGS.split_reveal_direction) ||
-      Boolean(flashDealsEnabled) !== Boolean(initialSettings.flash_deals_enabled ?? true) ||
-      norm(flashDealsTitle) !== norm(initialSettings.flash_deals_title || DEFAULT_THEME_SETTINGS.flash_deals_title) ||
-      norm(flashDealsBadge) !== norm(initialSettings.flash_deals_badge || DEFAULT_THEME_SETTINGS.flash_deals_badge) ||
-      Boolean(trustRibbonEnabled) !== Boolean(initialSettings.trust_ribbon_enabled ?? true) ||
-      norm(trustRibbonTitle1) !== norm(initialSettings.trust_ribbon_title_1 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_1) ||
-      norm(trustRibbonDesc1) !== norm(initialSettings.trust_ribbon_desc_1 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_1) ||
-      norm(trustRibbonTitle2) !== norm(initialSettings.trust_ribbon_title_2 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_2) ||
-      norm(trustRibbonDesc2) !== norm(initialSettings.trust_ribbon_desc_2 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_2) ||
-      norm(trustRibbonTitle3) !== norm(initialSettings.trust_ribbon_title_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_3) ||
-      norm(trustRibbonDesc3) !== norm(initialSettings.trust_ribbon_desc_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_3) ||
-      norm(trustRibbonTitle4) !== norm(initialSettings.trust_ribbon_title_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_4) ||
-      norm(trustRibbonDesc4) !== norm(initialSettings.trust_ribbon_desc_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_4) ||
+      Boolean(flashDealsEnabled) !== Boolean(initialSettings.flash_deals_enabled) ||
+      norm(flashDealsTitle) !== norm(initialSettings.flash_deals_title) ||
+      norm(flashDealsBadge) !== norm(initialSettings.flash_deals_badge) ||
+      Boolean(trustRibbonEnabled) !== Boolean(initialSettings.trust_ribbon_enabled) ||
+      norm(trustRibbonTitle1) !== norm(initialSettings.trust_ribbon_title_1) ||
+      norm(trustRibbonDesc1) !== norm(initialSettings.trust_ribbon_desc_1) ||
+      norm(trustRibbonTitle2) !== norm(initialSettings.trust_ribbon_title_2) ||
+      norm(trustRibbonDesc2) !== norm(initialSettings.trust_ribbon_desc_2) ||
+      norm(trustRibbonTitle3) !== norm(initialSettings.trust_ribbon_title_3) ||
+      norm(trustRibbonDesc3) !== norm(initialSettings.trust_ribbon_desc_3) ||
+      norm(trustRibbonTitle4) !== norm(initialSettings.trust_ribbon_title_4) ||
+      norm(trustRibbonDesc4) !== norm(initialSettings.trust_ribbon_desc_4) ||
       Boolean(footerFeaturesEnabled) !== Boolean(initialSettings.footer_features_enabled ?? true) ||
       norm(footerFeatureTitle1) !== norm(initialSettings.footer_feature_title_1 || DEFAULT_THEME_SETTINGS.footer_feature_title_1) ||
       norm(footerFeatureDesc1) !== norm(initialSettings.footer_feature_desc_1 || DEFAULT_THEME_SETTINGS.footer_feature_desc_1) ||
@@ -394,22 +452,33 @@ export default function AdminStorefrontPage() {
     customerAuthCardPosition,
   ]);
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
   const handleReset = () => {
     if (!initialSettings) return;
     setAnnouncementEnabled(initialSettings.announcement_enabled ?? DEFAULT_THEME_SETTINGS.announcement_enabled);
     setAnnouncementText(initialSettings.announcement_text || DEFAULT_THEME_SETTINGS.announcement_text);
     setAnnouncementBadge(initialSettings.announcement_badge || DEFAULT_THEME_SETTINGS.announcement_badge);
-    setNavbarPromoEnabled(initialSettings.navbar_promo_enabled ?? DEFAULT_THEME_SETTINGS.navbar_promo_enabled ?? true);
-    setNavbarPromoDiscountText(initialSettings.navbar_promo_discount_text || DEFAULT_THEME_SETTINGS.navbar_promo_discount_text || "20% OFF");
-    setNavbarPromoCode(initialSettings.navbar_promo_code || DEFAULT_THEME_SETTINGS.navbar_promo_code || "AETHER10");
-    setNavbarPromoLink(initialSettings.navbar_promo_link || DEFAULT_THEME_SETTINGS.navbar_promo_link || "/promotions");
-    setNavDealsEnabled(initialSettings.nav_deals_enabled ?? DEFAULT_THEME_SETTINGS.nav_deals_enabled ?? true);
-    setNavDealsText(initialSettings.nav_deals_text || DEFAULT_THEME_SETTINGS.nav_deals_text || "Deals");
-    setNavDealsLink(initialSettings.nav_deals_link || DEFAULT_THEME_SETTINGS.nav_deals_link || "/products?discounted=true");
-    setCategoryDealsCardEnabled(initialSettings.category_deals_card_enabled ?? DEFAULT_THEME_SETTINGS.category_deals_card_enabled ?? true);
-    setCategoryDealsCardTitle(initialSettings.category_deals_card_title || DEFAULT_THEME_SETTINGS.category_deals_card_title || "Top Deals");
-    setCategoryDealsCardSubtitle(initialSettings.category_deals_card_subtitle || DEFAULT_THEME_SETTINGS.category_deals_card_subtitle || "Up to 20% Off");
-    setCategoryDealsCardLink(initialSettings.category_deals_card_link || DEFAULT_THEME_SETTINGS.category_deals_card_link || "/products?discounted=true");
+    setNavbarPromoEnabled(initialSettings.navbar_promo_enabled ?? true);
+    setNavbarPromoDiscountText(initialSettings.navbar_promo_discount_text || "20% OFF");
+    setNavbarPromoCode(initialSettings.navbar_promo_code || "AETHER10");
+    setNavbarPromoLink(initialSettings.navbar_promo_link || "/promotions");
+    setNavDealsEnabled(initialSettings.nav_deals_enabled ?? true);
+    setNavDealsText(initialSettings.nav_deals_text || "Deals");
+    setNavDealsLink(initialSettings.nav_deals_link || "/products?discounted=true");
+    setCategoryDealsCardEnabled(initialSettings.category_deals_card_enabled ?? true);
+    setCategoryDealsCardTitle(initialSettings.category_deals_card_title || "Top Deals");
+    setCategoryDealsCardSubtitle(initialSettings.category_deals_card_subtitle || "Up to 20% Off");
+    setCategoryDealsCardLink(initialSettings.category_deals_card_link || "/products?discounted=true");
     setHeroHeadline1(initialSettings.hero_headline_line1 || DEFAULT_THEME_SETTINGS.hero_headline_line1);
     setHeroHeadline2Gradient(initialSettings.hero_headline_line2_gradient || DEFAULT_THEME_SETTINGS.hero_headline_line2_gradient);
     setHeroHeadline3(initialSettings.hero_headline_line3 || DEFAULT_THEME_SETTINGS.hero_headline_line3);
@@ -424,31 +493,31 @@ export default function AdminStorefrontPage() {
     setSplitRevealMode(initialSettings.split_reveal_mode || DEFAULT_THEME_SETTINGS.split_reveal_mode);
     setSplitRevealDim(initialSettings.split_reveal_dim || DEFAULT_THEME_SETTINGS.split_reveal_dim);
     setSplitRevealDirection(initialSettings.split_reveal_direction || DEFAULT_THEME_SETTINGS.split_reveal_direction);
-    setFlashDealsEnabled(initialSettings.flash_deals_enabled ?? DEFAULT_THEME_SETTINGS.flash_deals_enabled ?? true);
-    setFlashDealsTitle(initialSettings.flash_deals_title || DEFAULT_THEME_SETTINGS.flash_deals_title || "Limited Time Deals");
-    setFlashDealsBadge(initialSettings.flash_deals_badge || DEFAULT_THEME_SETTINGS.flash_deals_badge || "Flash Deal Drop");
-    setTrustRibbonEnabled(initialSettings.trust_ribbon_enabled ?? DEFAULT_THEME_SETTINGS.trust_ribbon_enabled ?? true);
-    setTrustRibbonTitle1(initialSettings.trust_ribbon_title_1 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_1 || "Fast Express Delivery");
-    setTrustRibbonDesc1(initialSettings.trust_ribbon_desc_1 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_1 || "Dispatched within 24-48 hours");
-    setTrustRibbonTitle2(initialSettings.trust_ribbon_title_2 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_2 || "Cash on Delivery (COD)");
-    setTrustRibbonDesc2(initialSettings.trust_ribbon_desc_2 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_2 || "Pay safely upon product arrival");
-    setTrustRibbonTitle3(initialSettings.trust_ribbon_title_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_3 || "100% Genuine & Authentic");
-    setTrustRibbonDesc3(initialSettings.trust_ribbon_desc_3 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_3 || "Official manufacturer warranty coverage");
-    setTrustRibbonTitle4(initialSettings.trust_ribbon_title_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_title_4 || "7-Day Easy Replacement");
-    setTrustRibbonDesc4(initialSettings.trust_ribbon_desc_4 || DEFAULT_THEME_SETTINGS.trust_ribbon_desc_4 || "Hassle-free returns & replacement policy");
-    setFooterFeaturesEnabled(initialSettings.footer_features_enabled ?? DEFAULT_THEME_SETTINGS.footer_features_enabled ?? true);
-    setFooterFeatureTitle1(initialSettings.footer_feature_title_1 || DEFAULT_THEME_SETTINGS.footer_feature_title_1 || "Free Express Shipping");
-    setFooterFeatureDesc1(initialSettings.footer_feature_desc_1 || DEFAULT_THEME_SETTINGS.footer_feature_desc_1 || "Complimentary delivery inside & outside Dhaka.");
-    setFooterFeatureLink1(initialSettings.footer_feature_link_1 || DEFAULT_THEME_SETTINGS.footer_feature_link_1 || "/shipping-policy");
-    setFooterFeatureTitle2(initialSettings.footer_feature_title_2 || DEFAULT_THEME_SETTINGS.footer_feature_title_2 || "2-Year Studio Warranty");
-    setFooterFeatureDesc2(initialSettings.footer_feature_desc_2 || DEFAULT_THEME_SETTINGS.footer_feature_desc_2 || "Comprehensive hardware protection & zero-cost repair.");
-    setFooterFeatureLink2(initialSettings.footer_feature_link_2 || DEFAULT_THEME_SETTINGS.footer_feature_link_2 || "/refund-policy");
-    setFooterFeatureTitle3(initialSettings.footer_feature_title_3 || DEFAULT_THEME_SETTINGS.footer_feature_title_3 || "30-Day Risk-Free Trial");
-    setFooterFeatureDesc3(initialSettings.footer_feature_desc_3 || DEFAULT_THEME_SETTINGS.footer_feature_desc_3 || "Hassle-free evaluation with prepaid RMA labels.");
-    setFooterFeatureLink3(initialSettings.footer_feature_link_3 || DEFAULT_THEME_SETTINGS.footer_feature_link_3 || "/refund-policy");
-    setFooterFeatureTitle4(initialSettings.footer_feature_title_4 || DEFAULT_THEME_SETTINGS.footer_feature_title_4 || "24/7 Audio Support");
-    setFooterFeatureDesc4(initialSettings.footer_feature_desc_4 || DEFAULT_THEME_SETTINGS.footer_feature_desc_4 || "Direct access to sound engineers & hardware specialists.");
-    setFooterFeatureLink4(initialSettings.footer_feature_link_4 || DEFAULT_THEME_SETTINGS.footer_feature_link_4 || "/contact");
+    setFlashDealsEnabled(initialSettings.flash_deals_enabled ?? true);
+    setFlashDealsTitle(initialSettings.flash_deals_title || "Limited Time Deals");
+    setFlashDealsBadge(initialSettings.flash_deals_badge || "Flash Deal Drop");
+    setTrustRibbonEnabled(initialSettings.trust_ribbon_enabled ?? true);
+    setTrustRibbonTitle1(initialSettings.trust_ribbon_title_1 || "Fast Express Delivery");
+    setTrustRibbonDesc1(initialSettings.trust_ribbon_desc_1 || "Dispatched within 24-48 hours");
+    setTrustRibbonTitle2(initialSettings.trust_ribbon_title_2 || "Cash on Delivery (COD)");
+    setTrustRibbonDesc2(initialSettings.trust_ribbon_desc_2 || "Pay safely upon product arrival");
+    setTrustRibbonTitle3(initialSettings.trust_ribbon_title_3 || "100% Genuine & Authentic");
+    setTrustRibbonDesc3(initialSettings.trust_ribbon_desc_3 || "Official manufacturer warranty coverage");
+    setTrustRibbonTitle4(initialSettings.trust_ribbon_title_4 || "7-Day Easy Replacement");
+    setTrustRibbonDesc4(initialSettings.trust_ribbon_desc_4 || "Hassle-free returns & replacement policy");
+    setFooterFeaturesEnabled(initialSettings.footer_features_enabled ?? true);
+    setFooterFeatureTitle1(initialSettings.footer_feature_title_1 || DEFAULT_THEME_SETTINGS.footer_feature_title_1);
+    setFooterFeatureDesc1(initialSettings.footer_feature_desc_1 || DEFAULT_THEME_SETTINGS.footer_feature_desc_1);
+    setFooterFeatureLink1(initialSettings.footer_feature_link_1 || DEFAULT_THEME_SETTINGS.footer_feature_link_1);
+    setFooterFeatureTitle2(initialSettings.footer_feature_title_2 || DEFAULT_THEME_SETTINGS.footer_feature_title_2);
+    setFooterFeatureDesc2(initialSettings.footer_feature_desc_2 || DEFAULT_THEME_SETTINGS.footer_feature_desc_2);
+    setFooterFeatureLink2(initialSettings.footer_feature_link_2 || DEFAULT_THEME_SETTINGS.footer_feature_link_2);
+    setFooterFeatureTitle3(initialSettings.footer_feature_title_3 || DEFAULT_THEME_SETTINGS.footer_feature_title_3);
+    setFooterFeatureDesc3(initialSettings.footer_feature_desc_3 || DEFAULT_THEME_SETTINGS.footer_feature_desc_3);
+    setFooterFeatureLink3(initialSettings.footer_feature_link_3 || DEFAULT_THEME_SETTINGS.footer_feature_link_3);
+    setFooterFeatureTitle4(initialSettings.footer_feature_title_4 || DEFAULT_THEME_SETTINGS.footer_feature_title_4);
+    setFooterFeatureDesc4(initialSettings.footer_feature_desc_4 || DEFAULT_THEME_SETTINGS.footer_feature_desc_4);
+    setFooterFeatureLink4(initialSettings.footer_feature_link_4 || DEFAULT_THEME_SETTINGS.footer_feature_link_4);
     setCustomerAuthBgImage(initialSettings.customer_auth_bg_image || "");
     setCustomerAuthBgColor(initialSettings.customer_auth_bg_color || "#ffffff");
     setCustomerAuthCardPosition(initialSettings.customer_auth_card_position || "left");
@@ -523,7 +592,12 @@ export default function AdminStorefrontPage() {
 
     try {
       const res = await adminApi.updateThemeSettings(payload);
-      setInitialSettings(res.settings);
+      const updatedBaseline = {
+        ...initialSettings,
+        ...payload,
+        ...(res?.settings || {}),
+      };
+      setInitialSettings(updatedBaseline);
       updateClientTheme(payload);
       toast.success("Storefront & homepage content saved successfully!");
     } catch (err: any) {
@@ -555,33 +629,6 @@ export default function AdminStorefrontPage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Storefront & Homepage Content</h1>
           <p className="text-xs text-slate-400 mt-0.5">Customize top announcement banner, hero section copy, and split-reveal intro</p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          {isDirty && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold border border-white/10 transition-colors cursor-pointer"
-            >
-              Discard Changes
-            </button>
-          )}
-
-          {/* Save Button */}
-          <button
-            type="button"
-            onClick={handleSaveStorefront}
-            disabled={saving || !isDirty}
-            className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all shadow-sm flex items-center gap-1.5 ${
-              isDirty && !saving
-                ? "bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-amber-500/20 ring-1 ring-amber-400/50"
-                : "bg-white/5 text-slate-500 border border-white/10 cursor-not-allowed opacity-40"
-            }`}
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{saving ? "Saving..." : "Save Storefront"}</span>
-          </button>
         </div>
       </div>
 
@@ -1563,6 +1610,16 @@ export default function AdminStorefrontPage() {
         </div>
 
       </div>
+
+      {/* Floating Contextual Save Bar */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={saving}
+        onSave={handleSaveStorefront}
+        onDiscard={handleReset}
+        saveLabel="Save Storefront"
+        message="Unsaved storefront changes"
+      />
 
     </div>
   );

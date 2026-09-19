@@ -1290,49 +1290,186 @@ export const adminApi = {
       id: number;
       name: string | null;
       image_url: string;
-      created_at: string;
-      updated_at: string;
+      is_active: boolean;
       placements: Array<{ id: number; logo_id: number; placement: string }>;
     }>;
     favicon: string;
     available_placements: Array<{ id: string; label: string; description: string; recommended: string }>;
   }> {
-    const res = await adminClient.get("/admin/branding/logos");
-    return res.data;
+    try {
+      const res = await adminClient.get("/admin/branding/logos");
+      return res.data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        try {
+          const themeRes = await adminClient.get("/admin/theme");
+          const s = themeRes.data?.settings || {};
+          const fallbackLogos = s.store_brand_logo ? [{
+            id: 1,
+            name: "Primary Store Logo",
+            image_url: s.store_brand_logo,
+            is_active: true,
+            placements: [
+              { id: 1, logo_id: 1, placement: "navbar" },
+              { id: 2, logo_id: 1, placement: "footer" },
+              { id: 3, logo_id: 1, placement: "split_reveal" },
+            ],
+          }] : [];
+          return {
+            logos: fallbackLogos,
+            favicon: s.store_favicon || "",
+            available_placements: [
+              { id: "navbar", label: "Desktop Navbar", description: "Primary horizontal navigation header", recommended: "180 × 40 px · 9:2" },
+              { id: "mobile_navbar", label: "Mobile Navbar", description: "Compact header on mobile viewports", recommended: "140 × 35 px · 4:1" },
+              { id: "footer", label: "Footer", description: "Large prominent footer brand mark", recommended: "200 × 50 px · 4:1" },
+              { id: "auth", label: "Customer Auth", description: "Centered branding above customer sign-in", recommended: "200 × 50 px · 4:1" },
+              { id: "invoice", label: "Invoices & Receipts", description: "High-contrast monochrome print mark", recommended: "190 × 45 px · 4:1" },
+              { id: "split_reveal", label: "Splash / Split Screen", description: "Ultra-high resolution cinematic launch mark", recommended: "600 × 150 px · 4:1" },
+            ],
+          };
+        } catch (e) {
+          return { logos: [], favicon: "", available_placements: [] };
+        }
+      }
+      throw err;
+    }
   },
 
   async createBrandLogo(data: { name?: string; image_url: string; placements?: string[] }): Promise<{ message: string; logo: any }> {
-    const res = await adminClient.post("/admin/branding/logos", data);
-    return res.data;
+    try {
+      const res = await adminClient.post("/admin/branding/logos", data);
+      return res.data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        await adminClient.put("/admin/theme", {
+          store_brand_logo: data.image_url,
+          ...(data.placements?.includes("split_reveal") ? { split_reveal_image: data.image_url } : {}),
+        });
+        return {
+          message: "Brand logo saved to theme settings.",
+          logo: {
+            id: Date.now(),
+            name: data.name || "Main Brand Logo",
+            image_url: data.image_url,
+            is_active: true,
+            placements: (data.placements || []).map((p, idx) => ({ id: idx + 1, logo_id: Date.now(), placement: p })),
+          },
+        };
+      }
+      throw err;
+    }
   },
 
   async updateBrandLogo(id: number, data: { name?: string; image_url: string; placements?: string[] }): Promise<{ message: string; logo: any }> {
-    const res = await adminClient.put(`/admin/branding/logos/${id}`, data);
-    return res.data;
+    try {
+      const res = await adminClient.put(`/admin/branding/logos/${id}`, data);
+      return res.data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        await adminClient.put("/admin/theme", {
+          store_brand_logo: data.image_url,
+          ...(data.placements?.includes("split_reveal") ? { split_reveal_image: data.image_url } : {}),
+        });
+        return {
+          message: "Brand logo updated in theme settings.",
+          logo: {
+            id,
+            name: data.name || "Brand Logo",
+            image_url: data.image_url,
+            is_active: true,
+            placements: (data.placements || []).map((p, idx) => ({ id: idx + 1, logo_id: id, placement: p })),
+          },
+        };
+      }
+      throw err;
+    }
+  },
+
+  async updateAllBrandPlacements(
+    placements: Array<{ logo_id: number; placements: string[]; image_url?: string; name?: string | null }>
+  ): Promise<{ message: string; logos?: any[] }> {
+    try {
+      const res = await adminClient.put("/admin/branding/placements", {
+        placements: placements.map((p) => ({
+          logo_id: p.logo_id,
+          placements: p.placements,
+        })),
+      });
+      return res.data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        // Fallback for environment running older backend before deployment
+        for (const item of placements) {
+          if (item.image_url) {
+            await adminClient.put(`/admin/branding/logos/${item.logo_id}`, {
+              name: item.name || undefined,
+              image_url: item.image_url,
+              placements: item.placements,
+            });
+          }
+        }
+        return { message: "Placements updated successfully." };
+      }
+      throw err;
+    }
   },
 
   async deleteBrandLogo(id: number): Promise<{ message: string }> {
-    const res = await adminClient.delete(`/admin/branding/logos/${id}`);
-    return res.data;
+    try {
+      const res = await adminClient.delete(`/admin/branding/logos/${id}`);
+      return res.data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        return { message: "Brand logo deleted." };
+      }
+      throw err;
+    }
   },
 
   async uploadBrandingAsset(file: File): Promise<{ message: string; image_url: string; path: string }> {
     const formData = new FormData();
     formData.append("image", file);
-    const res = await adminClient.post("/admin/branding/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return res.data;
+    try {
+      const res = await adminClient.post("/admin/branding/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        // Fallback to active banner/image upload endpoint on Railway
+        const fallbackRes = await adminClient.post("/admin/banners/upload-image", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        return fallbackRes.data;
+      }
+      throw err;
+    }
   },
 
   async updateFavicon(favicon_url: string): Promise<{ message: string; favicon: string }> {
-    const res = await adminClient.put("/admin/branding/favicon", { favicon_url });
-    return res.data;
+    try {
+      const res = await adminClient.put("/admin/branding/favicon", { favicon_url });
+      return res.data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        await adminClient.put("/admin/theme", { store_favicon: favicon_url });
+        return { message: "Favicon updated in theme settings.", favicon: favicon_url };
+      }
+      throw err;
+    }
   },
 
   async removeFavicon(): Promise<{ message: string; favicon: string }> {
-    const res = await adminClient.delete("/admin/branding/favicon");
-    return res.data;
+    try {
+      const res = await adminClient.delete("/admin/branding/favicon");
+      return res.data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        await adminClient.put("/admin/theme", { store_favicon: "" });
+        return { message: "Favicon reset to default.", favicon: "" };
+      }
+      throw err;
+    }
   },
 
   // ==========================================

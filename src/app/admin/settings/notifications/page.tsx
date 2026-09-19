@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { 
   Bell, 
   Save, 
@@ -17,7 +17,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { NotificationTemplate } from "@/types";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
-import { AdminPageHeader } from "@/components/admin/ui";
+import { AdminPageHeader, AdminSaveBar } from "@/components/admin/ui";
 import { toast } from "sonner";
 
 const TEMPLATE_KEYS = [
@@ -39,6 +39,7 @@ const VARIABLE_CHIPS = [
 
 export default function AdminNotificationTemplatesPage() {
   const [templates, setTemplates] = useState<Record<string, NotificationTemplate>>({});
+  const [initialTemplates, setInitialTemplates] = useState<Record<string, NotificationTemplate>>({});
   const [selectedKey, setSelectedKey] = useState("order_confirmed");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,6 +50,7 @@ export default function AdminNotificationTemplatesPage() {
       const res = await adminApi.getExtendedSettings();
       if (res.notification_templates) {
         setTemplates(res.notification_templates);
+        setInitialTemplates(res.notification_templates);
       }
     } catch (err) {
       toast.error("Failed to load notification templates.");
@@ -60,6 +62,21 @@ export default function AdminNotificationTemplatesPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const isDirty = useMemo(() => {
+    return JSON.stringify(templates) !== JSON.stringify(initialTemplates);
+  }, [templates, initialTemplates]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
 
   const currentTpl = templates[selectedKey] || {
     title: "",
@@ -83,10 +100,17 @@ export default function AdminNotificationTemplatesPage() {
     toast.info(`Inserted ${chip}`);
   };
 
+  const handleDiscard = () => {
+    setTemplates(initialTemplates);
+    toast.info("Unsaved notification changes discarded.");
+  };
+
   const handleSaveAll = async () => {
+    if (!isDirty || saving) return;
     setSaving(true);
     try {
       await adminApi.updateSettingsGroup("notification_templates", templates);
+      setInitialTemplates(templates);
       toast.success("Notification message templates saved successfully.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to save message templates.");
@@ -104,16 +128,6 @@ export default function AdminNotificationTemplatesPage() {
           { label: "Settings", href: "/admin/settings" },
           { label: "Notification Templates", href: "/admin/settings/notifications" },
         ]}
-        actions={
-          <button
-            onClick={handleSaveAll}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>Save All Templates</span>
-          </button>
-        }
       />
 
       <SettingsNavTabs />
@@ -232,6 +246,17 @@ export default function AdminNotificationTemplatesPage() {
           </div>
         </div>
       )}
+
+      {/* Floating Contextual Unsaved Changes Dock */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={saving}
+        onSave={handleSaveAll}
+        onDiscard={handleDiscard}
+        saveLabel="Save All Templates"
+        discardLabel="Discard"
+        message="Unsaved notification templates"
+      />
     </div>
   );
 }

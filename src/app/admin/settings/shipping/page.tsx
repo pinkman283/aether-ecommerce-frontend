@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { 
   Truck, 
   Plus, 
@@ -19,13 +19,14 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { ShippingZone } from "@/types";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
-import { AdminPageHeader, AdminEmptyState } from "@/components/admin/ui";
+import { AdminPageHeader, AdminEmptyState, AdminSaveBar } from "@/components/admin/ui";
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 export default function AdminShippingSettingsPage() {
   const [zones, setZones] = useState<ShippingZone[]>([]);
+  const [initialZones, setInitialZones] = useState<ShippingZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -46,7 +47,9 @@ export default function AdminShippingSettingsPage() {
     setLoading(true);
     try {
       const res = await adminApi.getExtendedSettings();
-      setZones(res.shipping_zones || []);
+      const loaded = res.shipping_zones || [];
+      setZones(loaded);
+      setInitialZones(loaded);
     } catch (err) {
       toast.error("Failed to load shipping settings.");
     } finally {
@@ -57,6 +60,26 @@ export default function AdminShippingSettingsPage() {
   useEffect(() => {
     loadSettings();
   }, []);
+
+  const isDirty = useMemo(() => {
+    return JSON.stringify(zones) !== JSON.stringify(initialZones);
+  }, [zones, initialZones]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleDiscard = () => {
+    setZones(initialZones);
+    toast.info("Unsaved changes discarded.");
+  };
 
   const handleOpenCreate = () => {
     setEditingIndex(null);
@@ -113,6 +136,7 @@ export default function AdminShippingSettingsPage() {
 
       try {
         await adminApi.updateSettingsGroup("shipping_zones", updatedZones);
+        setInitialZones(updatedZones);
         if (nextState) {
           toast.success(`Free shipping enabled for ${zones[editingIndex].name} (Over ৳${thresholdToUse.toLocaleString()})`);
         } else {
@@ -154,6 +178,7 @@ export default function AdminShippingSettingsPage() {
 
     try {
       await adminApi.updateSettingsGroup("shipping_zones", updatedZones);
+      setInitialZones(updatedZones);
       if (nextEnabled) {
         toast.success(`Free shipping enabled for ${target.name} (Over ৳${restoredThreshold.toLocaleString()})`);
       } else {
@@ -171,6 +196,7 @@ export default function AdminShippingSettingsPage() {
     setZones(updated);
     try {
       await adminApi.updateSettingsGroup("shipping_zones", updated);
+      setInitialZones(updated);
       toast.success(`Shipping zone "${target?.name || ""}" removed.`);
     } catch (err: any) {
       toast.info("Zone removed from draft list. Click 'Save Changes' to persist.");
@@ -207,6 +233,7 @@ export default function AdminShippingSettingsPage() {
 
     try {
       await adminApi.updateSettingsGroup("shipping_zones", updated);
+      setInitialZones(updated);
       toast.success("Shipping zone saved successfully.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Zone updated in draft list. Click 'Save Changes' to retry.");
@@ -217,6 +244,7 @@ export default function AdminShippingSettingsPage() {
     setSaving(true);
     try {
       await adminApi.updateSettingsGroup("shipping_zones", zones);
+      setInitialZones(zones);
       toast.success("Shipping zones successfully updated & saved.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to save shipping zones.");
@@ -235,23 +263,14 @@ export default function AdminShippingSettingsPage() {
           { label: "Shipping Zones", href: "/admin/settings/shipping" },
         ]}
         actions={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleOpenCreate}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Shipping Zone
-            </button>
-            <button
-              onClick={handleSaveAll}
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              Save Changes
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Shipping Zone</span>
+          </button>
         }
       />
 
@@ -501,6 +520,17 @@ export default function AdminShippingSettingsPage() {
           </form>
         </SheetContent>
       </Sheet>
+
+      {/* Floating Contextual Unsaved Changes Dock */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={saving}
+        onSave={handleSaveAll}
+        onDiscard={handleDiscard}
+        saveLabel="Save Changes"
+        discardLabel="Discard"
+        message="Unsaved shipping zones"
+      />
     </div>
   );
 }

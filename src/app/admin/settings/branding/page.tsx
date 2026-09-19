@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { 
   Store, 
   Save, 
@@ -13,12 +13,14 @@ import {
   Globe,
   X,
   Layers,
-  Check
+  Check,
+  RotateCcw
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { useThemeStore, DEFAULT_THEME_SETTINGS } from "@/store/useThemeStore";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
 import { ImageUploadGuidance } from "@/components/admin/ui/ImageUploadGuidance";
+import { AdminSaveBar } from "@/components/admin/ui";
 import { toast } from "sonner";
 
 interface BrandLogoPlacementRecord {
@@ -31,6 +33,7 @@ interface BrandLogo {
   id: number;
   name: string | null;
   image_url: string;
+  is_active?: boolean;
   placements: BrandLogoPlacementRecord[];
 }
 
@@ -68,6 +71,8 @@ export default function AdminBrandingPage() {
 
   // Brand Logos State
   const [logos, setLogos] = useState<BrandLogo[]>([]);
+  const [savedLogos, setSavedLogos] = useState<BrandLogo[]>([]);
+  const [savingPlacements, setSavingPlacements] = useState(false);
   const [availablePlacements, setAvailablePlacements] = useState<PlacementOption[]>(DEFAULT_PLACEMENTS);
   const [logoUploadingId, setLogoUploadingId] = useState<number | "new" | null>(null);
 
@@ -112,7 +117,21 @@ export default function AdminBrandingPage() {
       });
 
       setFaviconUrl(brandingRes.favicon || s.store_favicon || "");
-      setLogos(brandingRes.logos || []);
+      const resolvedLogos: BrandLogo[] = (brandingRes.logos && brandingRes.logos.length > 0)
+        ? (brandingRes.logos as BrandLogo[])
+        : (s.store_brand_logo ? [{
+            id: 1,
+            name: "Primary Store Logo",
+            image_url: s.store_brand_logo,
+            is_active: true,
+            placements: [
+              { id: 1, logo_id: 1, placement: "navbar" },
+              { id: 2, logo_id: 1, placement: "footer" },
+              { id: 3, logo_id: 1, placement: "split_reveal" },
+            ],
+          }] : []);
+      setLogos(resolvedLogos);
+      setSavedLogos(resolvedLogos);
       if (brandingRes.available_placements && brandingRes.available_placements.length > 0) {
         setAvailablePlacements(brandingRes.available_placements);
       }
@@ -128,31 +147,10 @@ export default function AdminBrandingPage() {
     loadData();
   }, []);
 
-  // Save Store Identity
+  // Identity Dirty State
   const isIdentityDirty =
     brandName.trim() !== initialIdentity.name.trim() ||
     brandTagline.trim() !== initialIdentity.tagline.trim();
-
-  const handleSaveIdentity = async () => {
-    if (!isIdentityDirty) return;
-    setSavingIdentity(true);
-    try {
-      const themeRes = await adminApi.getThemeSettings();
-      const payload = {
-        ...themeRes.settings,
-        store_brand_name: brandName.trim(),
-        store_brand_tagline: brandTagline.trim(),
-      };
-      await adminApi.updateThemeSettings(payload);
-      updateClientTheme(payload);
-      setInitialIdentity({ name: brandName.trim(), tagline: brandTagline.trim() });
-      toast.success("Store identity updated successfully!");
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update store identity.");
-    } finally {
-      setSavingIdentity(false);
-    }
-  };
 
   // Favicon Handlers
   const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,73 +199,167 @@ export default function AdminBrandingPage() {
     return (logo.placements || []).map((p) => (typeof p === "string" ? p : p.placement));
   };
 
+  // Fingerprint for dirty checking placements
+  const getPlacementsFingerprint = (list: BrandLogo[]) => {
+    return list
+      .map((l) => ({
+        id: l.id,
+        placements: getLogoPlacements(l).slice().sort(),
+      }))
+      .sort((a, b) => a.id - b.id);
+  };
+
+  const isPlacementsDirty = useMemo(() => {
+    return JSON.stringify(getPlacementsFingerprint(logos)) !== JSON.stringify(getPlacementsFingerprint(savedLogos));
+  }, [logos, savedLogos]);
+
+  // Unified page-wide dirty state and saving state
+  const isDirty = isPlacementsDirty || isIdentityDirty;
+  const isSaving = savingPlacements || savingIdentity;
+
+  // Warn on page unload if changes are pending
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
   // Find logo currently holding a placement
   const findLogoWithPlacement = (placementKey: string): BrandLogo | undefined => {
     return logos.find((l) => getLogoPlacements(l).includes(placementKey));
   };
 
-  // Toggle placement on an existing logo
-  const handleTogglePlacement = async (targetLogo: BrandLogo, placementKey: string) => {
+  // Toggle placement on an existing logo (pure local staging)
+  const handleTogglePlacement = (targetLogo: BrandLogo, placementKey: string) => {
     const currentPlacements = getLogoPlacements(targetLogo);
     const isCurrentlyChecked = currentPlacements.includes(placementKey);
 
-    if (isCurrentlyChecked) {
-      // Uncheck: simply remove from this logo
-      const updatedPlacements = currentPlacements.filter((p) => p !== placementKey);
-      await updateLogoPlacements(targetLogo.id, updatedPlacements);
-      return;
-    }
+    setLogos((prevLogos) =>
+      prevLogos.map((l) => {
+        const logoPlacements = getLogoPlacements(l);
+        if (l.id === targetLogo.id) {
+          // Toggle on/off for target logo
+          const nextPlacements = isCurrentlyChecked
+            ? logoPlacements.filter((p) => p !== placementKey)
+            : Array.from(new Set([...logoPlacements, placementKey]));
 
-    // Check: see if it conflicts with another logo
-    const conflictingLogo = findLogoWithPlacement(placementKey);
-    if (conflictingLogo && conflictingLogo.id !== targetLogo.id) {
-      const placementLabel = availablePlacements.find((p) => p.id === placementKey)?.label || placementKey;
-      setConflictModal({
-        isOpen: true,
-        placement: placementKey,
-        placementLabel,
-        existingLogoName: conflictingLogo.name || `Logo #${conflictingLogo.id}`,
-        targetLogoId: targetLogo.id,
-      });
-      return;
-    }
-
-    // No conflict, add directly
-    const updatedPlacements = [...currentPlacements, placementKey];
-    await updateLogoPlacements(targetLogo.id, updatedPlacements);
+          return {
+            ...l,
+            placements: nextPlacements.map((p, idx) => ({
+              id: idx + 1,
+              logo_id: l.id,
+              placement: p,
+            })),
+          };
+        } else {
+          // If turning this placement ON on targetLogo, remove it from any other logo to enforce 1-to-1 surface placement
+          if (!isCurrentlyChecked && logoPlacements.includes(placementKey)) {
+            const nextPlacements = logoPlacements.filter((p) => p !== placementKey);
+            return {
+              ...l,
+              placements: nextPlacements.map((p, idx) => ({
+                id: idx + 1,
+                logo_id: l.id,
+                placement: p,
+              })),
+            };
+          }
+          return l;
+        }
+      })
+    );
   };
 
   // Confirm reassignment from conflict modal
-  const handleConfirmReassignment = async () => {
+  const handleConfirmReassignment = () => {
     const { targetLogoId, placement } = conflictModal;
     setConflictModal((prev) => ({ ...prev, isOpen: false }));
 
     const targetLogo = logos.find((l) => l.id === targetLogoId);
     if (!targetLogo) return;
 
-    const currentPlacements = getLogoPlacements(targetLogo);
-    const updatedPlacements = Array.from(new Set([...currentPlacements, placement]));
-    await updateLogoPlacements(targetLogoId, updatedPlacements);
+    handleTogglePlacement(targetLogo, placement);
   };
 
-  // Update placements on backend and sync state
-  const updateLogoPlacements = async (logoId: number, placements: string[]) => {
+  // Discard all unstaged changes across identity and placements
+  const handleDiscardAll = () => {
+    setLogos(JSON.parse(JSON.stringify(savedLogos)));
+    setBrandName(initialIdentity.name);
+    setBrandTagline(initialIdentity.tagline);
+    toast.info("All unsaved changes discarded.");
+  };
+
+  // Unified save handler committing both identity and placements in one operation
+  const handleSaveAll = async () => {
+    if (!isDirty || isSaving) return;
+
+    setSavingPlacements(true);
+    setSavingIdentity(true);
     try {
-      const targetLogo = logos.find((l) => l.id === logoId);
-      if (!targetLogo) return;
+      const promises: Promise<any>[] = [];
 
-      const res = await adminApi.updateBrandLogo(logoId, {
-        name: targetLogo.name || undefined,
-        image_url: targetLogo.image_url,
-        placements,
-      });
+      if (isPlacementsDirty) {
+        const payload = logos.map((l) => ({
+          logo_id: l.id,
+          placements: getLogoPlacements(l),
+          image_url: l.image_url,
+          name: l.name,
+        }));
+        promises.push(adminApi.updateAllBrandPlacements(payload));
+      }
 
-      // Reload fresh logos from server to ensure perfect synchronization across all entries
-      const brandingRes = await adminApi.getBrandLogos();
-      setLogos(brandingRes.logos || []);
-      toast.success("Placements updated successfully.");
+      if (isIdentityDirty) {
+        promises.push(
+          (async () => {
+            const themeRes = await adminApi.getThemeSettings();
+            const payload = {
+              ...themeRes.settings,
+              store_brand_name: brandName.trim(),
+              store_brand_tagline: brandTagline.trim(),
+            };
+            await adminApi.updateThemeSettings(payload);
+            updateClientTheme(payload);
+            setInitialIdentity({ name: brandName.trim(), tagline: brandTagline.trim() });
+          })()
+        );
+      }
+
+      await Promise.all(promises);
+
+      if (isPlacementsDirty) {
+        setSavedLogos(JSON.parse(JSON.stringify(logos)));
+        const navLogo = logos.find((l) => getLogoPlacements(l).includes("navbar"));
+        const splitLogo = logos.find((l) => getLogoPlacements(l).includes("split_reveal"));
+
+        const themeUpdates: Record<string, string> = {};
+        if (navLogo) {
+          themeUpdates.store_brand_logo = navLogo.image_url;
+        }
+        if (splitLogo) {
+          themeUpdates.split_reveal_logo = splitLogo.image_url;
+        }
+        if (Object.keys(themeUpdates).length > 0) {
+          updateClientTheme(themeUpdates);
+        }
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("store_brand_logo_updated", { detail: navLogo?.image_url || "" }));
+          window.dispatchEvent(new CustomEvent("theme_updated", { detail: themeUpdates }));
+        }
+      }
+
+      toast.success("Branding settings saved successfully!");
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update placement.");
+      console.error("Failed to save branding settings:", err);
+      toast.error(err.response?.data?.message || "Failed to save settings.");
+    } finally {
+      setSavingPlacements(false);
+      setSavingIdentity(false);
     }
   };
 
@@ -282,6 +374,9 @@ export default function AdminBrandingPage() {
         placements: getLogoPlacements(targetLogo),
       });
       setLogos((prev) =>
+        prev.map((l) => (l.id === logoId ? { ...l, name: newName } : l))
+      );
+      setSavedLogos((prev) =>
         prev.map((l) => (l.id === logoId ? { ...l, name: newName } : l))
       );
       toast.success("Logo label updated.");
@@ -306,6 +401,7 @@ export default function AdminBrandingPage() {
 
       const brandingRes = await adminApi.getBrandLogos();
       setLogos(brandingRes.logos || []);
+      setSavedLogos(brandingRes.logos || []);
       toast.success("Logo image replaced successfully!");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to replace logo image.");
@@ -329,6 +425,7 @@ export default function AdminBrandingPage() {
       await adminApi.deleteBrandLogo(logoId);
       const brandingRes = await adminApi.getBrandLogos();
       setLogos(brandingRes.logos || []);
+      setSavedLogos(brandingRes.logos || []);
       toast.success("Logo deleted successfully.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to delete logo.");
@@ -352,6 +449,7 @@ export default function AdminBrandingPage() {
 
       const brandingRes = await adminApi.getBrandLogos();
       setLogos(brandingRes.logos || []);
+      setSavedLogos(brandingRes.logos || []);
       setShowAddModal(false);
       setNewLogoName("");
       setNewLogoUrl("");
@@ -397,7 +495,7 @@ export default function AdminBrandingPage() {
       <SettingsNavTabs />
 
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.06]">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Branding & Logo Management</h1>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -467,7 +565,7 @@ export default function AdminBrandingPage() {
               type="file"
               ref={faviconInputRef}
               onChange={handleFaviconUpload}
-              accept="image/png,image/x-icon,image/webp,image/jpeg"
+              accept="image/png,image/x-icon,image/svg+xml,image/jpeg,image/webp"
               className="hidden"
             />
 
@@ -514,7 +612,7 @@ export default function AdminBrandingPage() {
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer self-start sm:self-auto shadow-sm"
+            className="px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" />
             <span>Add another logo</span>
@@ -679,19 +777,6 @@ export default function AdminBrandingPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSaveIdentity}
-            disabled={savingIdentity || !isIdentityDirty}
-            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 ${
-              isIdentityDirty && !savingIdentity
-                ? "bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-amber-500/20 ring-1 ring-amber-400/50"
-                : "bg-white/5 text-slate-500 border border-white/10 cursor-not-allowed opacity-40"
-            }`}
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{savingIdentity ? "Saving..." : "Save Identity"}</span>
-          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
@@ -884,6 +969,17 @@ export default function AdminBrandingPage() {
           </div>
         </div>
       )}
+
+      {/* Floating Contextual Unsaved Changes Dock */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={isSaving}
+        onSave={handleSaveAll}
+        onDiscard={handleDiscardAll}
+        saveLabel="Save Changes"
+        discardLabel="Discard"
+        message="Unsaved branding changes"
+      />
     </div>
   );
 }

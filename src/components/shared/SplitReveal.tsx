@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, animate } from "framer-motion";
 import { useAppTheme } from "@/components/providers/ThemeProvider";
@@ -12,20 +12,14 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
   const pathname = usePathname();
   const { theme } = useAppTheme();
   const isAdmin = pathname?.startsWith("/admin");
+  const hasStartedRef = useRef(false);
+  const activeAnimRef = useRef<{ stop: () => void } | null>(null);
 
-  // Determine initial visibility immediately so it covers the screen before first paint
+  // Determine initial visibility strictly from SSR-provided theme to guarantee 100% server/client parity
   const [isVisible, setIsVisible] = useState(() => {
     if (pathname?.startsWith("/admin")) return false;
     const enabled = initialTheme?.split_reveal_enabled ?? theme.split_reveal_enabled ?? true;
     if (enabled === false) return false;
-    if (typeof window !== "undefined") {
-      try {
-        const mode = initialTheme?.split_reveal_mode || theme.split_reveal_mode;
-        if (mode === "once_per_session" && sessionStorage.getItem("aether_split_reveal_seen")) {
-          return false;
-        }
-      } catch (e) {}
-    }
     return true;
   });
 
@@ -50,7 +44,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
     : (activeTheme.store_brand_name || "AETHER");
   const duration = activeTheme.split_reveal_duration || 2.2;
   const dimOpacity = activeTheme.split_reveal_dim ?? 0.45;
-  const logoUrl = resolveLogo(activeTheme, "split_reveal", "");
+  const logoUrl = resolveLogo(activeTheme, "split_reveal", "/branding/logo.png");
   const isVertical = ((activeTheme.split_reveal_direction || "vertical") === "vertical");
 
   // Keep image highly visible and bright, reduce dim overlay drastically
@@ -89,14 +83,34 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
     finishTimer = setTimeout(() => {
       setIsVisible(false);
       setIsOpening(false);
+      hasStartedRef.current = false;
+
+      // Only mark session seen after the animation has successfully completed
+      if (typeof window !== "undefined") {
+        try {
+          const currentMode = initialTheme?.split_reveal_mode || theme.split_reveal_mode;
+          if (currentMode === "once_per_session") {
+            sessionStorage.setItem("aether_split_reveal_seen", "true");
+            document.cookie = "aether_split_reveal_seen=true; path=/; SameSite=Lax";
+          }
+        } catch (e) {}
+      }
     }, totalAnimDuration);
 
-    return () => {
-      controls.stop();
-      if (openTimer) clearTimeout(openTimer);
-      if (finishTimer) clearTimeout(finishTimer);
+    activeAnimRef.current = {
+      stop: () => {
+        controls.stop();
+        if (openTimer) clearTimeout(openTimer);
+        if (finishTimer) clearTimeout(finishTimer);
+      },
     };
-  }, [openingDuration]);
+
+    return () => {
+      if (activeAnimRef.current) {
+        activeAnimRef.current.stop();
+      }
+    };
+  }, [openingDuration, initialTheme?.split_reveal_mode, theme.split_reveal_mode]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -110,28 +124,45 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
 
     // Check session mode
     const mode = initialTheme?.split_reveal_mode || theme.split_reveal_mode;
-    if (mode === "once_per_session") {
-      const hasSeen = sessionStorage.getItem("aether_split_reveal_seen");
-      if (hasSeen) {
-        setIsVisible(false);
-        return;
-      }
-      sessionStorage.setItem("aether_split_reveal_seen", "true");
+    if (mode === "once_per_session" && typeof window !== "undefined") {
+      try {
+        const hasSeen = sessionStorage.getItem("aether_split_reveal_seen") || document.cookie.includes("aether_split_reveal_seen=true");
+        if (hasSeen) {
+          setIsVisible(false);
+          return;
+        }
+      } catch (e) {}
     }
 
-    // Preload logo image immediately for instant frame-1 display on cold reload
-    if (logoUrl && typeof window !== "undefined") {
-      const img = new Image();
-      img.src = logoUrl;
+    // Preload logo and background images immediately for instant frame-1 display on cold reload
+    if (typeof window !== "undefined") {
+      if (logoUrl) {
+        const img = new Image();
+        img.src = logoUrl;
+      }
+      if (bgImage) {
+        const imgBg = new Image();
+        imgBg.src = bgImage;
+      }
     }
+
+    // If animation has already started, do not restart or tear down
+    if (hasStartedRef.current) {
+      return;
+    }
+    hasStartedRef.current = true;
 
     const cleanup = startRevealAnimation();
-    return cleanup;
-  }, [isAdmin, splitRevealEnabled, initialTheme?.split_reveal_mode, theme.split_reveal_mode, startRevealAnimation, logoUrl]);
+    return () => {
+      cleanup();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, splitRevealEnabled]);
 
   // Global event listener for admin live preview testing
   useEffect(() => {
     const handlePreviewEvent = () => {
+      hasStartedRef.current = false;
       startRevealAnimation();
     };
 
@@ -174,6 +205,7 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
         id="split-reveal-curtain"
         className="fixed inset-0 z-[99999] pointer-events-none overflow-hidden select-none"
         aria-hidden="true"
+        suppressHydrationWarning
       >
         {/* ========================================================================= */}
         {/* VERTICAL SPLIT: TOP & BOTTOM SHUTTERS */}

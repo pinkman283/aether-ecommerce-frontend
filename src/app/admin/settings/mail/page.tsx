@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { 
   Save, 
   Loader2, 
@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
-import { AdminPageHeader } from "@/components/admin/ui";
+import { AdminPageHeader, AdminSaveBar } from "@/components/admin/ui";
 import { toast } from "sonner";
 import { MailSenderEntry } from "@/types";
 
@@ -63,17 +63,25 @@ export default function AdminMailSettingsPage() {
   });
 
   const [senders, setSenders] = useState<Record<string, MailSenderEntry>>(DEFAULT_SENDERS);
+  const [initialConfig, setInitialConfig] = useState<Record<string, string>>({});
+  const [initialSenders, setInitialSenders] = useState<Record<string, MailSenderEntry>>({});
 
   const loadData = async () => {
     setLoading(true);
     try {
       const res = await adminApi.getExtendedSettings();
+      let loadedConfig = { ...config };
+      let loadedSenders = { ...DEFAULT_SENDERS };
       if (res.mail_configuration) {
-        setConfig((prev) => ({ ...prev, ...res.mail_configuration }));
+        loadedConfig = { ...loadedConfig, ...res.mail_configuration };
+        setConfig(loadedConfig);
       }
       if (res.mail_senders) {
-        setSenders((prev) => ({ ...prev, ...res.mail_senders }));
+        loadedSenders = { ...loadedSenders, ...res.mail_senders };
+        setSenders(loadedSenders);
       }
+      setInitialConfig(loadedConfig);
+      setInitialSenders(loadedSenders);
     } catch {
       toast.error("Failed to load mail configuration.");
     } finally {
@@ -84,6 +92,24 @@ export default function AdminMailSettingsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const isDirty = useMemo(() => {
+    return (
+      JSON.stringify(config) !== JSON.stringify(initialConfig) ||
+      JSON.stringify(senders) !== JSON.stringify(initialSenders)
+    );
+  }, [config, initialConfig, senders, initialSenders]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
 
   const handleConfigUpdate = (field: string, value: string) => {
     setConfig((prev) => ({ ...prev, [field]: value }));
@@ -103,14 +129,23 @@ export default function AdminMailSettingsPage() {
     }));
   };
 
+  const handleDiscard = () => {
+    setConfig(initialConfig);
+    setSenders(initialSenders);
+    toast.info("Unsaved mail changes discarded.");
+  };
+
   const handleSaveAll = async () => {
+    if (!isDirty || saving) return;
     setSaving(true);
     try {
       await Promise.all([
         adminApi.updateSettingsGroup("mail_configuration", config),
         adminApi.updateSettingsGroup("mail_senders", senders),
       ]);
-      toast.success("Settings saved successfully.");
+      setInitialConfig(config);
+      setInitialSenders(senders);
+      toast.success("Mail settings saved successfully.");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to save settings.");
     } finally {
@@ -130,16 +165,6 @@ export default function AdminMailSettingsPage() {
           { label: "Settings", href: "/admin/settings" },
           { label: "Mail Configuration", href: "/admin/settings/mail" },
         ]}
-        actions={
-          <button
-            onClick={handleSaveAll}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>Save Settings</span>
-          </button>
-        }
       />
 
       <SettingsNavTabs />
@@ -376,6 +401,17 @@ export default function AdminMailSettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Floating Contextual Unsaved Changes Dock */}
+      <AdminSaveBar
+        isDirty={isDirty}
+        isSaving={saving}
+        onSave={handleSaveAll}
+        onDiscard={handleDiscard}
+        saveLabel="Save Settings"
+        discardLabel="Discard"
+        message="Unsaved mail configurations"
+      />
     </div>
   );
 }
