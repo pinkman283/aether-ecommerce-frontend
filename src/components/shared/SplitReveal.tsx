@@ -13,18 +13,14 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
   const { theme } = useAppTheme();
   const isAdmin = pathname?.startsWith("/admin");
 
-  // Always merge initialTheme with dynamic context theme so client updates instantly reflect
-  const activeTheme = { ...(initialTheme || {}), ...theme };
-
-  const splitRevealEnabled = activeTheme.split_reveal_enabled ?? true;
-
   // Determine initial visibility immediately so it covers the screen before first paint
   const [isVisible, setIsVisible] = useState(() => {
     if (pathname?.startsWith("/admin")) return false;
-    if (splitRevealEnabled === false) return false;
+    const enabled = initialTheme?.split_reveal_enabled ?? theme.split_reveal_enabled ?? true;
+    if (enabled === false) return false;
     if (typeof window !== "undefined") {
       try {
-        const mode = activeTheme.split_reveal_mode;
+        const mode = initialTheme?.split_reveal_mode || theme.split_reveal_mode;
         if (mode === "once_per_session" && sessionStorage.getItem("aether_split_reveal_seen")) {
           return false;
         }
@@ -32,6 +28,17 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
     }
     return true;
   });
+
+  // During the reveal animation, SSR initialTheme takes priority over zustand store
+  // (which may still hold stale localStorage/default values until fetchTheme completes).
+  // After the reveal finishes, theme store values take over for live admin updates.
+  const activeTheme = isVisible
+    ? { ...theme, ...(initialTheme || {}) }
+    : { ...(initialTheme || {}), ...theme };
+
+  // Prefer initialTheme for the enabled check to prevent zustand defaults (false) from
+  // immediately hiding the splash before the store hydrates with fresh API data.
+  const splitRevealEnabled = initialTheme?.split_reveal_enabled ?? activeTheme.split_reveal_enabled ?? true;
 
   const [loaderProgress, setLoaderProgress] = useState(0);
   const [isOpening, setIsOpening] = useState(false);
