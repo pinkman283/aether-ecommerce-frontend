@@ -19,6 +19,7 @@
     "@radix-ui/react-tooltip": "^1.2.16",
     "@types/canvas-confetti": "^1.9.0",
     "@untitledui/icons": "^0.0.22",
+    "@upstash/redis": "^1.38.4",
     "axios": "^1.20.0",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",

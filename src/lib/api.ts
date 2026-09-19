@@ -5,6 +5,10 @@ const API_BASE_URL = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api")
   : (process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api");
 
+const STOREFRONT_PROXY_URL = typeof window !== "undefined"
+  ? "/api/storefront"
+  : (process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api");
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -14,8 +18,27 @@ export const apiClient = axios.create({
   timeout: 10000,
 });
 
+export const storefrontClient = axios.create({
+  baseURL: STOREFRONT_PROXY_URL,
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+  timeout: 10000,
+});
+
 // Attach bearer token dynamically if available in localStorage
 apiClient.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+storefrontClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("auth_token");
     if (token) {
@@ -36,13 +59,14 @@ let inFlightFeatured: Promise<{
 
 export const api = {
   client: apiClient,
+  storefrontClient,
 
-  // Storefront Homepage Banners (Deduplicated across concurrent callers)
+  // Storefront Homepage Banners (Cached via Redis Proxy & Deduplicated across concurrent callers)
   async getHomepageBanners(): Promise<HomepageBannersResponse> {
     if (inFlightHomepageBanners) {
       return inFlightHomepageBanners;
     }
-    inFlightHomepageBanners = apiClient
+    inFlightHomepageBanners = storefrontClient
       .get("/homepage/banners")
       .then((res) => res.data)
       .finally(() => {
@@ -53,7 +77,7 @@ export const api = {
     return inFlightHomepageBanners;
   },
 
-  // Track Banner Click
+  // Track Banner Click (Live Mutation - Direct to Laravel)
   async trackBannerClick(id: number): Promise<void> {
     try {
       await apiClient.post(`/banners/${id}/click`);
@@ -62,7 +86,7 @@ export const api = {
     }
   },
 
-  // Storefront Featured (Deduplicated across concurrent callers)
+  // Storefront Featured (Cached via Redis Proxy & Deduplicated across concurrent callers)
   async getFeatured(): Promise<{
     featured_products: Product[];
     new_arrivals: Product[];
@@ -72,7 +96,7 @@ export const api = {
     if (inFlightFeatured) {
       return inFlightFeatured;
     }
-    inFlightFeatured = apiClient
+    inFlightFeatured = storefrontClient
       .get("/featured")
       .then((res) => {
         const raw = res.data || {};
@@ -100,7 +124,7 @@ export const api = {
     return inFlightFeatured;
   },
 
-  // Products Catalog
+  // Products Catalog (Cached via Redis Proxy)
   async getProducts(params?: {
     category?: string | string[];
     categories?: string | string[];
@@ -125,25 +149,25 @@ export const api = {
     total: number;
     per_page: number;
   }> {
-    const res = await apiClient.get("/products", { params });
+    const res = await storefrontClient.get("/products", { params });
     return res.data;
   },
 
-  // Single Product
+  // Single Product (Cached via Redis Proxy)
   async getProduct(slug: string): Promise<{
     product: Product;
     related: Product[];
   }> {
-    const res = await apiClient.get(`/products/${slug}`);
+    const res = await storefrontClient.get(`/products/${slug}`);
     return res.data;
   },
 
-  // Categories (Deduplicated across concurrent callers)
+  // Categories (Cached via Redis Proxy & Deduplicated across concurrent callers)
   async getCategories(): Promise<Category[]> {
     if (inFlightCategories) {
       return inFlightCategories;
     }
-    inFlightCategories = apiClient
+    inFlightCategories = storefrontClient
       .get("/categories")
       .then((res) => {
         const data = res.data;
@@ -162,30 +186,30 @@ export const api = {
     return inFlightCategories;
   },
 
-
+  // Single Category (Cached via Redis Proxy)
   async getCategory(slug: string): Promise<Category> {
-    const res = await apiClient.get(`/categories/${slug}`);
+    const res = await storefrontClient.get(`/categories/${slug}`);
     return res.data;
   },
 
-  // Brands
+  // Brands (Cached via Redis Proxy)
   async getBrands(): Promise<Brand[]> {
-    const res = await apiClient.get("/brands");
+    const res = await storefrontClient.get("/brands");
     return res.data;
   },
 
   async getBrand(slug: string): Promise<Brand> {
-    const res = await apiClient.get(`/brands/${slug}`);
+    const res = await storefrontClient.get(`/brands/${slug}`);
     return res.data;
   },
 
-  // Coupon
+  // Coupon (Live Validation - Direct to Laravel)
   async validateCoupon(code: string, subtotal: number): Promise<CouponValidation> {
     const res = await apiClient.post("/coupons/validate", { code, subtotal });
     return res.data;
   },
 
-  // Orders & Checkout
+  // Orders & Checkout (Live Transactional - Direct to Laravel)
   async createOrder(data: {
     customer_name: string;
     customer_email: string;
@@ -217,6 +241,7 @@ export const api = {
     return res.data;
   },
 
+  // Shipping Zones (Cached via Redis Proxy)
   async getShippingZones(): Promise<{
     zones: Array<{
       id: string;
@@ -227,11 +252,11 @@ export const api = {
       is_active: boolean;
     }>;
   }> {
-    const res = await apiClient.get("/shipping-zones");
+    const res = await storefrontClient.get("/shipping-zones");
     return res.data;
   },
 
-  // Addresses
+  // Addresses (Live User PII - Direct to Laravel)
   async getAddresses(): Promise<Address[]> {
     const res = await apiClient.get("/addresses");
     return res.data;
@@ -246,7 +271,7 @@ export const api = {
     await apiClient.delete(`/addresses/${id}`);
   },
 
-  // Reviews
+  // Reviews (Live Mutation - Direct to Laravel)
   async submitReview(productId: number, data: {
     rating: number;
     title?: string;
@@ -257,7 +282,7 @@ export const api = {
     return res.data;
   },
 
-  // Auth
+  // Auth (Live Auth Operations - Direct to Laravel)
   async login(credentials: { email: string; password: string; remember?: boolean }): Promise<{
     message: string;
     token: string;
@@ -336,7 +361,7 @@ export const api = {
     await apiClient.post("/auth/logout");
   },
 
-  // Admin
+  // Admin (Direct to Laravel)
   async getAdminAnalytics(): Promise<AdminAnalytics> {
     const res = await apiClient.get("/admin/analytics");
     return res.data;
@@ -377,7 +402,7 @@ export const api = {
     return res.data;
   },
 
-  // Checkout Lead Capture
+  // Checkout Lead Capture (Live Mutation - Direct to Laravel)
   async captureLead(data: {
     lead_id?: number | null;
     name: string;
@@ -394,7 +419,7 @@ export const api = {
   },
 
   // ==========================================
-  // Storefront Promotions & Coupons
+  // Storefront Promotions & Coupons (Live User State - Direct to Laravel)
   // ==========================================
   async evaluatePromotions(payload: {
     items: Array<{ product_id: number; variant_id?: number | null; quantity: number }>;
@@ -465,13 +490,13 @@ export const api = {
     return res.data;
   },
 
-  // Public Storefront CMS Pages
+  // Public Storefront CMS Pages (Cached via Redis Proxy)
   async getPage(slug: string): Promise<import("@/types").CmsPage> {
-    const res = await apiClient.get(`/pages/${slug}`);
+    const res = await storefrontClient.get(`/pages/${slug}`);
     return res.data;
   },
 
-  // Public Storefront Blog
+  // Public Storefront Blog Listing (Cached via Redis Proxy)
   async getBlogPosts(params?: { page?: number; category?: string; tag?: string }): Promise<{
     data: import("@/types").BlogPost[];
     current_page: number;
@@ -479,10 +504,11 @@ export const api = {
     total: number;
     per_page: number;
   }> {
-    const res = await apiClient.get("/blog/posts", { params });
+    const res = await storefrontClient.get("/blog/posts", { params });
     return res.data;
   },
 
+  // Single Blog Post (Live - Hits Laravel directly so views_count increment runs)
   async getBlogPost(slug: string): Promise<import("@/types").BlogPost> {
     const res = await apiClient.get(`/blog/posts/${slug}`);
     return res.data;
@@ -493,16 +519,16 @@ export const api = {
     return res.data;
   },
 
-  // Public Dynamic Homepage Sections
+  // Public Dynamic Homepage Sections (Cached via Redis Proxy)
   async getHomepageSections(): Promise<import("@/types").HomepageSection[]> {
-    const res = await apiClient.get("/homepage/sections");
-    return res.data.data;
+    const res = await storefrontClient.get("/homepage/sections");
+    return res.data.data || res.data;
   },
 
   async getSectionTabProducts(sectionId: number, tabId: string): Promise<import("@/types").Product[]> {
-    const res = await apiClient.get(`/homepage/sections/${sectionId}/tab-products`, {
+    const res = await storefrontClient.get(`/homepage/sections/${sectionId}/tab-products`, {
       params: { tab_id: tabId }
     });
-    return res.data.products;
+    return res.data.products || res.data;
   },
 };

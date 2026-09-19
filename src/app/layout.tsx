@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppProviders } from "@/components/providers/AppProviders";
 import { DynamicFavicon } from "@/components/shared/DynamicFavicon";
 import { cn } from "@/lib/utils";
+import { cachedFetch } from "@/lib/redis";
 import { DEFAULT_THEME_SETTINGS, ThemeSettings, getHexLuminance, useThemeStore } from "@/store/useThemeStore";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -74,21 +75,28 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 async function getServerTheme(): Promise<ThemeSettings> {
-  try {
-    const apiUrl = process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api";
-    const res = await fetch(`${apiUrl}/theme-settings`, {
-      cache: "no-store",
-      next: { revalidate: 0 },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return { ...DEFAULT_THEME_SETTINGS, ...data };
+  return cachedFetch<ThemeSettings>(
+    "aether:theme:settings",
+    async () => {
+      try {
+        const apiUrl = process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api";
+        const res = await fetch(`${apiUrl}/theme-settings`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return { ...DEFAULT_THEME_SETTINGS, ...data };
+        }
+      } catch (err) {
+        console.warn("SSR theme fetch fallback triggered:", err);
+      }
+      return DEFAULT_THEME_SETTINGS;
+    },
+    {
+      ttlSeconds: 21600, // 6 hours
+      tags: ["theme"],
     }
-  } catch (err) {
-    console.warn("SSR theme fetch fallback triggered:", err);
-  }
-  return DEFAULT_THEME_SETTINGS;
+  );
 }
 
 export default async function RootLayout({

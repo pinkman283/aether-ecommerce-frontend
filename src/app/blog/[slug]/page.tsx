@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import BlogPostClient from "./BlogPostClient";
+import { cachedFetch } from "@/lib/redis";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -11,15 +12,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const apiUrl = process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api";
 
   try {
-    const res = await fetch(`${apiUrl}/blog/posts/${slug}`, {
-      next: { revalidate: 120 },
-      signal: AbortSignal.timeout(4000),
-    });
+    const post = await cachedFetch<any>(
+      `aether:meta:blog:${slug}`,
+      async () => {
+        const res = await fetch(`${apiUrl}/blog/posts/${slug}`, {
+          signal: AbortSignal.timeout(4000),
+        });
+        if (!res.ok) return null;
+        return await res.json();
+      },
+      {
+        ttlSeconds: 21600, // 6 hours
+        tags: ["blog"],
+      }
+    );
 
-    if (res.ok) {
-      const post = await res.json();
-      if (post) {
-        const title = post.meta_title || post.title;
+    if (post) {
+      const title = post.meta_title || post.title;
         const description = post.meta_description || (post.excerpt || post.content ? (post.excerpt || post.content).replace(/<[^>]*>?/gm, "") : `Read ${post.title} on the official newsroom.`).trim().slice(0, 160);
         const imageUrl = post.featured_image || `${siteUrl}/favicon.ico`;
         const imageAlt = post.featured_image_alt || title;
@@ -49,7 +58,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           },
         };
       }
-    }
   } catch (err) {
     console.warn("Blog post metadata fetch notice:", err);
   }

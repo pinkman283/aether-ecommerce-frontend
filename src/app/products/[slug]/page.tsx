@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ProductDetailClient from "./ProductDetailClient";
+import { cachedFetch } from "@/lib/redis";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -11,14 +12,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const apiUrl = process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api";
 
   try {
-    const res = await fetch(`${apiUrl}/products/${slug}`, {
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(4000),
-    });
+    const data = await cachedFetch<{ product?: any }>(
+      `aether:meta:product:${slug}`,
+      async () => {
+        const res = await fetch(`${apiUrl}/products/${slug}`, {
+          signal: AbortSignal.timeout(4000),
+        });
+        if (!res.ok) return {};
+        return await res.json();
+      },
+      {
+        ttlSeconds: 7200, // 2 hours
+        tags: ["products"],
+      }
+    );
 
-    if (res.ok) {
-      const data = await res.json();
-      const product = data?.product;
+    const product = data?.product;
 
       if (product) {
         const title = product.meta_title || product.name;
@@ -53,7 +62,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           },
         };
       }
-    }
   } catch (err) {
     console.warn("Product metadata dynamic fetch notice:", err);
   }
