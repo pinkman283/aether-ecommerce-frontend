@@ -114,6 +114,9 @@ export default function AdminStorefrontPage() {
   useEffect(() => {
     async function loadStorefrontSettings() {
       try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("aether_admin_token") : null;
+        if (!token) return;
+
         const res = await adminApi.getThemeSettings();
         const s = res.settings || {};
 
@@ -247,8 +250,10 @@ export default function AdminStorefrontPage() {
         setCustomerAuthCardPosition(initialNormalized.customer_auth_card_position);
 
         setInitialSettings(initialNormalized);
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        if (err?.response?.status !== 401 && err?.response?.status !== 403) {
+          console.error("Failed to load storefront settings:", err);
+        }
       } finally {
         setLoading(false);
       }

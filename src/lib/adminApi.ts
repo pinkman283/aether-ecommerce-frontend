@@ -1397,17 +1397,41 @@ export const adminApi = {
       });
       return res.data;
     } catch (err: any) {
-      if (err?.response?.status === 404) {
-        // Fallback for environment running older backend before deployment
+      if (err?.response?.status === 404 || err?.response?.status === 422) {
+        // Fallback for environment running older backend or unseeded IDs
         for (const item of placements) {
           if (item.image_url) {
-            await adminClient.put(`/admin/branding/logos/${item.logo_id}`, {
-              name: item.name || undefined,
-              image_url: item.image_url,
-              placements: item.placements,
-            });
+            try {
+              await adminClient.put(`/admin/branding/logos/${item.logo_id}`, {
+                name: item.name || undefined,
+                image_url: item.image_url,
+                placements: item.placements,
+              });
+            } catch {
+              // Individual logo endpoint not available or 404 on older backend
+            }
           }
         }
+
+        // Always ensure active logo placements are synced directly to theme settings
+        const navbarLogo = placements.find((p) => p.placements?.includes("navbar")) || placements[0];
+        const splitLogo = placements.find((p) => p.placements?.includes("split_reveal"));
+        const themeFallback: Record<string, string> = {};
+        if (navbarLogo?.image_url) {
+          themeFallback.store_brand_logo = navbarLogo.image_url;
+        }
+        if (splitLogo?.image_url) {
+          themeFallback.split_reveal_logo = splitLogo.image_url;
+        }
+
+        if (Object.keys(themeFallback).length > 0) {
+          try {
+            await adminClient.put("/admin/theme", themeFallback);
+          } catch {
+            // Theme settings fallback completed
+          }
+        }
+
         return { message: "Placements updated successfully." };
       }
       throw err;

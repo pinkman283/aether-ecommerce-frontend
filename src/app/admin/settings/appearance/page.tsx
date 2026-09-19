@@ -587,6 +587,9 @@ export default function AdminAppearancePage() {
 
     async function loadThemeSettings() {
       try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("aether_admin_token") : null;
+        if (!token) return;
+
         const res = await adminApi.getThemeSettings();
         const s = res.settings;
         setInitialSettings(s);
@@ -627,8 +630,10 @@ export default function AdminAppearancePage() {
         if (s.deleted_theme_ids && Array.isArray(s.deleted_theme_ids)) {
           setDeletedThemeIds(s.deleted_theme_ids);
         }
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        if (err?.response?.status !== 401 && err?.response?.status !== 403) {
+          console.error("Failed to load theme settings:", err);
+        }
       } finally {
         setLoading(false);
       }

@@ -51,6 +51,9 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     async function loadSettings() {
       try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("aether_admin_token") : null;
+        if (!token) return;
+
         const data = await adminApi.getSettings();
         const isVatOn = data.vat_enabled !== undefined
           ? (data.vat_enabled?.value === "true" || data.vat_enabled?.value === "1" || data.vat_enabled?.value === true)
@@ -78,8 +81,10 @@ export default function AdminSettingsPage() {
         if (data.free_shipping_threshold?.value) setFreeShippingThreshold(data.free_shipping_threshold.value);
         if (data.standard_shipping_rate?.value) setStandardShippingRate(data.standard_shipping_rate.value);
         if (data.priority_shipping_rate?.value) setPriorityShippingRate(data.priority_shipping_rate.value);
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        if (err?.response?.status !== 401 && err?.response?.status !== 403) {
+          console.error("Failed to load settings:", err);
+        }
       } finally {
         setLoading(false);
       }

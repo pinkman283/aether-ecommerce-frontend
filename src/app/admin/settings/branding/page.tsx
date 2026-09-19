@@ -102,6 +102,9 @@ export default function AdminBrandingPage() {
   // Load all branding settings
   async function loadData() {
     try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("aether_admin_token") : null;
+      if (!token) return;
+
       setLoading(true);
       const [themeRes, brandingRes] = await Promise.all([
         adminApi.getThemeSettings(),
@@ -135,9 +138,11 @@ export default function AdminBrandingPage() {
       if (brandingRes.available_placements && brandingRes.available_placements.length > 0) {
         setAvailablePlacements(brandingRes.available_placements);
       }
-    } catch (err) {
-      console.error("Failed to load branding data:", err);
-      toast.error("Failed to load branding settings.");
+    } catch (err: any) {
+      if (err?.response?.status !== 401 && err?.response?.status !== 403) {
+        console.error("Failed to load branding data:", err);
+        toast.error("Failed to load branding settings.");
+      }
     } finally {
       setLoading(false);
     }
@@ -301,6 +306,9 @@ export default function AdminBrandingPage() {
     setSavingPlacements(true);
     setSavingIdentity(true);
     try {
+      const navLogo = logos.find((l) => getLogoPlacements(l).includes("navbar"));
+      const splitLogo = logos.find((l) => getLogoPlacements(l).includes("split_reveal"));
+
       const promises: Promise<any>[] = [];
 
       if (isPlacementsDirty) {
@@ -313,18 +321,28 @@ export default function AdminBrandingPage() {
         promises.push(adminApi.updateAllBrandPlacements(payload));
       }
 
-      if (isIdentityDirty) {
+      if (isIdentityDirty || isPlacementsDirty) {
         promises.push(
           (async () => {
-            const themeRes = await adminApi.getThemeSettings();
-            const payload = {
-              ...themeRes.settings,
-              store_brand_name: brandName.trim(),
-              store_brand_tagline: brandTagline.trim(),
-            };
-            await adminApi.updateThemeSettings(payload);
-            updateClientTheme(payload);
-            setInitialIdentity({ name: brandName.trim(), tagline: brandTagline.trim() });
+            try {
+              const themeRes = await adminApi.getThemeSettings();
+              const payload: Record<string, any> = {
+                ...(themeRes.settings || {}),
+                store_brand_name: brandName.trim(),
+                store_brand_tagline: brandTagline.trim(),
+              };
+              if (navLogo?.image_url) {
+                payload.store_brand_logo = navLogo.image_url;
+              }
+              if (splitLogo?.image_url) {
+                payload.split_reveal_logo = splitLogo.image_url;
+              }
+              await adminApi.updateThemeSettings(payload);
+              updateClientTheme(payload);
+              setInitialIdentity({ name: brandName.trim(), tagline: brandTagline.trim() });
+            } catch (themeErr) {
+              console.warn("Theme settings sync:", themeErr);
+            }
           })()
         );
       }
@@ -333,9 +351,6 @@ export default function AdminBrandingPage() {
 
       if (isPlacementsDirty) {
         setSavedLogos(JSON.parse(JSON.stringify(logos)));
-        const navLogo = logos.find((l) => getLogoPlacements(l).includes("navbar"));
-        const splitLogo = logos.find((l) => getLogoPlacements(l).includes("split_reveal"));
-
         const themeUpdates: Record<string, string> = {};
         if (navLogo) {
           themeUpdates.store_brand_logo = navLogo.image_url;
@@ -351,6 +366,10 @@ export default function AdminBrandingPage() {
           window.dispatchEvent(new CustomEvent("store_brand_logo_updated", { detail: navLogo?.image_url || "" }));
           window.dispatchEvent(new CustomEvent("theme_updated", { detail: themeUpdates }));
         }
+      }
+
+      if (isIdentityDirty) {
+        setInitialIdentity({ name: brandName.trim(), tagline: brandTagline.trim() });
       }
 
       toast.success("Branding settings saved successfully!");

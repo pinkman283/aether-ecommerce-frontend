@@ -127,11 +127,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           return;
         }
         setAdminAuth(res.user, token);
+        setLoading(false);
       } catch (err) {
         logoutAdmin();
         router.push("/admin/login?error=session_expired");
-      } finally {
-        setLoading(false);
       }
     }
 
