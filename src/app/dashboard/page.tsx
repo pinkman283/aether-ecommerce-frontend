@@ -2,28 +2,26 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { 
   Package, 
   MapPin, 
-  Heart, 
   LogOut, 
   ExternalLink, 
-  Sparkles, 
   User as UserIcon, 
   Phone, 
   Mail, 
-  Truck,
-  ShieldCheck,
-  Sliders,
-  Save,
-  CheckCircle2,
-  Lock,
-  KeyRound,
-  X,
-  Gift,
-  Wallet,
-  ArrowRight
+  Truck, 
+  ShieldCheck, 
+  Save, 
+  Lock, 
+  KeyRound, 
+  X, 
+  Gift, 
+  CreditCard,
+  ArrowRight,
+  ShoppingBag,
+  Pencil,
+  ChevronRight
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api } from "@/lib/api";
@@ -38,7 +36,7 @@ export default function CustomerDashboardPage() {
   const { theme } = useAppTheme();
   const { user, isAuthenticated, logout, openAuthModal, updateUser } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [stats, setStats] = useState({ total_orders: 1, total_spent: 375.32 });
+  const [stats, setStats] = useState({ total_orders: 0, total_spent: 0 });
   const [loading, setLoading] = useState(true);
 
   // Edit Profile Form
@@ -62,14 +60,22 @@ export default function CustomerDashboardPage() {
 
     async function loadDashboard() {
       try {
-        const profileData = await api.getProfile();
+        const [profileData, ordersRes] = await Promise.all([
+          api.getProfile(),
+          api.getMyOrders({ per_page: 100 }).catch(() => ({ data: [] })),
+        ]);
+
+        const customerOrders = ordersRes.data && ordersRes.data.length > 0 
+          ? ordersRes.data 
+          : (profileData.user?.orders || []);
+
+        setOrders(customerOrders);
+
         setStats({
-          total_orders: profileData.total_orders || 1,
-          total_spent: profileData.total_spent || 375.32,
+          total_orders: typeof profileData.total_orders === "number" ? profileData.total_orders : customerOrders.length,
+          total_spent: typeof profileData.total_spent === "number" ? profileData.total_spent : 0,
         });
-        if (profileData.user?.orders) {
-          setOrders(profileData.user.orders);
-        }
+
         if (profileData.user) {
           const parts = (profileData.user.name || "").trim().split(" ");
           setFirstName(parts[0] || "");
@@ -78,14 +84,21 @@ export default function CustomerDashboardPage() {
           setPhone(profileData.user.phone || "");
           setAvatar(profileData.user.avatar || null);
         }
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        if (err?.response?.status === 401) {
+          logout();
+          toast.error("Your session has expired. Please sign in again.");
+          openAuthModal("login");
+        } else {
+          console.warn("Failed to load profile:", err?.message || err);
+          toast.error(err?.response?.data?.message || "Failed to load profile");
+        }
       } finally {
         setLoading(false);
       }
     }
     loadDashboard();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, logout, openAuthModal]);
 
   const handleDiscardEdit = () => {
     const parts = (user?.name || "").trim().split(" ");
@@ -99,7 +112,6 @@ export default function CustomerDashboardPage() {
     setConfirmPassword("");
     setShowPasswordChange(false);
     setIsEditing(false);
-    toast.info("Unsaved profile changes discarded.");
   };
 
   const origParts = (user?.name || "").trim().split(" ");
@@ -118,10 +130,11 @@ export default function CustomerDashboardPage() {
     e.preventDefault();
     if (!hasProfileChanges) {
       toast.info("No changes were made.");
+      setIsEditing(false);
       return;
     }
     if (!firstName.trim()) {
-      toast.error("First Name is mandatory.");
+      toast.error("First Name is required.");
       return;
     }
 
@@ -163,6 +176,7 @@ export default function CustomerDashboardPage() {
       }
 
       const res = await api.updateProfile(payload);
+      
       updateUser({
         name: fullName,
         email: res.user?.email || email.trim(),
@@ -170,7 +184,7 @@ export default function CustomerDashboardPage() {
         avatar
       });
 
-      toast.success(res.message || "Profile details and picture saved successfully!");
+      toast.success(res.message || "Profile updated successfully!");
       setIsEditing(false);
       setShowPasswordChange(false);
       setCurrentPassword("");
@@ -183,369 +197,282 @@ export default function CustomerDashboardPage() {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    const s = (status || "").toLowerCase();
+    if (s === "delivered" || s === "completed") {
+      return "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+    }
+    if (s === "shipped" || s === "in_transit") {
+      return "bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 border-purple-200 dark:border-purple-500/20";
+    }
+    if (s === "processing" || s === "confirmed") {
+      return "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/20";
+    }
+    if (s === "cancelled" || s === "refunded") {
+      return "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/20";
+    }
+    return "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20";
+  };
+
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto px-4 py-32 text-center space-y-4">
-        <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto">
-          <UserIcon className="w-8 h-8 text-indigo-400" />
+      <div className="max-w-md mx-auto px-4 py-28 text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
+          <UserIcon className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-black text-white">Sign In Required</h2>
-        <p className="text-xs text-slate-400">
-          Sign in to your {theme.store_brand_name || "AETHER"} account to review past hardware orders, track shipments, and manage saved addresses.
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Sign In Required</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Please sign in to view your orders, track shipments, and manage your account.
         </p>
         <button
           onClick={() => openAuthModal("login")}
-          className="px-8 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/30"
+          className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all shadow-sm"
         >
-          Sign In to Account
+          Sign In
         </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
-      {/* Top Customer Overview Banner / Edit Studio */}
-      {!isEditing ? (
-        <div className="relative rounded-3xl bg-gradient-to-b from-[#121626] to-[#090b12] border border-white/10 p-6 sm:p-8 shadow-2xl overflow-hidden">
-          {/* Ambient glowing gradients */}
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            {/* Left Column: Avatar + Identity Info */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 text-center sm:text-left">
-              {/* Avatar with pulse ring */}
-              <div className="relative shrink-0">
-                {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl object-cover ring-2 ring-indigo-500/40 shadow-2xl shadow-indigo-500/20"
-                  />
-                ) : (
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-indigo-600/40 via-purple-600/30 to-cyan-500/30 ring-2 ring-indigo-500/40 flex items-center justify-center text-indigo-200 font-black text-2xl shadow-2xl">
-                    {user?.name ? user.name.trim().slice(0, 2).toUpperCase() : "U"}
-                  </div>
-                )}
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 ring-4 ring-[#090b12] flex items-center justify-center" title="Account Active">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                </div>
-              </div>
-
-              {/* Identity Info */}
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                    {user?.name}
-                  </h1>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 shadow-sm shadow-cyan-500/10">
-                    {user?.role === "admin" ? "Studio Admin" : "Member"}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-y-1 gap-x-4 text-xs text-slate-400">
-                  <span className="flex items-center gap-1.5 hover:text-slate-200 transition-colors">
-                    <Mail className="w-3.5 h-3.5 text-indigo-400" />
-                    {user?.email}
-                  </span>
-                  {user?.phone && (
-                    <span className="flex items-center gap-1.5 hover:text-slate-200 transition-colors">
-                      <Phone className="w-3.5 h-3.5 text-cyan-400" />
-                      {user.phone}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-center sm:justify-start gap-2 text-[11px] text-slate-500 pt-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Verified {theme.store_brand_name || "AETHER"} Hardware Member</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Actions */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-end gap-3 pt-4 lg:pt-0 border-t lg:border-t-0 border-white/5">
-              <button
-                onClick={() => setIsEditing(true)}
-                className="px-4 py-2.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/25 flex items-center gap-2 cursor-pointer"
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                Edit Profile
-              </button>
-
-              <Link
-                href="/dashboard/addresses"
-                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
-              >
-                <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-                Addresses
-              </Link>
-
-              <button
-                onClick={logout}
-                className="p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 transition-all cursor-pointer"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={handleUpdateProfile} className="relative rounded-3xl bg-[#0b0e18] border border-white/15 p-6 sm:p-8 shadow-2xl space-y-6 overflow-hidden animate-in fade-in duration-200">
-          {/* Ambient glowing orb */}
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          {/* Header */}
-          <div className="flex items-center justify-between pb-5 border-b border-white/10">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                  <Sliders className="w-3.5 h-3.5" />
-                </div>
-                <h2 className="text-lg sm:text-xl font-black text-white">Edit Profile & Credentials</h2>
-              </div>
-              <p className="text-xs text-slate-400">
-                Update your personal details, profile picture, and security credentials.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleDiscardEdit}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-              <span className="hidden sm:inline">Close</span>
-            </button>
-          </div>
-
-          {/* Body Split: Avatar Studio on Left, Details & Password on Right */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column: Avatar Studio (4 cols) */}
-            <div className="lg:col-span-4 rounded-2xl bg-white/[0.02] border border-white/10 p-5 flex flex-col items-center justify-center text-center space-y-4">
-              <div className="text-center space-y-1">
-                <span className="text-[11px] font-black uppercase tracking-wider text-indigo-400 block">Avatar Studio</span>
-                <p className="text-[11px] text-slate-400">Live preview of your member image</p>
-              </div>
-
-              <ImageUploadAvatar
-                value={avatar}
-                onChange={(val) => setAvatar(val)}
-                name={`${firstName} ${lastName}`.trim() || user?.name || "Customer"}
-                size="xl"
-              />
-
-              <div className="text-[10px] text-slate-500 max-w-xs">
-                Supports PNG, JPG, or WebP up to 5MB. Click or drag to update.
-              </div>
-            </div>
-
-            {/* Right Column: Personal Information & Password Cards (8 cols) */}
-            <div className="lg:col-span-8 space-y-5">
-              {/* Section 1: Personal Details */}
-              <div className="rounded-2xl bg-white/[0.02] border border-white/10 p-5 space-y-4">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-300 block">
-                  Personal Information
-                </span>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                      First Name <span className="text-rose-400">*</span>
-                    </label>
-                    <div className="relative">
-                      <UserIcon className="w-3.5 h-3.5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        required
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="e.g. Elena"
-                        className="w-full bg-[#080a10] border border-white/10 focus:border-indigo-500 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                      Second / Last Name
-                    </label>
-                    <div className="relative">
-                      <UserIcon className="w-3.5 h-3.5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        placeholder="e.g. Rostova"
-                        className="w-full bg-[#080a10] border border-white/10 focus:border-indigo-500 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                      Phone Number
-                    </label>
-                    <div className="relative">
-                      <Phone className="w-3.5 h-3.5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+1 (555) 000-0000"
-                        className="w-full bg-[#080a10] border border-white/10 focus:border-indigo-500 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                      Account Email
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-3.5 h-3.5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="email"
-                        disabled
-                        value={email}
-                        placeholder="customer@domain.test"
-                        className="w-full bg-[#080a10]/50 border border-white/5 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Password & Credentials */}
-              <div className="rounded-2xl bg-white/[0.02] border border-white/10 p-5 space-y-4">
-                {!showPasswordChange ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <Lock className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-300 block">
-                          Security & Password
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        Update your account password to maintain security.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowPasswordChange(true)}
-                      className="px-4 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer w-fit"
-                    >
-                      <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
-                      Change Password
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                      <div className="flex items-center gap-2">
-                        <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
-                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-200 block">
-                          Change Password
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowPasswordChange(false);
-                          setPassword("");
-                          setConfirmPassword("");
-                          setCurrentPassword("");
-                        }}
-                        className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-white/5 transition-all flex items-center gap-1 cursor-pointer"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        Cancel
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-300 block mb-1">
-                          Current Password <span className="text-rose-400 font-bold">*</span>
-                        </label>
-                        <PasswordInput
-                          required
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          placeholder="Current password"
-                          inputClassName="bg-[#080a10] border border-white/10 focus:border-indigo-500 rounded-xl py-2.5 text-xs text-white placeholder:text-slate-600"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-300 block mb-1">
-                          New Password <span className="text-rose-400 font-bold">*</span>
-                        </label>
-                        <PasswordInput
-                          required
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Min 6 characters"
-                          inputClassName="bg-[#080a10] border border-white/10 focus:border-indigo-500 rounded-xl py-2.5 text-xs text-white placeholder:text-slate-600"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-300 block mb-1">
-                          Confirm Password <span className="text-rose-400 font-bold">*</span>
-                        </label>
-                        <PasswordInput
-                          required
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          placeholder="Confirm password"
-                          inputClassName="bg-[#080a10] border border-white/10 focus:border-indigo-500 rounded-xl py-2.5 text-xs text-white placeholder:text-slate-600"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Footer Action Bar */}
-          <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="text-xs text-slate-400 flex items-center gap-2">
-              {hasProfileChanges ? (
-                <>
-                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="text-amber-300 font-medium">Unsaved modifications in preview</span>
-                </>
+      {/* 1. Profile Header Card */}
+      <div className="bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 rounded-2xl p-6 sm:p-7 shadow-sm transition-all">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          {/* User Info */}
+          <div className="flex items-center gap-4">
+            {/* Avatar */}
+            <div className="relative shrink-0">
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-16 h-16 rounded-2xl object-cover ring-1 ring-gray-200 dark:ring-white/10 shadow-sm"
+                />
               ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-slate-500 shrink-0" />
-                  <span className="text-slate-500">All profile details are up to date</span>
-                </>
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600/10 to-indigo-600/20 text-indigo-600 dark:text-indigo-400 font-bold text-xl flex items-center justify-center ring-1 ring-indigo-500/20">
+                  {user?.name ? user.name.trim().slice(0, 2).toUpperCase() : "U"}
+                </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
+                  {user?.name}
+                </h1>
+                <span className="px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20">
+                  {user?.role === "admin" ? "Admin" : "Member"}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  {user?.email}
+                </span>
+                {user?.phone && (
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    {user.phone}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-white/5 justify-end">
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border ${
+                isEditing
+                  ? "bg-gray-100 dark:bg-white/10 text-slate-900 dark:text-white border-gray-300 dark:border-white/20"
+                  : "bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 border-gray-200 dark:border-white/10"
+              }`}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              {isEditing ? "Close Edit" : "Edit Profile"}
+            </button>
+
+            <button
+              onClick={logout}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 border border-rose-200/80 dark:border-rose-500/20 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
+          </div>
+        </div>
+
+        {/* Inline Profile Editor */}
+        {isEditing && (
+          <form onSubmit={handleUpdateProfile} className="mt-6 pt-6 border-t border-gray-100 dark:border-white/10 space-y-6 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Profile Details</h2>
               <button
                 type="button"
                 onClick={handleDiscardEdit}
-                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
+                className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1"
+              >
+                <X className="w-3.5 h-3.5" /> Cancel
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+              {/* Avatar Upload */}
+              <div className="md:col-span-4 flex flex-col items-center justify-center p-4 rounded-xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5 space-y-3">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Profile Photo</span>
+                <ImageUploadAvatar
+                  value={avatar}
+                  onChange={(val) => setAvatar(val)}
+                  name={`${firstName} ${lastName}`.trim() || user?.name || "Customer"}
+                  size="xl"
+                />
+                <p className="text-[11px] text-slate-400 text-center">Click avatar to upload JPG, PNG or WebP</p>
+              </div>
+
+              {/* Input Fields */}
+              <div className="md:col-span-8 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      First Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="e.g. John"
+                      className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="e.g. Doe"
+                      className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+1 (555) 000-0000"
+                      className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Account Email
+                    </label>
+                    <input
+                      type="email"
+                      disabled
+                      value={email}
+                      className="w-full bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/5 rounded-xl px-3.5 py-2 text-xs text-slate-400 dark:text-slate-500 cursor-not-allowed focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Password Section */}
+                <div className="pt-3 border-t border-gray-100 dark:border-white/5">
+                  {!showPasswordChange ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordChange(true)}
+                      className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Lock className="w-3.5 h-3.5" /> Change Password
+                    </button>
+                  ) : (
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <KeyRound className="w-3.5 h-3.5 text-indigo-500" /> Set New Password
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPasswordChange(false);
+                            setCurrentPassword("");
+                            setPassword("");
+                            setConfirmPassword("");
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Current Password</label>
+                          <PasswordInput
+                            required
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            placeholder="Current password"
+                            inputClassName="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2 text-xs text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">New Password</label>
+                          <PasswordInput
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Min 6 characters"
+                            inputClassName="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2 text-xs text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Confirm Password</label>
+                          <PasswordInput
+                            required
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Repeat password"
+                            inputClassName="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2 text-xs text-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Save Buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100 dark:border-white/10">
+              <button
+                type="button"
+                onClick={handleDiscardEdit}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
               >
                 Discard
               </button>
-
               <button
                 type="submit"
                 disabled={saving || !hasProfileChanges}
-                className={`flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
+                className={`px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
                   !hasProfileChanges
-                    ? "bg-white/5 border border-white/5 text-slate-500 cursor-not-allowed shadow-none"
-                    : "bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 text-white shadow-indigo-600/25"
+                    ? "bg-gray-100 dark:bg-white/5 text-slate-400 cursor-not-allowed"
+                    : "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
                 }`}
               >
                 {saving ? (
@@ -556,180 +483,197 @@ export default function CustomerDashboardPage() {
                 ) : (
                   <>
                     <Save className="w-3.5 h-3.5" />
-                    <span>Save Profile & Picture</span>
+                    <span>Save Changes</span>
                   </>
                 )}
               </button>
             </div>
-          </div>
-        </form>
-      )}
-
-      {/* KPI Stats Tiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="p-5 rounded-3xl bg-[#0e121e] border border-white/10 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-            <Package className="w-6 h-6 text-indigo-400" />
-          </div>
-          <div>
-            <span className="text-2xl font-black text-white">{stats.total_orders}</span>
-            <p className="text-xs text-slate-400">Total Hardware Orders</p>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-3xl bg-[#0e121e] border border-white/10 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-cyan-400" />
-          </div>
-          <div>
-            <span className="text-2xl font-black text-cyan-400">{formatPrice(stats.total_spent)}</span>
-            <p className="text-xs text-slate-400">Hardware Investment</p>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-3xl bg-[#0e121e] border border-white/10 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <ShieldCheck className="w-6 h-6 text-emerald-400" />
-          </div>
-          <div>
-            <span className="text-2xl font-black text-emerald-400">Active</span>
-            <p className="text-xs text-slate-400">Studio Platinum Warranty</p>
-          </div>
-        </div>
+          </form>
+        )}
       </div>
 
-      {/* Rewards & Store Credit Wallets */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      {/* 2. Key Metrics Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Orders */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 shadow-sm flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Package className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Total Orders</p>
+            <p className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">{stats.total_orders}</p>
+          </div>
+        </div>
+
+        {/* Total Spent */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 shadow-sm flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Total Spent</p>
+            <p className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">{formatPrice(stats.total_spent)}</p>
+          </div>
+        </div>
+
+        {/* Saved Addresses */}
+        <Link
+          href="/dashboard/addresses"
+          className="p-5 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 shadow-sm flex items-center justify-between gap-2 hover:border-gray-300 dark:hover:border-white/20 transition-all group"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+              <MapPin className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Addresses</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate mt-0.5 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Manage</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+        </Link>
+
+        {/* Coupons & Rewards */}
         <Link
           href="/dashboard/coupons"
-          className="p-6 rounded-3xl bg-gradient-to-br from-[#121626] to-[#0c0e18] border border-amber-500/20 hover:border-amber-500/40 transition-all p-5 flex items-center justify-between group shadow-xl"
+          className="p-5 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 shadow-sm flex items-center justify-between gap-2 hover:border-gray-300 dark:hover:border-white/20 transition-all group"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
-              <Gift className="w-6 h-6" />
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Gift className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white group-hover:text-amber-400 transition-colors">
-                My Coupons & Vouchers
-              </h3>
-              <p className="text-xs text-slate-400">
-                Claim discount vouchers, check claim timers, and copy promo codes
-              </p>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Discounts</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate mt-0.5 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Coupons</p>
             </div>
           </div>
-          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-amber-500/20 transition-all">
-            <ArrowRight className="w-4 h-4" />
-          </div>
-        </Link>
-
-        <Link
-          href="/dashboard/store-credit"
-          className="p-6 rounded-3xl bg-gradient-to-br from-[#101726] to-[#0a0f1a] border border-cyan-500/20 hover:border-cyan-500/40 transition-all p-5 flex items-center justify-between group shadow-xl"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
-              <Wallet className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white group-hover:text-cyan-400 transition-colors">
-                Store Credit Wallet
-              </h3>
-              <p className="text-xs text-slate-400">
-                View available store balance, refund credits, and transaction ledger
-              </p>
-            </div>
-          </div>
-          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-cyan-500/20 transition-all">
-            <ArrowRight className="w-4 h-4" />
-          </div>
+          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
         </Link>
       </div>
 
-      {/* Order History */}
-      <div className="space-y-6">
+      {/* 3. Customer Order History */}
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-xs font-black uppercase tracking-widest text-indigo-400 block mb-1">
-              Purchase History
-            </span>
-            <h2 className="text-2xl font-black text-white">Your Dispatched Orders</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Order History</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">All orders placed with your account</p>
           </div>
+          {orders.length > 0 && (
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              {orders.length} {orders.length === 1 ? "order" : "orders"}
+            </span>
+          )}
         </div>
 
-        <div className="space-y-4">
-          {orders.length === 0 ? (
-            <div className="p-12 rounded-3xl bg-[#0e121e] border border-white/10 text-center space-y-4">
-              <Package className="w-12 h-12 text-slate-600 mx-auto" />
-              <h3 className="text-base font-bold text-white">No previous orders found</h3>
-              <p className="text-xs text-slate-400">Your hardware purchases will appear here with live tracking telemetry.</p>
-              <Link href="/products" className="inline-block px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold">
-                Start Shopping
-              </Link>
+        {orders.length === 0 ? (
+          <div className="p-10 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 text-center space-y-3 shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400">
+              <ShoppingBag className="w-6 h-6" />
             </div>
-          ) : (
-            orders.map((ord) => (
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">No orders placed yet</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+              When you complete a purchase, your orders and tracking details will appear here.
+            </p>
+            <Link
+              href="/products"
+              className="inline-block mt-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-colors"
+            >
+              Browse Products
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3.5">
+            {orders.map((ord) => (
               <div
                 key={ord.id}
-                className="p-6 rounded-3xl bg-[#0e121e] border border-white/10 shadow-xl space-y-4"
+                className="bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 rounded-2xl p-5 shadow-sm space-y-4 hover:border-gray-300 dark:hover:border-white/20 transition-all"
               >
-                {/* Order Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
-                  <div>
-                    <span className="text-xs font-mono font-bold text-cyan-400">{ord.order_number}</span>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Placed on {formatDate(ord.created_at)}</p>
+                {/* Order Top Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3.5 border-b border-gray-100 dark:border-white/5">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold font-mono text-slate-900 dark:text-white">
+                      #{ord.order_number}
+                    </span>
+                    <span className="text-xs text-slate-400">•</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {formatDate(ord.created_at)}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider border ${getStatusBadge(ord.order_status)}`}>
                       {ord.order_status}
                     </span>
-                    <span className="text-base font-black text-white">{formatPrice(ord.total_amount)}</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">
+                      {formatPrice(ord.total_amount)}
+                    </span>
                   </div>
                 </div>
 
-                {/* Items in order */}
+                {/* Ordered Items Preview */}
                 {ord.items && ord.items.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {ord.items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/5 text-xs">
-                        {item.product_image && (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50/70 dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 text-xs"
+                      >
+                        {item.product_image ? (
                           <img
                             src={item.product_image}
                             alt={item.product_name}
-                            className="w-12 h-12 rounded-xl object-cover bg-slate-900 border border-white/10"
+                            className="w-11 h-11 rounded-lg object-cover bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/10 shrink-0"
                           />
+                        ) : (
+                          <div className="w-11 h-11 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-slate-400 shrink-0">
+                            <Package className="w-5 h-5" />
+                          </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <h4 className="font-bold text-white truncate">{item.product_name}</h4>
-                          {item.variant_name && <p className="text-[10px] text-slate-400">{item.variant_name}</p>}
-                          <p className="text-slate-400 text-[10px]">Qty: {item.quantity} • {formatPrice(item.unit_price)}</p>
+                          <h4 className="font-semibold text-slate-900 dark:text-white truncate">
+                            {item.product_name}
+                          </h4>
+                          {item.variant_name && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                              {item.variant_name}
+                            </p>
+                          )}
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            Qty: {item.quantity} • {formatPrice(item.unit_price)}
+                          </p>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* Order Actions */}
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  {ord.tracking_code && (
+                {/* Order Footer Actions */}
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <span className="text-[11px] text-slate-400">
+                    Payment: <span className="font-medium text-slate-600 dark:text-slate-300 capitalize">{ord.payment_status || "Pending"}</span>
+                  </span>
+
+                  <div className="flex items-center gap-2">
+                    {ord.tracking_code && (
+                      <Link
+                        href={`/track?number=${ord.tracking_code}`}
+                        className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1.5 transition-colors"
+                      >
+                        <Truck className="w-3.5 h-3.5" /> Track
+                      </Link>
+                    )}
                     <Link
-                      href={`/track?number=${ord.tracking_code}`}
-                      className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs font-bold text-cyan-300 flex items-center gap-1.5 transition-all"
+                      href={`/order-confirmed?order_number=${ord.order_number}`}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold transition-colors flex items-center gap-1"
                     >
-                      <Truck className="w-3.5 h-3.5" /> Track Shipment
+                      Receipt <ExternalLink className="w-3.5 h-3.5" />
                     </Link>
-                  )}
-                  <Link
-                    href={`/order-confirmed?order_number=${ord.order_number}`}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1"
-                  >
-                    View Receipt <ExternalLink className="w-3.5 h-3.5" />
-                  </Link>
+                  </div>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
     </div>

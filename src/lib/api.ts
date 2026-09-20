@@ -1,5 +1,6 @@
 import axios from "axios";
 import { Address, AdminAnalytics, Brand, Category, CouponValidation, HomepageBannersResponse, Order, Product, User } from "@/types";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const API_BASE_URL = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api")
@@ -47,6 +48,37 @@ storefrontClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Global 401 response interceptor: clean up expired or invalid customer session
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== "undefined" && error.response?.status === 401) {
+      localStorage.removeItem("auth_token");
+      try {
+        useAuthStore.getState().logout();
+      } catch {
+        // Safe fallback
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+storefrontClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== "undefined" && error.response?.status === 401) {
+      localStorage.removeItem("auth_token");
+      try {
+        useAuthStore.getState().logout();
+      } catch {
+        // Safe fallback
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 let inFlightHomepageBanners: Promise<HomepageBannersResponse> | null = null;
 let inFlightCategories: Promise<Category[]> | null = null;
@@ -341,6 +373,14 @@ export const api = {
     total_spent: number;
   }> {
     const res = await apiClient.get("/auth/profile");
+    return res.data;
+  },
+
+  async getMyOrders(params?: { per_page?: number; page?: number; all?: boolean }): Promise<{ data: Order[]; total?: number }> {
+    const res = await apiClient.get("/orders", { params });
+    if (Array.isArray(res.data)) {
+      return { data: res.data, total: res.data.length };
+    }
     return res.data;
   },
 

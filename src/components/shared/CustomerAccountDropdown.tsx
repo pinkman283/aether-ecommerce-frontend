@@ -121,8 +121,12 @@ export const CustomerAccountDropdown: React.FC<CustomerAccountDropdownProps> = (
           className="absolute right-0 mt-2 w-64 origin-top-right rounded-2xl bg-white/98 dark:bg-[#0e121e]/98 backdrop-blur-xl border border-gray-200 dark:border-white/[0.1] shadow-2xl p-1.5 ring-1 ring-black/5 dark:ring-black/40 z-50 animate-in fade-in zoom-in-95 duration-100 text-slate-800 dark:text-slate-200 focus:outline-none"
         >
           {/* Header Card: Account Badge + Email */}
-          <div className="p-3 bg-gray-50/80 dark:bg-white/[0.03] rounded-xl mb-1 border border-gray-100 dark:border-white/[0.05]">
-            <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="p-3 bg-gray-50/80 dark:bg-white/[0.03] rounded-xl mb-1 border border-gray-100 dark:border-white/[0.05] flex items-start justify-between gap-2.5">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-slate-900 dark:text-white truncate leading-tight">{user.name}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 leading-tight">{user.email}</p>
+            </div>
+            <div className="shrink-0 pt-0.5">
               {isAdmin ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                   <ShieldCheck className="w-3 h-3 text-amber-500 dark:text-amber-400" />
@@ -134,8 +138,6 @@ export const CustomerAccountDropdown: React.FC<CustomerAccountDropdownProps> = (
                 </span>
               )}
             </div>
-            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{user.name}</p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{user.email}</p>
           </div>
 
           {/* Menu Items */}

@@ -7,12 +7,8 @@ import {
   Tag,
   Clock,
   Sparkles,
-  ArrowLeft,
+  ChevronLeft,
   CheckCircle2,
-  AlertCircle,
-  Copy,
-  Check,
-  ArrowRight,
   ShoppingBag,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -22,7 +18,7 @@ import { CouponCard } from "@/components/promotions/CouponCard";
 import { toast } from "sonner";
 
 export default function CustomerCouponsPage() {
-  const { isAuthenticated, openAuthModal } = useAuthStore();
+  const { isAuthenticated, logout, openAuthModal } = useAuthStore();
   const [activeTab, setActiveTab] = useState<"available" | "claimed" | "redeemed" | "expired">("available");
 
   const [claimablePromotions, setClaimablePromotions] = useState<Promotion[]>([]);
@@ -50,38 +46,43 @@ export default function CustomerCouponsPage() {
       ];
       setUserClaims(allUserClaims);
     } catch (err: any) {
-      toast.error("Failed to load your coupons");
+      if (err?.response?.status === 401) {
+        logout();
+        toast.error("Your session has expired. Please sign in again.");
+        openAuthModal("login");
+      } else {
+        toast.error("Failed to load your coupons");
+      }
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, logout, openAuthModal]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const handleClaimSuccess = (newClaim: PromotionClaim) => {
-    toast.success("Coupon claimed to your wallet!");
+    toast.success("Coupon claimed successfully!");
     setUserClaims((prev) => [newClaim, ...prev]);
-    // Refresh to update available/claimed counts
     loadData();
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto px-4 py-32 text-center space-y-4">
-        <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto">
-          <Gift className="w-8 h-8 text-amber-400" />
+      <div className="max-w-md mx-auto px-4 py-28 text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
+          <Gift className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-black text-white">Sign In Required</h2>
-        <p className="text-xs text-slate-400">
-          Sign in to view your exclusive vouchers, claim special discount codes, and track expiration timers.
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Sign In Required</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Sign in to view your available coupons, claim special discounts, and track vouchers.
         </p>
         <button
           onClick={() => openAuthModal("login")}
-          className="px-8 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all shadow-lg shadow-amber-500/20"
+          className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all shadow-sm"
         >
-          Sign In to Access Wallet
+          Sign In
         </button>
       </div>
     );
@@ -92,69 +93,63 @@ export default function CustomerCouponsPage() {
   const redeemedList = userClaims.filter((c) => c.status === "redeemed");
   const expiredList = userClaims.filter((c) => c.status === "expired");
 
+  const tabs = [
+    { key: "available", label: "Available", count: claimablePromotions.length, icon: Sparkles },
+    { key: "claimed", label: "Claimed", count: claimedList.length, icon: Gift },
+    { key: "redeemed", label: "Redeemed", count: redeemedList.length, icon: CheckCircle2 },
+    { key: "expired", label: "Expired", count: expiredList.length, icon: Clock },
+  ] as const;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Top Banner */}
-      <div className="relative rounded-3xl bg-gradient-to-b from-[#161a29] to-[#0b0e17] border border-white/10 p-6 sm:p-8 shadow-2xl overflow-hidden">
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors mb-2"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Back to Dashboard
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                <Gift className="w-4 h-4" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white">My Coupon Wallet</h1>
-            </div>
-            <p className="text-xs text-slate-300 max-w-xl">
-              Discover claimable store discounts, exclusive VIP vouchers, and manage active promotional codes ready for checkout.
-            </p>
-          </div>
-
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      
+      {/* 1. Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-100 dark:border-white/5">
+        <div>
           <Link
-            href="/checkout"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all shadow-lg shadow-amber-500/20 self-start sm:self-auto"
+            href="/dashboard"
+            className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 mb-1.5 transition-colors"
           >
-            <ShoppingBag className="w-4 h-4" />
-            Go to Checkout
+            <ChevronLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Coupons & Discounts</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Available discounts, promo codes, and rewards for your account
+          </p>
         </div>
+
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all shadow-sm self-start sm:self-auto"
+        >
+          <ShoppingBag className="w-3.5 h-3.5" />
+          Browse Products
+        </Link>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-white/10 overflow-x-auto no-scrollbar pb-1 text-xs">
-        {[
-          { key: "available", label: "Available to Claim", count: claimablePromotions.length, icon: Sparkles },
-          { key: "claimed", label: "Claimed & Ready", count: claimedList.length, icon: Gift },
-          { key: "redeemed", label: "Redeemed / Used", count: redeemedList.length, icon: CheckCircle2 },
-          { key: "expired", label: "Expired", count: expiredList.length, icon: Clock },
-        ].map((tab) => {
+      {/* 2. Segmented Pill Tabs */}
+      <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 rounded-xl w-fit overflow-x-auto text-xs">
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
           return (
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActiveTab(tab.key as any)}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all ${
+              onClick={() => setActiveTab(tab.key)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 isActive
-                  ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
-                  : "bg-white/5 text-slate-300 hover:text-white hover:bg-white/10"
+                  ? "bg-white dark:bg-[#0f131f] text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{tab.label}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  isActive ? "bg-black/30 text-black" : "bg-white/10 text-slate-400"
+                  isActive
+                    ? "bg-gray-100 dark:bg-white/10 text-slate-800 dark:text-slate-200"
+                    : "bg-gray-200/60 dark:bg-white/5 text-slate-500 dark:text-slate-400"
                 }`}
               >
                 {tab.count}
@@ -164,22 +159,26 @@ export default function CustomerCouponsPage() {
         })}
       </div>
 
-      {/* Tab Contents */}
+      {/* 3. Tab Contents */}
       {loading ? (
         <div className="py-20 text-center text-slate-400 space-y-2">
-          <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
-          <span className="text-xs uppercase tracking-wider font-semibold">Loading your coupons...</span>
+          <div className="w-7 h-7 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Loading coupons...</p>
         </div>
       ) : activeTab === "available" ? (
-        <div className="space-y-4">
+        <div>
           {claimablePromotions.length === 0 ? (
-            <div className="p-12 rounded-3xl bg-[#0c0e17] border border-white/10 text-center space-y-3">
-              <Sparkles className="w-10 h-10 text-slate-600 mx-auto" />
-              <h3 className="text-base font-bold text-white">No available claimable coupons right now</h3>
-              <p className="text-xs text-slate-400">Check back soon for upcoming flash campaigns and seasonal vouchers!</p>
+            <div className="p-10 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 text-center space-y-3 shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400">
+                <Tag className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">No available claimable coupons</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                Check back soon for new promotions, seasonal discounts, and special offers!
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {claimablePromotions.map((promo) => (
                 <CouponCard
                   key={promo.id}
@@ -191,28 +190,30 @@ export default function CustomerCouponsPage() {
           )}
         </div>
       ) : activeTab === "claimed" ? (
-        <div className="space-y-4">
+        <div>
           {claimedList.length === 0 ? (
-            <div className="p-12 rounded-3xl bg-[#0c0e17] border border-white/10 text-center space-y-3">
-              <Gift className="w-10 h-10 text-slate-600 mx-auto" />
-              <h3 className="text-base font-bold text-white">No claimed coupons in your wallet</h3>
-              <p className="text-xs text-slate-400">
-                Switch to &quot;Available to Claim&quot; to claim discount vouchers to your wallet.
+            <div className="p-10 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 text-center space-y-3 shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400">
+                <Gift className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">No claimed coupons</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                Switch to &quot;Available&quot; to claim discount coupons to your account.
               </p>
               <button
                 type="button"
                 onClick={() => setActiveTab("available")}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 text-black text-xs font-bold"
+                className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
               >
-                Browse Available Coupons
+                View Available Coupons
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {claimedList.map((claim) => (
                 <CouponCard
                   key={claim.id}
-                  promotion={claim.promotion!}
+                  promotion={claim.promotion as any}
                   userClaim={claim}
                 />
               ))}
@@ -220,67 +221,51 @@ export default function CustomerCouponsPage() {
           )}
         </div>
       ) : activeTab === "redeemed" ? (
-        <div className="space-y-4">
+        <div>
           {redeemedList.length === 0 ? (
-            <div className="p-12 rounded-3xl bg-[#0c0e17] border border-white/10 text-center space-y-3">
-              <CheckCircle2 className="w-10 h-10 text-slate-600 mx-auto" />
-              <h3 className="text-base font-bold text-white">No coupons redeemed yet</h3>
-              <p className="text-xs text-slate-400">Your used promotional vouchers will be saved here for your records.</p>
+            <div className="p-10 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 text-center space-y-3 shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">No redeemed coupons</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                Coupons that you have already applied to past orders will be archived here.
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {redeemedList.map((claim) => (
-                <div
+                <CouponCard
                   key={claim.id}
-                  className="p-5 rounded-2xl bg-[#0c0e17] border border-white/10 space-y-3 opacity-75"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-400 uppercase">Redeemed</span>
-                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
-                      {claim.claimed_code}
-                    </span>
-                  </div>
-                  <h4 className="text-base font-bold text-white">{claim.promotion?.name}</h4>
-                  <div className="text-[11px] text-slate-400 border-t border-white/10 pt-2 flex items-center justify-between">
-                    <span>Used on {new Date(claim.redeemed_at || claim.claimed_at).toLocaleDateString()}</span>
-                    {claim.order && (
-                      <Link
-                        href={`/dashboard`}
-                        className="text-cyan-400 hover:underline font-mono"
-                      >
-                        Order #{claim.order.order_number}
-                      </Link>
-                    )}
-                  </div>
-                </div>
+                  promotion={claim.promotion as any}
+                  userClaim={claim}
+                  disabled
+                />
               ))}
             </div>
           )}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div>
           {expiredList.length === 0 ? (
-            <div className="p-12 rounded-3xl bg-[#0c0e17] border border-white/10 text-center space-y-3">
-              <Clock className="w-10 h-10 text-slate-600 mx-auto" />
-              <h3 className="text-base font-bold text-white">No expired coupons</h3>
-              <p className="text-xs text-slate-400">Great job! You haven&apos;t let any claimed coupons lapse.</p>
+            <div className="p-10 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 text-center space-y-3 shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400">
+                <Clock className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">No expired coupons</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                All of your coupons are currently active.
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {expiredList.map((claim) => (
-                <div
+                <CouponCard
                   key={claim.id}
-                  className="p-5 rounded-2xl bg-[#0c0e17] border border-white/10 space-y-3 opacity-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-rose-400 uppercase">Expired</span>
-                    <span className="text-xs font-mono text-slate-500">{claim.claimed_code}</span>
-                  </div>
-                  <h4 className="text-base font-bold text-slate-400">{claim.promotion?.name}</h4>
-                  <p className="text-[11px] text-slate-500">
-                    Expired on {claim.expires_at ? new Date(claim.expires_at).toLocaleDateString() : "Campaign end"}
-                  </p>
-                </div>
+                  promotion={claim.promotion as any}
+                  userClaim={claim}
+                  disabled
+                />
               ))}
             </div>
           )}
