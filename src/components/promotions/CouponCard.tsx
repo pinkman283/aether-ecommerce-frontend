@@ -75,8 +75,8 @@ export const CouponCard: React.FC<CouponCardProps> = ({
     }
   };
 
-  const isClaimable = promotion.promotion_type === "claimable_coupon";
-  const isClaimed = Boolean(userClaim);
+  const isClaimable = promotion.promotion_type === "claimable_coupon" || (promotion as any).can_claim !== undefined || Boolean(onClaimSuccess);
+  const isClaimed = Boolean(userClaim) || Boolean((promotion as any).is_claimed);
   const isExpired = promotion.status === "expired" || (userClaim?.status === "expired");
   const isRedeemed = userClaim?.status === "redeemed";
 

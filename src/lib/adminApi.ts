@@ -2127,6 +2127,8 @@ export const adminApi = {
     type?: string;
     status?: string;
     discount_type?: string;
+    show_on_storefront?: boolean;
+    storefront_placement?: string;
     page?: number;
     per_page?: number;
   }): Promise<{
@@ -2182,6 +2184,15 @@ export const adminApi = {
 
   async togglePromotionStatus(id: number): Promise<{ message: string; is_active: boolean; status: string }> {
     const res = await adminClient.patch(`/admin/promotions/${id}/status`);
+    return res.data;
+  },
+
+  async uploadPromotionImage(file: File): Promise<{ message: string; image_url: string; path: string; filename: string }> {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await adminClient.post("/admin/promotions/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
     return res.data;
   },
 

@@ -174,7 +174,7 @@ export const CustomerAccountDropdown: React.FC<CustomerAccountDropdownProps> = (
 
             {/* 4. Coupons & Discounts */}
             <Link
-              href="/dashboard"
+              href="/dashboard/coupons"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors group"
             >

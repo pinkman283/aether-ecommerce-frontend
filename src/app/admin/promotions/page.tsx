@@ -48,6 +48,7 @@ export default function AdminPromotionsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [storefrontFilter, setStorefrontFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -65,6 +66,21 @@ export default function AdminPromotionsPage() {
         search: search || undefined,
         type: typeFilter !== "all" ? typeFilter : undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
+        show_on_storefront:
+          storefrontFilter === "storefront"
+            ? true
+            : storefrontFilter === "hidden"
+            ? false
+            : undefined,
+        storefront_placement: [
+          "hero_carousel",
+          "top_strip",
+          "voucher_carousel",
+          "flash_sale",
+          "product_grid_banner",
+        ].includes(storefrontFilter)
+          ? storefrontFilter
+          : undefined,
         page,
         per_page: 15,
       });
@@ -80,7 +96,7 @@ export default function AdminPromotionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, typeFilter, statusFilter, page]);
+  }, [search, typeFilter, statusFilter, storefrontFilter, page]);
 
   useEffect(() => {
     fetchPromotions();
@@ -285,14 +301,31 @@ export default function AdminPromotionsPage() {
             <option value="expired">Expired</option>
             <option value="draft">Draft</option>
           </select>
+
+          {/* Storefront Filter */}
+          <select
+            value={storefrontFilter}
+            onChange={(e) => setStorefrontFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-[#12151f] border border-white/10 text-xs text-slate-300 focus:border-amber-400 outline-none"
+          >
+            <option value="all">All Storefront Status</option>
+            <option value="storefront">Storefront Visible</option>
+            <option value="hidden">Backend Only</option>
+            <option value="hero_carousel">Hero Carousel</option>
+            <option value="top_strip">Top Header Strip</option>
+            <option value="voucher_carousel">Voucher Carousel</option>
+            <option value="flash_sale">Flash Sale Section</option>
+            <option value="product_grid_banner">Product Grid Banner</option>
+          </select>
         </div>
 
-        {(search || typeFilter !== "all" || statusFilter !== "all") && (
+        {(search || typeFilter !== "all" || statusFilter !== "all" || storefrontFilter !== "all") && (
           <button
             onClick={() => {
               setSearch("");
               setTypeFilter("all");
               setStatusFilter("all");
+              setStorefrontFilter("all");
               setPage(1);
             }}
             className="text-xs text-slate-400 hover:text-amber-400 underline transition-colors"
@@ -386,13 +419,19 @@ export default function AdminPromotionsPage() {
                             {p.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-1.5 pt-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                           <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">
                             {p.promotion_type.replace(/_/g, " ")}
                           </span>
                           {p.is_stackable && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                               Stackable
+                            </span>
+                          )}
+                          {Boolean(p.show_on_storefront) && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 inline-flex items-center gap-1 font-mono">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                              {p.storefront_placement ? p.storefront_placement.replace(/_/g, " ") : "Storefront"}
                             </span>
                           )}
                         </div>
@@ -472,6 +511,16 @@ export default function AdminPromotionsPage() {
                     {/* Actions */}
                     <td className="p-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
+                        {p.slug && p.status === "active" && (
+                          <Link
+                            href={`/promotions/${p.slug}`}
+                            target="_blank"
+                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-amber-400 transition-colors"
+                            title="View Public Campaign Page"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </Link>
+                        )}
                         <Link
                           href={`/admin/promotions/${p.id}`}
                           className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors"

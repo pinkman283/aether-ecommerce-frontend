@@ -49,6 +49,7 @@ export function AppProviders({
           <Toaster
             theme="dark"
             position="bottom-right"
+            closeButton
             toastOptions={{
               style: {
                 background: "#0c0e15",
@@ -90,6 +91,7 @@ export function AppProviders({
           <Toaster
             theme="dark"
             position="bottom-right"
+            closeButton
             toastOptions={{
               style: {
                 background: "#0e121e",

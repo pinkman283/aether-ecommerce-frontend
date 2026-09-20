@@ -12,6 +12,7 @@ import {
   RefreshCw,
   X,
   Tag,
+  Check,
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { PromotionClaim, User } from "@/types";
@@ -19,13 +20,13 @@ import {
   AdminPageHeader,
   AdminStatusBadge,
   AdminPagination,
+  CustomerCombobox,
 } from "@/components/admin/ui";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
 import { toast } from "sonner";
 
 export default function CustomerRewardsPage() {
   const [rewards, setRewards] = useState<PromotionClaim[]>([]);
-  const [customers, setCustomers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -36,6 +37,7 @@ export default function CustomerRewardsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [issuing, setIssuing] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | "">("");
+  const [selectedCustomerObj, setSelectedCustomerObj] = useState<User | null>(null);
   const [rewardName, setRewardName] = useState("VIP Privilege Customer Reward");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed_amount">("percentage");
   const [discountValue, setDiscountValue] = useState<number>(20);
@@ -46,22 +48,15 @@ export default function CustomerRewardsPage() {
   const fetchRewards = useCallback(async () => {
     setLoading(true);
     try {
-      const [claimsRes, customersRes] = await Promise.all([
-        adminApi.getPromotionClaims({
-          search: search || undefined,
-          page,
-          per_page: 20,
-        }),
-        adminApi.getCustomers({ per_page: 100 }),
-      ]);
+      const claimsRes = await adminApi.getPromotionClaims({
+        search: search || undefined,
+        page,
+        per_page: 20,
+      });
 
       setRewards(claimsRes.data || []);
       setTotalPages(claimsRes.last_page || 1);
       setTotalCount(claimsRes.total || 0);
-      setCustomers(customersRes.data || []);
-      if (customersRes.data?.length > 0 && !selectedUserId) {
-        setSelectedUserId(customersRes.data[0].id);
-      }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to load customer rewards");
     } finally {
@@ -102,6 +97,12 @@ export default function CustomerRewardsPage() {
     }
   };
 
+  const openDrawer = () => {
+    setIsModalOpen(true);
+    setSelectedUserId("");
+    setSelectedCustomerObj(null);
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
       {/* Header */}
@@ -126,8 +127,8 @@ export default function CustomerRewardsPage() {
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             </button>
             <button
-              onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/10 transition-all"
+              onClick={openDrawer}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/10 transition-all cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
               Issue Customer Reward
@@ -257,67 +258,70 @@ export default function CustomerRewardsPage() {
         />
       )}
 
-      {/* Issue Reward Modal */}
+
+      {/* Right-Side Drawer */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#0e1017] border border-white/10 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                Issue Personalized Customer Reward
-              </h3>
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+            onClick={() => setIsModalOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-md w-full bg-[#0d1017] border-l border-white/10 shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-300">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
+              <h3 className="text-sm font-semibold text-white">Issue Customer Reward</h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleIssueReward} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">Target Customer</label>
-                <select
-                  required
-                  value={selectedUserId}
-                  onChange={(e) => setSelectedUserId(Number(e.target.value))}
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
-                >
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Drawer Body */}
+            <form onSubmit={handleIssueReward} className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Target Customer: Reusable Combobox */}
+              <CustomerCombobox
+                label="Customer"
+                required
+                placeholder="Search customer by name, email, phone or ID..."
+                value={selectedUserId}
+                selectedCustomer={selectedCustomerObj}
+                onChange={(customer) => {
+                  setSelectedUserId(customer ? customer.id : "");
+                  setSelectedCustomerObj(customer);
+                }}
+              />
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">Reward / Campaign Title</label>
+                <label className="text-xs font-medium text-slate-300">Reward Title</label>
                 <input
                   type="text"
                   required
                   value={rewardName}
                   onChange={(e) => setRewardName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
+                  className="w-full px-3.5 py-2 bg-[#12151f] border border-white/10 rounded-xl text-xs text-white focus:border-amber-400 outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Discount Type</label>
+                  <label className="text-xs font-medium text-slate-300">Discount Type</label>
                   <select
                     value={discountType}
                     onChange={(e) => setDiscountType(e.target.value as any)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
+                    className="w-full px-3.5 py-2 bg-[#12151f] border border-white/10 rounded-xl text-xs text-white focus:border-amber-400 outline-none"
                   >
-                    <option value="percentage">Percentage (% OFF)</option>
-                    <option value="fixed_amount">Fixed Amount (৳ OFF)</option>
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed_amount">Fixed Amount (৳)</option>
                   </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">
+                  <label className="text-xs font-medium text-slate-300">
                     {discountType === "percentage" ? "Percentage (%)" : "Amount (৳)"}
                   </label>
                   <input
@@ -326,52 +330,68 @@ export default function CustomerRewardsPage() {
                     required
                     value={discountValue}
                     onChange={(e) => setDiscountValue(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white font-mono focus:border-amber-400 outline-none"
+                    className="w-full px-3.5 py-2 bg-[#12151f] border border-white/10 rounded-xl text-xs text-white font-mono focus:border-amber-400 outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Min Spend (৳)</label>
+                  <label className="text-xs font-medium text-slate-300">Min Spend (৳)</label>
                   <input
                     type="number"
                     min={0}
                     value={minOrderAmount}
                     onChange={(e) => setMinOrderAmount(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white font-mono focus:border-amber-400 outline-none"
+                    className="w-full px-3.5 py-2 bg-[#12151f] border border-white/10 rounded-xl text-xs text-white font-mono focus:border-amber-400 outline-none"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Validity Window (Days)</label>
+                  <label className="text-xs font-medium text-slate-300">Validity (Days)</label>
                   <input
                     type="number"
                     min={1}
                     value={daysValid}
                     onChange={(e) => setDaysValid(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white font-mono focus:border-amber-400 outline-none"
+                    className="w-full px-3.5 py-2 bg-[#12151f] border border-white/10 rounded-xl text-xs text-white font-mono focus:border-amber-400 outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={issuing}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/10 transition-all disabled:opacity-50"
-                >
-                  {issuing ? "Granting Reward..." : "Grant Reward Voucher"}
-                </button>
-              </div>
+              {discountType === "percentage" && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-300">Max Discount (৳) (Optional)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="No limit"
+                    value={maxDiscountAmount}
+                    onChange={(e) => setMaxDiscountAmount(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full px-3.5 py-2 bg-[#12151f] border border-white/10 rounded-xl text-xs text-white font-mono focus:border-amber-400 outline-none"
+                  />
+                </div>
+              )}
             </form>
+
+            {/* Drawer Footer */}
+            <div className="p-4 px-6 border-t border-white/[0.08] flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleIssueReward}
+                disabled={issuing || !selectedUserId}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-black transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {issuing ? "Granting..." : "Grant Reward"}
+              </button>
+            </div>
           </div>
         </div>
       )}

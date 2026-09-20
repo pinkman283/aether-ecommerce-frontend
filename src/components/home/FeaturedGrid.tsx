@@ -141,9 +141,9 @@ export function FeaturedGrid({ featuredProducts, newArrivals, bestSellers }: Fea
       >
         <div className="relative">
           <CarouselContent className="-ml-3 sm:-ml-3.5">
-            {displayList.map((product) => (
+            {displayList.map((product, index) => (
               <CarouselItem
-                key={product.id}
+                key={`featured-${activeTab}-${product.id ?? index}-${index}`}
                 className="pl-3 sm:pl-3.5 basis-[200px] sm:basis-[220px] md:basis-[230px] lg:basis-[240px]"
               >
                 <ProductCard product={product} />

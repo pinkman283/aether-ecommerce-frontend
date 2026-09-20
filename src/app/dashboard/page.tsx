@@ -21,7 +21,8 @@ import {
   ArrowRight,
   ShoppingBag,
   Pencil,
-  ChevronRight
+  ChevronRight,
+  Camera
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api } from "@/lib/api";
@@ -113,6 +114,17 @@ export default function CustomerDashboardPage() {
     setShowPasswordChange(false);
     setIsEditing(false);
   };
+
+  // Keyboard accessibility: close modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isEditing) {
+        handleDiscardEdit();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isEditing]);
 
   const origParts = (user?.name || "").trim().split(" ");
   const origFirst = origParts[0] || "";
@@ -242,19 +254,26 @@ export default function CustomerDashboardPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           {/* User Info */}
           <div className="flex items-center gap-4">
-            {/* Avatar */}
-            <div className="relative shrink-0">
+            {/* Avatar with subtle edit trigger */}
+            <div
+              onClick={() => setIsEditing(true)}
+              className="relative shrink-0 group cursor-pointer"
+              title="Click to edit profile and photo"
+            >
               {user?.avatar ? (
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className="w-16 h-16 rounded-2xl object-cover ring-1 ring-gray-200 dark:ring-white/10 shadow-sm"
+                  className="w-16 h-16 rounded-2xl object-cover ring-1 ring-gray-200 dark:ring-white/10 shadow-sm group-hover:opacity-90 transition-opacity"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600/10 to-indigo-600/20 text-indigo-600 dark:text-indigo-400 font-bold text-xl flex items-center justify-center ring-1 ring-indigo-500/20">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600/10 to-indigo-600/20 text-indigo-600 dark:text-indigo-400 font-bold text-xl flex items-center justify-center ring-1 ring-indigo-500/20 group-hover:ring-indigo-500/40 transition-all">
                   {user?.name ? user.name.trim().slice(0, 2).toUpperCase() : "U"}
                 </div>
               )}
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-md opacity-85 group-hover:opacity-100 transition-opacity">
+                <Camera className="w-3 h-3" />
+              </div>
             </div>
 
             <div className="space-y-1 min-w-0">
@@ -284,15 +303,11 @@ export default function CustomerDashboardPage() {
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-white/5 justify-end">
             <button
-              onClick={() => setIsEditing(!isEditing)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border ${
-                isEditing
-                  ? "bg-gray-100 dark:bg-white/10 text-slate-900 dark:text-white border-gray-300 dark:border-white/20"
-                  : "bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 border-gray-200 dark:border-white/10"
-              }`}
+              onClick={() => setIsEditing(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 border border-gray-200 dark:border-white/10 shadow-xs"
             >
               <Pencil className="w-3.5 h-3.5" />
-              {isEditing ? "Close Edit" : "Edit Profile"}
+              Edit Profile
             </button>
 
             <button
@@ -305,36 +320,52 @@ export default function CustomerDashboardPage() {
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Inline Profile Editor */}
-        {isEditing && (
-          <form onSubmit={handleUpdateProfile} className="mt-6 pt-6 border-t border-gray-100 dark:border-white/10 space-y-6 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Profile Details</h2>
+      {/* Edit Profile Modal Dialog */}
+      {isEditing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+          {/* Backdrop */}
+          <div 
+            onClick={handleDiscardEdit} 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            aria-hidden="true"
+          />
+
+          {/* Dialog Window */}
+          <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white dark:bg-[#0f131f] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header (Fixed at top) */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/10 bg-gray-50/70 dark:bg-white/[0.02] shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Edit Profile</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Update your personal details and account settings
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={handleDiscardEdit}
-                className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                title="Close"
               >
-                <X className="w-3.5 h-3.5" /> Cancel
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-              {/* Avatar Upload */}
-              <div className="md:col-span-4 flex flex-col items-center justify-center p-4 rounded-xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5 space-y-3">
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Profile Photo</span>
-                <ImageUploadAvatar
-                  value={avatar}
-                  onChange={(val) => setAvatar(val)}
-                  name={`${firstName} ${lastName}`.trim() || user?.name || "Customer"}
-                  size="xl"
-                />
-                <p className="text-[11px] text-slate-400 text-center">Click avatar to upload JPG, PNG or WebP</p>
-              </div>
+            {/* Modal Form with Scrollable Body and Sticky Footer */}
+            <form onSubmit={handleUpdateProfile} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+                {/* Profile Picture Upload */}
+                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200/60 dark:border-white/5">
+                  <ImageUploadAvatar
+                    value={avatar}
+                    onChange={(val) => setAvatar(val)}
+                    name={`${firstName} ${lastName}`.trim() || user?.name || "Customer"}
+                    size="md"
+                  />
+                </div>
 
-              {/* Input Fields */}
-              <div className="md:col-span-8 space-y-4">
+                {/* Name & Contact Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
                     <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
@@ -377,9 +408,14 @@ export default function CustomerDashboardPage() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                      Account Email
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Account Email
+                      </label>
+                      <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        Verified
+                      </span>
+                    </div>
                     <input
                       type="email"
                       disabled
@@ -390,17 +426,17 @@ export default function CustomerDashboardPage() {
                 </div>
 
                 {/* Password Section */}
-                <div className="pt-3 border-t border-gray-100 dark:border-white/5">
+                <div className="pt-2 border-t border-gray-100 dark:border-white/5">
                   {!showPasswordChange ? (
                     <button
                       type="button"
                       onClick={() => setShowPasswordChange(true)}
-                      className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 cursor-pointer"
+                      className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1.5 transition-colors cursor-pointer py-1"
                     >
                       <Lock className="w-3.5 h-3.5" /> Change Password
                     </button>
                   ) : (
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-3 pt-1 rounded-xl bg-gray-50/70 dark:bg-white/[0.02] p-3.5 border border-gray-200/60 dark:border-white/5">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                           <KeyRound className="w-3.5 h-3.5 text-indigo-500" /> Set New Password
@@ -413,84 +449,92 @@ export default function CustomerDashboardPage() {
                             setPassword("");
                             setConfirmPassword("");
                           }}
-                          className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                          className="text-[11px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer font-medium"
                         >
                           Cancel
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-2.5">
                         <div>
-                          <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Current Password</label>
+                          <label className="text-[11px] font-medium text-slate-700 dark:text-slate-300 block mb-1">
+                            Current Password
+                          </label>
                           <PasswordInput
                             required
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
-                            placeholder="Current password"
+                            placeholder="Enter current password"
                             inputClassName="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2 text-xs text-slate-900 dark:text-white"
                           />
                         </div>
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">New Password</label>
-                          <PasswordInput
-                            required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Min 6 characters"
-                            inputClassName="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2 text-xs text-slate-900 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Confirm Password</label>
-                          <PasswordInput
-                            required
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="Repeat password"
-                            inputClassName="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2 text-xs text-slate-900 dark:text-white"
-                          />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="text-[11px] font-medium text-slate-700 dark:text-slate-300 block mb-1">
+                              New Password
+                            </label>
+                            <PasswordInput
+                              required
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="Min 6 characters"
+                              inputClassName="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2 text-xs text-slate-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-medium text-slate-700 dark:text-slate-300 block mb-1">
+                              Confirm Password
+                            </label>
+                            <PasswordInput
+                              required
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Repeat new password"
+                              inputClassName="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2 text-xs text-slate-900 dark:text-white"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* Save Buttons */}
-            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100 dark:border-white/10">
-              <button
-                type="button"
-                onClick={handleDiscardEdit}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-              >
-                Discard
-              </button>
-              <button
-                type="submit"
-                disabled={saving || !hasProfileChanges}
-                className={`px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
-                  !hasProfileChanges
-                    ? "bg-gray-100 dark:bg-white/5 text-slate-400 cursor-not-allowed"
-                    : "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
-                }`}
-              >
-                {saving ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Save Changes</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
+              {/* Action Buttons (Fixed / Sticky at bottom of modal) */}
+              <div className="flex items-center justify-end gap-2.5 px-6 py-3.5 border-t border-gray-100 dark:border-white/10 bg-gray-50/70 dark:bg-white/[0.02] shrink-0">
+                <button
+                  type="button"
+                  onClick={handleDiscardEdit}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Discard
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || !hasProfileChanges}
+                  className={`px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
+                    !hasProfileChanges
+                      ? "bg-gray-100 dark:bg-white/5 text-slate-400 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+                  }`}
+                >
+                  {saving ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 2. Key Metrics Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

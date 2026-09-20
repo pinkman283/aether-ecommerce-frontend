@@ -149,6 +149,7 @@ function AdminCustomersContent() {
         .catch(() => {});
     } else if (initialSearch && customers.length > 0 && !selectedCustomer) {
       const match = customers.find(c => 
+        (c.customer_id && c.customer_id.toLowerCase() === initialSearch.toLowerCase()) ||
         c.email.toLowerCase() === initialSearch.toLowerCase() ||
         c.name.toLowerCase().includes(initialSearch.toLowerCase())
       );
@@ -345,7 +346,7 @@ function AdminCustomersContent() {
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search name, email, phone..."
+            placeholder="Search customer ID, name, email, phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && loadCustomers()}
@@ -442,12 +443,19 @@ function AdminCustomersContent() {
                             className="w-8 h-8 rounded-full border border-white/10 object-cover shrink-0"
                           />
                           <div>
-                            <button
-                              onClick={() => openCustomerIntelligence(c)}
-                              className="font-semibold text-white hover:text-amber-400 transition-colors text-left block"
-                            >
-                              {c.name}
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => openCustomerIntelligence(c)}
+                                className="font-semibold text-white hover:text-amber-400 transition-colors text-left block"
+                              >
+                                {c.name}
+                              </button>
+                              {c.customer_id && (
+                                <span className="font-mono text-[10px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 leading-none">
+                                  {c.customer_id}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-slate-400 text-[11px]">{c.email}</p>
                           </div>
                         </div>
@@ -556,6 +564,11 @@ function AdminCustomersContent() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-white text-base">{selectedCustomer.name}</h3>
+                    {selectedCustomer.customer_id && (
+                      <span className="font-mono text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                        {selectedCustomer.customer_id}
+                      </span>
+                    )}
                     <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                       selectedCustomer.customer_type === "guest" ? "bg-white/5 text-slate-300 border border-white/10" : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
                     }`}>

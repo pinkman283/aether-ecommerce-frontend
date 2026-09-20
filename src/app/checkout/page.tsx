@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -35,7 +35,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { formatPrice } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { PromotionClaim } from "@/types";
+import { Address, PromotionClaim } from "@/types";
 import { toast } from "sonner";
 
 export default function CheckoutPage() {
@@ -91,7 +91,13 @@ export default function CheckoutPage() {
   // Customer Loyalty & Store Credit
   const [storeCreditBalance, setStoreCreditBalance] = useState<number>(0);
   const [claimedCoupons, setClaimedCoupons] = useState<PromotionClaim[]>([]);
+  const [selectedClaimId, setSelectedClaimId] = useState<number | null>(null);
   const [showClaimedPicker, setShowClaimedPicker] = useState(false);
+
+  // Saved Addresses for Authenticated Customers
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const [showSavedAddresses, setShowSavedAddresses] = useState(false);
+  const savedAddressDropdownRef = useRef<HTMLDivElement>(null);
 
   // Submission & Lead State
   const [loading, setLoading] = useState(false);
@@ -127,6 +133,91 @@ export default function CheckoutPage() {
     }
     loadCustomerPromos();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSavedAddresses([]);
+      return;
+    }
+    let isMounted = true;
+    api.client.get("/addresses")
+      .then((res) => {
+        if (isMounted && Array.isArray(res.data)) {
+          setSavedAddresses(res.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated]);
+
+  // Click outside and Escape key to close saved addresses dropdown
+  useEffect(() => {
+    if (!showSavedAddresses) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (savedAddressDropdownRef.current && !savedAddressDropdownRef.current.contains(e.target as Node)) {
+        setShowSavedAddresses(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowSavedAddresses(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showSavedAddresses]);
+
+  const handleSelectSavedAddress = (addr: Address) => {
+    if (addr.full_name) setCustomerName(addr.full_name);
+    if (addr.phone) {
+      setCustomerPhone(addr.phone.replace(/\D/g, "").slice(0, 11));
+    }
+
+    // Format full address
+    const addressParts = [
+      addr.address_line1,
+      addr.address_line2,
+      addr.city,
+      addr.postal_code ? `Postal: ${addr.postal_code}` : null,
+    ].filter(Boolean);
+    setFullAddress(addressParts.join(", "));
+
+    // Intelligently map shippingArea
+    if (addr.city) {
+      const cityLower = addr.city.toLowerCase();
+      if (shippingZones.length > 0) {
+        const directMatch = shippingZones.find((z) =>
+          z.name.toLowerCase().includes(cityLower) || cityLower.includes(z.name.toLowerCase())
+        );
+        if (directMatch) {
+          setShippingArea(directMatch.id);
+        } else if (cityLower === "dhaka") {
+          const insideZone = shippingZones.find((z) =>
+            z.id.includes("inside") || z.name.toLowerCase().includes("inside") || z.name.toLowerCase().includes("dhaka")
+          );
+          if (insideZone) setShippingArea(insideZone.id);
+        } else {
+          const outsideZone = shippingZones.find((z) =>
+            z.id.includes("outside") || z.name.toLowerCase().includes("outside")
+          );
+          if (outsideZone) setShippingArea(outsideZone.id);
+        }
+      } else {
+        if (cityLower === "dhaka") {
+          setShippingArea("inside_dhaka");
+        } else {
+          setShippingArea("outside_dhaka");
+        }
+      }
+    }
+
+    setShowSavedAddresses(false);
+    toast.success(`Loaded "${addr.address_name || addr.full_name}" into shipping address`);
+  };
 
   useEffect(() => {
     api.getShippingZones().then((res) => {
@@ -229,6 +320,7 @@ export default function CheckoutPage() {
       const result = await api.evaluatePromotions(payload);
       if (result.valid) {
         setPromotionEvaluation(result);
+        setSelectedClaimId(null);
         applyCoupon({
           valid: true,
           code: couponInput.trim().toUpperCase(),
@@ -249,7 +341,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleApplyClaimedCode = async (code: string) => {
+  const handleApplyClaimedCode = async (code: string, claimId?: number) => {
     setCouponLoading(true);
     setCouponError(null);
     try {
@@ -261,6 +353,7 @@ export default function CheckoutPage() {
           category_id: (i.product as any).category_id,
         })),
         code: code,
+        claimed_coupon_id: claimId || null,
         payment_method: paymentMethod,
         shipping_rate: baseShippingRate,
         shipping_method: shippingArea || undefined,
@@ -269,6 +362,7 @@ export default function CheckoutPage() {
       const result = await api.evaluatePromotions(payload);
       if (result.valid) {
         setPromotionEvaluation(result);
+        setSelectedClaimId(claimId || null);
         applyCoupon({
           valid: true,
           code: code,
@@ -391,6 +485,7 @@ export default function CheckoutPage() {
         payment_method: paymentMethod,
         shipping_method: shippingArea,
         coupon_code: appliedCoupon?.code,
+        claimed_coupon_id: selectedClaimId,
         use_store_credit: useStoreCredit,
         notes: orderNotes.trim() || undefined,
         items: items.map((item) => ({
@@ -612,14 +707,67 @@ export default function CheckoutPage() {
 
             {/* 2. SHIPPING ADDRESS CARD */}
             <div className="p-5 sm:p-6 rounded-2xl theme-card border border-white/10 space-y-4 shadow-sm">
-              <div className="flex items-center gap-2 pb-2 border-b border-white/5">
-                <span className="w-1.5 h-4.5 rounded-full bg-cyan-400" />
-                <h3 
-                  className="text-sm sm:text-base font-black tracking-tight"
-                  style={{ color: "var(--theme-text-heading, #0f172a)" }}
-                >
-                  Shipping Address
-                </h3>
+              <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-4.5 rounded-full bg-cyan-400" />
+                  <h3 
+                    className="text-sm sm:text-base font-black tracking-tight"
+                    style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                  >
+                    Shipping Address
+                  </h3>
+                </div>
+
+                {/* Saved Addresses Dropdown Trigger */}
+                {isAuthenticated && savedAddresses.length > 0 && (
+                  <div className="relative" ref={savedAddressDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowSavedAddresses(!showSavedAddresses)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 transition-colors cursor-pointer"
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>Saved Addresses</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showSavedAddresses ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {/* Minimal & Elegant Saved Addresses Dropdown */}
+                    {showSavedAddresses && (
+                      <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-[#111625] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 z-30 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="px-2.5 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Select a Saved Address
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-1 overscroll-contain">
+                          {savedAddresses.map((addr) => (
+                            <button
+                              key={addr.id}
+                              type="button"
+                              onClick={() => handleSelectSavedAddress(addr)}
+                              className="w-full text-left p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent hover:border-gray-200 dark:hover:border-white/10 transition-all cursor-pointer group"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                                  {addr.address_name || addr.full_name}
+                                </span>
+                                {addr.is_default && (
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                    Default
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                {addr.full_name}{addr.phone ? ` • ${addr.phone}` : ""}
+                              </p>
+                              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">
+                                {addr.address_line1}, {addr.city}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3.5 text-xs">
@@ -816,7 +964,11 @@ export default function CheckoutPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={removeCoupon}
+                    onClick={() => {
+                      removeCoupon();
+                      setSelectedClaimId(null);
+                      setPromotionEvaluation(null);
+                    }}
                     className="text-[11px] text-slate-400 hover:text-rose-500 font-bold transition-colors cursor-pointer"
                   >
                     Remove
@@ -858,22 +1010,64 @@ export default function CheckoutPage() {
                       </button>
 
                       {showClaimedPicker && (
-                        <div className="mt-2 space-y-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/10">
-                          {claimedCoupons.map((c) => (
-                            <div
-                              key={c.id}
-                              onClick={() => handleApplyClaimedCode(c.claimed_code)}
-                              className="flex items-center justify-between p-2 rounded-lg bg-black/40 hover:bg-amber-500/10 border border-white/5 hover:border-amber-500/30 cursor-pointer transition-colors text-xs"
-                            >
-                              <div>
-                                <span className="font-bold text-white block">{c.promotion?.name}</span>
-                                <span className="font-mono text-[10px] text-amber-300">{c.claimed_code}</span>
+                        <div className="mt-2 space-y-1.5 p-2 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10">
+                          {claimedCoupons.map((c: any, idx: number) => {
+                            const voucherCode = c.code || c.claimed_code || "";
+                            const voucherName = c.name || c.promotion?.name || "Special Voucher";
+                            const discountDisplay = c.discount_type === "percentage"
+                              ? `${c.discount_value}% OFF`
+                              : c.discount_type === "fixed_amount"
+                              ? `৳${c.discount_value} OFF`
+                              : "Special Discount";
+                            const key = c.claim_id || c.id || `claim-${idx}`;
+                            const claimId = c.claim_id || c.id;
+
+                            return (
+                              <div
+                                key={key}
+                                onClick={() => handleApplyClaimedCode(voucherCode, claimId)}
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-[#111625] hover:bg-amber-50/50 dark:hover:bg-amber-500/10 border border-gray-200 dark:border-white/10 hover:border-amber-400/50 dark:hover:border-amber-500/30 cursor-pointer transition-colors text-xs shadow-xs"
+                              >
+                                <div className="min-w-0 flex-1 pr-2">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-slate-900 dark:text-white truncate">
+                                      {voucherName}
+                                    </span>
+                                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 shrink-0">
+                                      {discountDisplay}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                    {voucherCode && (
+                                      <span className="font-mono text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                                        {voucherCode}
+                                      </span>
+                                    )}
+                                    {c.min_order_amount > 0 && (
+                                      <span className="text-[10px] text-slate-400">
+                                        Min spend: ৳{Number(c.min_order_amount).toLocaleString()}
+                                      </span>
+                                    )}
+                                    {c.expires_at && (
+                                      <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                                        Expires: {new Date(c.expires_at).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleApplyClaimedCode(voucherCode);
+                                  }}
+                                  className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 hover:bg-amber-200 dark:hover:bg-amber-500/30 px-2.5 py-1 rounded-lg transition-colors shrink-0 cursor-pointer"
+                                >
+                                  Apply
+                                </button>
                               </div>
-                              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-                                Apply
-                              </span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>

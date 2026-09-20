@@ -81,7 +81,7 @@ export function ImageUploadAvatar({
 
   return (
     <div className={`flex flex-col items-center sm:items-start gap-2 ${className}`}>
-      {label && <label className="text-xs font-medium text-slate-300 block">{label}</label>}
+      {label && <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block">{label}</label>}
 
       <div className="flex items-center gap-4">
         {/* Circular Avatar Container with Hover Overlay */}
@@ -93,8 +93,8 @@ export function ImageUploadAvatar({
             sizeClasses[size]
           } ${
             isHovered
-              ? "ring-amber-400 shadow-lg shadow-amber-500/10 scale-105"
-              : "ring-white/10 bg-slate-900"
+              ? "ring-indigo-500 shadow-lg shadow-indigo-500/10 scale-105"
+              : "ring-gray-200 dark:ring-white/10 bg-gray-100 dark:bg-slate-900"
           } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           {value ? (
@@ -104,8 +104,8 @@ export function ImageUploadAvatar({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-slate-200 font-bold">
-              {name ? getInitials(name) : <UserIcon className="w-6 h-6 text-slate-500" />}
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-900 text-slate-700 dark:text-slate-200 font-bold">
+              {name ? getInitials(name) : <UserIcon className="w-6 h-6 text-slate-400 dark:text-slate-500" />}
             </div>
           )}
 
@@ -138,9 +138,9 @@ export function ImageUploadAvatar({
               type="button"
               disabled={disabled}
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] border border-gray-200 dark:border-white/[0.08] text-slate-900 dark:text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Upload className="w-3.5 h-3.5 text-slate-300" />
+              <Upload className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
               <span>{value ? "Change photo" : "Upload photo"}</span>
             </button>
 
@@ -149,7 +149,7 @@ export function ImageUploadAvatar({
                 type="button"
                 disabled={disabled}
                 onClick={handleRemove}
-                className="px-2.5 py-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
                 title="Remove current avatar"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export function ImageUploadAvatar({
             )}
           </div>
 
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             JPG, PNG or WebP · Max 5MB · 400 × 400 px recommended
           </span>
         </div>

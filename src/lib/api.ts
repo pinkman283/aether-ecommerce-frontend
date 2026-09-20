@@ -251,6 +251,7 @@ export const api = {
     payment_method: string;
     shipping_method?: string;
     coupon_code?: string;
+    claimed_coupon_id?: number | null;
     use_store_credit?: boolean;
     notes?: string;
     items: { product_id: number; variant_id?: number | null; quantity: number }[];
@@ -496,6 +497,22 @@ export const api = {
     can_claim: boolean;
   }>> {
     const res = await apiClient.get("/promotions/claimable");
+    return res.data;
+  },
+
+  async getStorefrontPromotions(placement?: string): Promise<import("@/types").Promotion[]> {
+    const res = await apiClient.get("/promotions/storefront", { params: placement ? { placement } : undefined });
+    return Array.isArray(res.data) ? res.data : (res.data?.data || []);
+  },
+
+  async getCampaignDetails(slug: string): Promise<{
+    found: boolean;
+    is_active: boolean;
+    promotion?: import("@/types").Promotion;
+    products?: import("@/types").Product[];
+    message?: string;
+  }> {
+    const res = await apiClient.get(`/promotions/campaign/${slug}`);
     return res.data;
   },
 

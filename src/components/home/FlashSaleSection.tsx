@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Flame, Clock, ArrowRight } from "lucide-react";
-import { Product } from "@/types";
+import { Product, Promotion } from "@/types";
 import { ProductCard } from "@/components/product/ProductCard";
 import { useThemeStore } from "@/store/useThemeStore";
+import { api } from "@/lib/api";
 
 interface FlashSaleSectionProps {
   products: Product[];
@@ -13,49 +14,117 @@ interface FlashSaleSectionProps {
 
 export function FlashSaleSection({ products }: FlashSaleSectionProps) {
   const { theme } = useThemeStore();
+  const [flashPromo, setFlashPromo] = useState<Promotion | null>(null);
 
   // If disabled by admin, do not render
   if (theme.flash_deals_enabled === false) return null;
 
-  // 24-hour persistent or simulated countdown timer
-  const [timeLeft, setTimeLeft] = useState({
-    hours: 18,
-    minutes: 42,
-    seconds: 35,
+  // Real countdown timer bound to promotion expires_at
+  const [timeLeft, setTimeLeft] = useState<{
+    hours: number;
+    minutes: number;
+    seconds: number;
+    isExpired: boolean;
+  }>({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+    isExpired: false,
   });
 
+  // Load active flash sale promotion
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        } else {
-          // Reset to 24h cycle
-          return { hours: 23, minutes: 59, seconds: 59 };
+    let isMounted = true;
+    api.getStorefrontPromotions("flash_sale")
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res as any)?.data || [];
+        if (isMounted && list.length > 0) {
+          setFlashPromo(list[0]);
         }
+      })
+      .catch((err) => {
+        console.warn("Notice: flash sale promotion lookup:", err);
       });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Calculate live countdown strictly from expires_at
+  useEffect(() => {
+    function calculateRemaining() {
+      let targetTime: number;
+      if (flashPromo?.expires_at) {
+        targetTime = new Date(flashPromo.expires_at).getTime();
+      } else {
+        // Fallback to midnight tonight if no specific promotion end date configured
+        const now = new Date();
+        const midnight = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59
+        ).getTime();
+        targetTime = midnight;
+      }
+
+      const diff = Math.max(0, targetTime - Date.now());
+      if (diff <= 0) {
+        return { hours: 0, minutes: 0, seconds: 0, isExpired: true };
+      }
+
+      const totalSeconds = Math.floor(diff / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return { hours, minutes, seconds, isExpired: false };
+    }
+
+    setTimeLeft(calculateRemaining());
+
+    const timer = setInterval(() => {
+      setTimeLeft(calculateRemaining());
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [flashPromo?.expires_at]);
+
+  // If promotion has expired, do not show flash sale section
+  if (flashPromo?.expires_at && timeLeft.isExpired) {
+    return null;
+  }
+
+  // Deduplicate products by id
+  const uniqueProducts = Array.from(
+    new Map((products || []).map((p) => [p.id, p])).values()
+  );
 
   // Filter products with active discounts, or fallback to first 6 products
-  const discountedProducts = products
+  const discountedProducts = uniqueProducts
     .filter((p) => p.compare_at_price && p.compare_at_price > p.price)
     .slice(0, 6);
 
   const displayProducts =
-    discountedProducts.length >= 2 ? discountedProducts : products.slice(0, 6);
+    discountedProducts.length >= 2 ? discountedProducts : uniqueProducts.slice(0, 6);
 
   if (displayProducts.length === 0) return null;
 
   const formatDigit = (num: number) => String(num).padStart(2, "0");
-  const sectionTitle = theme.flash_deals_title || "Limited Time Deals";
-  const badgeText = theme.flash_deals_badge || "Flash Deal Drop";
+  const sectionTitle = flashPromo?.headline || theme.flash_deals_title || "Limited Time Deals";
+  const badgeText = flashPromo?.badge || theme.flash_deals_badge || "Flash Deal Drop";
+  const discountText =
+    flashPromo?.formatted_discount ||
+    (flashPromo?.discount_type === "percentage"
+      ? `${flashPromo.discount_value}% OFF`
+      : flashPromo?.discount_type === "fixed_amount"
+      ? `৳${Number(flashPromo.discount_value).toLocaleString()} OFF`
+      : "Up to 40% OFF");
+  const ctaLink =
+    flashPromo?.cta_link ||
+    (flashPromo?.slug ? `/promotions/${flashPromo.slug}` : "/products");
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -77,14 +146,14 @@ export function FlashSaleSection({ products }: FlashSaleSectionProps) {
             >
               {sectionTitle}
               <span className="text-xs font-bold px-2 py-0.5 rounded bg-rose-600 text-white shadow-sm">
-                Up to 40% OFF
+                {discountText}
               </span>
             </h2>
             <p
               className="text-xs max-w-lg"
               style={{ color: "var(--theme-text-body, #94a3b8)" }}
             >
-              High-demand studio units with instant dispatch warranty. Deals refresh periodically.
+              {flashPromo?.subheadline || "High-demand studio units with instant dispatch warranty. Deals refresh periodically."}
             </p>
           </div>
 
@@ -135,18 +204,18 @@ export function FlashSaleSection({ products }: FlashSaleSectionProps) {
 
         {/* Product Grid */}
         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 pt-6">
-          {displayProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {displayProducts.map((product, index) => (
+            <ProductCard key={`flash-sale-${product.id ?? index}-${index}`} product={product} />
           ))}
         </div>
 
         {/* Footer View All Link */}
         <div className="relative z-10 pt-6 mt-4 flex items-center justify-center border-t border-white/5">
           <Link
-            href="/products"
+            href={ctaLink}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs theme-btn-secondary transition-all hover:scale-[1.02]"
           >
-            <span>Explore All Discounted Drops</span>
+            <span>{flashPromo?.cta_text || "Explore All Discounted Drops"}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

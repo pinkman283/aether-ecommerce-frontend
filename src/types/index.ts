@@ -105,6 +105,7 @@ export interface Address {
   id: number;
   user_id: number;
   type: 'shipping' | 'billing';
+  address_name?: string | null;
   full_name: string;
   phone?: string | null;
   address_line1: string;
@@ -340,6 +341,7 @@ export interface CourierSettlement {
 
 export interface User {
   id: number;
+  customer_id?: string | null;
   name: string;
   email: string;
   role: 'customer' | 'staff' | 'admin' | 'super_admin';
@@ -1721,9 +1723,21 @@ export interface Promotion {
   banner_image?: string | null;
   thumbnail_image?: string | null;
   badge_text?: string | null;
+  badge?: string | null;
   cta_text?: string | null;
   cta_destination?: string | null;
+  cta_link?: string | null;
+  computed_link?: string | null;
+  primary_code?: string | null;
+  formatted_discount?: string | null;
   is_featured: boolean;
+  show_on_storefront?: boolean;
+  storefront_placement?: 'primary_hero' | 'secondary_hero' | 'top_strip' | 'bottom_banner' | 'flash_sale' | null;
+  headline?: string | null;
+  subheadline?: string | null;
+  image_alt_text?: string | null;
+  mobile_banner_image?: string | null;
+  terms_conditions?: string | null;
   codes?: PromotionCode[];
   product_targets?: PromotionProductTarget[];
   customer_restrictions?: PromotionCustomerRestriction[];

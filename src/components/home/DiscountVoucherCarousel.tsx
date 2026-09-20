@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Percent
 } from "lucide-react";
-import { Banner } from "@/types";
+import { Banner, Promotion } from "@/types";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -27,69 +27,101 @@ export function BottomBannerCarousel({ banners = [] }: BottomBannerCarouselProps
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
 
-  // Fallback slides if no bottom banners are configured yet
-  const displayBanners: Banner[] = (banners && banners.length > 0)
-    ? banners
-    : [
-        {
-          id: 9991,
-          title: "Get 20% Off Your First Flagship Order With Code WELCOME20",
-          subtitle: "Unlock instant discounts across studio headphones, custom mechanical keyboards, and modular daily carry gear. Applicable on all new customer checkouts.",
-          eyebrow: "Limited Studio Flash Release",
-          badge: "20% DISCOUNT",
-          discount_tag: "CODE: WELCOME20",
-          cta_text: "Claim 20% Discount",
-          cta_link: "/products",
-          computed_link: "/products",
-          destination_type: "custom",
-          placement: "bottom_banner",
-          image_url: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=1200&q=80",
-          sort_order: 1,
-          is_active: true,
-          is_currently_visible: true,
-          clicks_count: 0,
-          impressions_count: 0,
-        },
-        {
-          id: 9992,
-          title: "VIP ৳500 Studio Credit Voucher On Hardware Orders",
-          subtitle: "Direct ৳500 rebate applicable on studio monitors, DACs, and custom artisan desk upgrades above ৳3,000.",
-          eyebrow: "VIP Studio Rewards",
-          badge: "৳500 REBATE",
-          discount_tag: "CODE: VIP500",
-          cta_text: "Redeem ৳500 Voucher",
-          cta_link: "/promotions",
-          computed_link: "/promotions",
-          destination_type: "custom",
-          placement: "bottom_banner",
-          image_url: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=1200&q=80",
-          sort_order: 2,
-          is_active: true,
-          is_currently_visible: true,
-          clicks_count: 0,
-          impressions_count: 0,
-        },
-        {
-          id: 9993,
-          title: "Instant ৳300 Hardware Voucher For Today's Checkouts",
-          subtitle: "Claim instant coupon discount valid on all mechanical switches, custom keycap sets, and tech slings.",
-          eyebrow: "Instant Claim Voucher",
-          badge: "CLAIMABLE NOW",
-          discount_tag: "CODE: CLAIM300",
-          cta_text: "Claim ৳300 Voucher",
-          cta_link: "/promotions",
-          computed_link: "/promotions",
-          destination_type: "custom",
-          placement: "bottom_banner",
-          image_url: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1200&q=80",
-          sort_order: 3,
-          is_active: true,
-          is_currently_visible: true,
-          clicks_count: 0,
-          impressions_count: 0,
-        },
-      ];
+  // Fetch active voucher promotions if no parent banners provided
+  useEffect(() => {
+    if (!banners || banners.length === 0) {
+      let isMounted = true;
+      api.getStorefrontPromotions("voucher_carousel")
+        .then((res) => {
+          const list = Array.isArray(res) ? res : (res as any)?.data || [];
+          if (isMounted && list.length > 0) {
+            setPromotions(list);
+          }
+        })
+        .catch((err) => {
+          console.warn("Notice: voucher carousel promotions fallback:", err);
+        });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [banners]);
+
+  // Map promotions to banner format if available
+  const mappedPromotions: Banner[] = promotions.map((p) => ({
+    id: p.id,
+    title: p.headline || p.name,
+    subtitle: p.subheadline || p.description || "",
+    eyebrow: p.promotion_type ? p.promotion_type.replace(/_/g, " ") : "Special Offer",
+    badge:
+      p.formatted_discount ||
+      (p.discount_type === "percentage"
+        ? `${p.discount_value}% OFF`
+        : `৳${Number(p.discount_value).toLocaleString()} OFF`),
+    discount_tag: p.primary_code ? `CODE: ${p.primary_code}` : "",
+    cta_text: p.cta_text || "Claim Offer",
+    cta_link: p.cta_destination || `/promotions/${p.slug}`,
+    computed_link: p.cta_destination || `/promotions/${p.slug}`,
+    image_url: p.banner_image || "",
+    placement: "bottom_banner" as const,
+    sort_order: 1,
+    promotion: p,
+    is_active: p.status === "active",
+    is_currently_visible: true,
+    clicks_count: 0,
+    impressions_count: 0,
+  }));
+
+  // Safe fallback slides without hardcoded fake promo codes
+  const DEFAULT_SLIDES: Banner[] = [
+    {
+      id: 9991,
+      title: "Complimentary Express Delivery on Studio Orders Above ৳2,000",
+      subtitle: "Experience next-day insured delivery across high-fidelity studio headphones, custom mechanical keyboards, and precision desk hardware.",
+      eyebrow: "Storewide Logistics Perk",
+      badge: "FREE COURIER",
+      discount_tag: "৳0 SHIPPING",
+      cta_text: "Explore Flagship Gear",
+      cta_link: "/products",
+      computed_link: "/products",
+      destination_type: "custom",
+      placement: "bottom_banner",
+      image_url: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=1200&q=80",
+      sort_order: 1,
+      is_active: true,
+      is_currently_visible: true,
+      clicks_count: 0,
+      impressions_count: 0,
+    },
+    {
+      id: 9992,
+      title: "Discover Official Studio Promotions & Limited Campaigns",
+      subtitle: "Unlock exclusive vouchers, tier discounts, and seasonal campaign drops curated for audio professionals and mechanical enthusiasts.",
+      eyebrow: "Seasonal Campaigns",
+      badge: "ACTIVE OFFERS",
+      discount_tag: "VERIFIED SAVINGS",
+      cta_text: "Browse All Promotions",
+      cta_link: "/promotions",
+      computed_link: "/promotions",
+      destination_type: "custom",
+      placement: "bottom_banner",
+      image_url: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=1200&q=80",
+      sort_order: 2,
+      is_active: true,
+      is_currently_visible: true,
+      clicks_count: 0,
+      impressions_count: 0,
+    },
+  ];
+
+  const displayBanners: Banner[] =
+    banners && banners.length > 0
+      ? banners
+      : mappedPromotions.length > 0
+      ? mappedPromotions
+      : DEFAULT_SLIDES;
 
   const total = displayBanners.length;
   const currentBanner = displayBanners[currentIndex] || displayBanners[0];
@@ -103,12 +135,13 @@ export function BottomBannerCarousel({ banners = [] }: BottomBannerCarouselProps
     return () => clearInterval(timer);
   }, [total, isPaused]);
 
-  // Extract coupon code
+  // Extract coupon code strictly from real promotion or discount_tag
   const promoCode =
+    currentBanner.promotion?.primary_code ||
     currentBanner.promotion?.codes?.[0]?.code ||
     (currentBanner.discount_tag?.includes("CODE:")
       ? currentBanner.discount_tag.split("CODE:")[1].trim()
-      : currentBanner.discount_tag?.replace(/[^a-zA-Z0-9_-]/g, "") || "WELCOME20");
+      : null);
 
   const handleCopyCode = (e: React.MouseEvent, code: string) => {
     e.preventDefault();

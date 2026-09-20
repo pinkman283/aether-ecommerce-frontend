@@ -5,3 +5,4 @@ export * from "./AdminPagination";
 export * from "./AdminEmptyState";
 export * from "./FilterDrawer";
 export * from "./AdminSaveBar";
+export * from "./CustomerCombobox";

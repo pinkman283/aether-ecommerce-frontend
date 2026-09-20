@@ -23,6 +23,13 @@ import {
   RefreshCw,
   AlertTriangle,
   ArrowRight,
+  X,
+  Layout,
+  Upload,
+  Image as ImageIcon,
+  FileText,
+  CheckCircle2,
+  ExternalLink,
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { Promotion, Category, Brand, Product, User } from "@/types";
@@ -52,8 +59,11 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "general" | "mechanics" | "schedule" | "limits" | "scoping" | "codes" | "claim"
-  >("general");
+    "basic" | "discount" | "scoping" | "schedule" | "codes" | "storefront" | "review"
+  >("basic");
+
+  const [uploadingDesktop, setUploadingDesktop] = useState(false);
+  const [uploadingMobile, setUploadingMobile] = useState(false);
 
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState<boolean>(
     Boolean(initialData?.slug && isEdit)
@@ -66,6 +76,16 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
   const [brands, setBrands] = useState<Brand[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<User[]>([]);
+
+  // Customer Search & Specific Customer Selection State
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerSearchResults, setCustomerSearchResults] = useState<User[]>([]);
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const [selectedCustomersList, setSelectedCustomersList] = useState<User[]>(
+    (initialData as any)?.customer_restrictions?.map((r: any) => r.user || { id: r.user_id, name: `Customer #${r.user_id}`, email: "" }) ||
+    (initialData as any)?.customerRestrictions?.map((r: any) => r.user || { id: r.user_id, name: `Customer #${r.user_id}`, email: "" }) ||
+    []
+  );
 
   // Form State
   const [formData, setFormData] = useState<Omit<Partial<Promotion>, "codes"> & {
@@ -83,6 +103,9 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
     discount_type: initialData?.discount_type || "percentage",
     discount_value: initialData?.discount_value ?? 10,
     max_discount_amount: initialData?.max_discount_amount || null,
+    customer_ids: (initialData as any)?.customer_restrictions?.map((r: any) => r.user_id) ||
+      (initialData as any)?.customerRestrictions?.map((r: any) => r.user_id) ||
+      [],
     bxgy_buy_quantity: initialData?.bxgy_buy_quantity || 1,
     bxgy_get_quantity: initialData?.bxgy_get_quantity || 1,
     bxgy_reward_discount_percent: initialData?.bxgy_reward_discount_percent ?? 100,
@@ -106,15 +129,23 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
     can_combine_with_order_discounts: initialData?.can_combine_with_order_discounts ?? false,
     can_combine_with_product_discounts: initialData?.can_combine_with_product_discounts ?? false,
     priority: initialData?.priority ?? 10,
+    banner_image: initialData?.banner_image || "",
+    mobile_banner_image: (initialData as any)?.mobile_banner_image || "",
+    thumbnail_image: initialData?.thumbnail_image || "",
+    image_alt_text: (initialData as any)?.image_alt_text || "",
+    headline: (initialData as any)?.headline || "",
+    subheadline: (initialData as any)?.subheadline || "",
     badge_text: initialData?.badge_text || "",
     cta_text: initialData?.cta_text || "Shop Deals",
     cta_destination: initialData?.cta_destination || "/products",
+    terms_conditions: (initialData as any)?.terms_conditions || "",
+    show_on_storefront: Boolean((initialData as any)?.show_on_storefront),
+    storefront_placement: (initialData as any)?.storefront_placement || "primary_hero",
     is_featured: initialData?.is_featured ?? false,
     target_product_ids: initialData?.product_targets?.filter((t) => t.target_type === "product" && !t.is_exclusion).map((t) => t.target_id) || [],
     target_category_ids: initialData?.product_targets?.filter((t) => t.target_type === "category" && !t.is_exclusion).map((t) => t.target_id) || [],
     target_brand_ids: initialData?.product_targets?.filter((t) => t.target_type === "brand" && !t.is_exclusion).map((t) => t.target_id) || [],
     excluded_product_ids: initialData?.product_targets?.filter((t) => t.is_exclusion).map((t) => t.target_id) || [],
-    customer_ids: initialData?.customer_restrictions?.map((c) => c.user_id) || [],
     codes: initialData?.codes?.map((c) => ({ code: c.code, usage_limit: c.usage_limit })) || [
       { code: "", usage_limit: null },
     ],
@@ -267,11 +298,54 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
     toast.success(`Generated ${batchCount} unique promotion codes`);
   };
 
+  const handleSearchCustomers = async () => {
+    if (!customerSearch.trim()) return;
+    setCustomerSearchLoading(true);
+    try {
+      const res = await adminApi.getCustomers({ search: customerSearch.trim(), per_page: 20 });
+      setCustomerSearchResults(res.data || []);
+    } catch (err) {
+      toast.error("Failed to search customers");
+    } finally {
+      setCustomerSearchLoading(false);
+    }
+  };
+
+  const handleDesktopImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDesktop(true);
+    try {
+      const res = await adminApi.uploadPromotionImage(file);
+      handleChange("banner_image", res.image_url);
+      toast.success("Desktop promotional image uploaded successfully!");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to upload image");
+    } finally {
+      setUploadingDesktop(false);
+    }
+  };
+
+  const handleMobileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingMobile(true);
+    try {
+      const res = await adminApi.uploadPromotionImage(file);
+      handleChange("mobile_banner_image", res.image_url);
+      toast.success("Mobile promotional image uploaded successfully!");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to upload mobile image");
+    } finally {
+      setUploadingMobile(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name?.trim()) {
       toast.error("Promotion name is required");
-      setActiveTab("general");
+      setActiveTab("basic");
       return;
     }
 
@@ -279,6 +353,14 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
     try {
       const payload: any = {
         ...formData,
+        show_on_storefront: Boolean(formData.show_on_storefront),
+        storefront_placement: formData.show_on_storefront ? (formData.storefront_placement || "primary_hero") : null,
+        headline: formData.headline || null,
+        subheadline: formData.subheadline || null,
+        image_alt_text: formData.image_alt_text || null,
+        mobile_banner_image: formData.mobile_banner_image || null,
+        terms_conditions: formData.terms_conditions || null,
+        customer_ids: formData.customer_ids || [],
         min_order_amount: Number(formData.min_order_amount) || 0,
         discount_value: Number(formData.discount_value) || 0,
         max_discount_amount: formData.max_discount_amount ? Number(formData.max_discount_amount) : null,
@@ -351,44 +433,55 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Form Container (Col 2) */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Form Tabs */}
-          <div className="flex items-center gap-2 border-b border-white/10 overflow-x-auto no-scrollbar pb-1 text-xs">
+          {/* 7-Step Navigation Bar */}
+          <div className="flex items-center gap-1.5 border-b border-white/10 overflow-x-auto no-scrollbar pb-2 text-xs">
             {[
-              { key: "general", label: "General & Branding", icon: Sparkles },
-              { key: "mechanics", label: "Discount Mechanics", icon: Percent },
-              { key: "schedule", label: "Time Limits & Schedule", icon: Clock },
-              { key: "limits", label: "Rules & Safeguards", icon: Shield },
-              { key: "scoping", label: "Target Scoping", icon: Layers },
-              { key: "codes", label: "Promo Codes", icon: Tag },
-              { key: "claim", label: "Audience & VIP", icon: Users },
+              { key: "basic", label: "1. Basic Info", icon: Sparkles },
+              { key: "discount", label: "2. Discount Rules", icon: Percent },
+              { key: "scoping", label: "3. Scope & Audience", icon: Layers },
+              { key: "schedule", label: "4. Schedule & Limits", icon: Clock },
+              { key: "codes", label: "5. Promo Codes", icon: Tag },
+              { key: "storefront", label: "6. Storefront", icon: Layout },
+              { key: "review", label: "7. Review & Publish", icon: CheckCircle2 },
             ].map((t) => {
               const Icon = t.icon;
+              const isActive = activeTab === t.key;
               return (
                 <button
                   key={t.key}
                   type="button"
                   onClick={() => setActiveTab(t.key as any)}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer ${
-                    activeTab === t.key
-                      ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold shadow-sm"
+                      : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  {t.label}
+                  <span>{t.label}</span>
                 </button>
               );
             })}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* TAB 1: General & Branding */}
-            {activeTab === "general" && (
+            {/* STEP 1: Basic Info */}
+            {activeTab === "basic" && (
               <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-5">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  Basic Promotion Details
-                </h3>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      Step 1: Basic Promotion Details
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Set the core identity, public name, URL slug, and evaluation priority for this promotion.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                    Step 1 of 7
+                  </span>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5 md:col-span-2">
@@ -405,7 +498,7 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                     />
                   </div>
 
-                  {/* Auto-Generated Slug with Manual Override & Sync Button */}
+                  {/* Auto-Generated Slug */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold text-slate-300">
@@ -421,293 +514,18 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                         Auto-generate
                       </button>
                     </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="e.g. eid-mega-sale"
-                        value={formData.slug || ""}
-                        onChange={(e) => handleSlugChange(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none font-mono"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      placeholder="e.g. eid-mega-sale"
+                      value={formData.slug || ""}
+                      onChange={(e) => handleSlugChange(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none font-mono"
+                    />
                     <p className="text-[10px] text-slate-500 font-mono">
-                      Auto-generated from title. URL safe identifier.
+                      URL safe identifier for campaign landing page.
                     </p>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">Promotion Status</label>
-                    <select
-                      value={formData.status || "active"}
-                      onChange={(e) => handleChange("status", e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
-                    >
-                      <option value="active">Active (Live)</option>
-                      <option value="scheduled">Scheduled</option>
-                      <option value="paused">Paused</option>
-                      <option value="draft">Draft</option>
-                      <option value="expired">Expired</option>
-                      <option value="archived">Archived</option>
-                    </select>
-                  </div>
-
-                  {/* Immediate Time Limits Quick Preview Card */}
-                  <div className="md:col-span-2 p-4 rounded-xl bg-gradient-to-br from-amber-500/10 via-purple-500/5 to-transparent border border-amber-500/20 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-bold text-white">
-                        <Clock className="w-4 h-4 text-amber-400" />
-                        <span>Promotion Time Limits & Validity</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("schedule")}
-                        className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        Advanced Schedule Tab <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {/* Time Limit to Claim */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-medium text-slate-300 flex items-center gap-1">
-                            Claim Deadline (Cutoff)
-                          </label>
-                          {formData.claim_deadline && (
-                            <button
-                              type="button"
-                              onClick={() => applyClaimDeadlineOffset(null)}
-                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          type="datetime-local"
-                          value={formData.claim_deadline || ""}
-                          onChange={(e) => {
-                            handleChange("claim_deadline", e.target.value);
-                            setActiveClaimDeadlinePreset(null);
-                          }}
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                        />
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {[
-                            { label: "+24h", hours: 24 },
-                            { label: "+3d", hours: 72 },
-                            { label: "+7d", hours: 168 },
-                            { label: "+14d", hours: 336 },
-                          ].map((p) => {
-                            const isSelected = activeClaimDeadlinePreset === p.label;
-                            return (
-                              <button
-                                key={p.label}
-                                type="button"
-                                onClick={() => applyClaimDeadlineOffset(p.hours, p.label)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors cursor-pointer ${
-                                  isSelected
-                                    ? "bg-amber-500/25 text-amber-300 border-amber-400/50 font-bold ring-1 ring-amber-400/30"
-                                    : "bg-white/5 hover:bg-white/10 text-slate-300 border-white/10"
-                                }`}
-                                title={isSelected ? "Click to unselect and clear" : `Set ${p.label}`}
-                              >
-                                {p.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Validation Time After Claim */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-medium text-slate-300 flex items-center gap-1">
-                            Valid After Claim (Days)
-                          </label>
-                          {formData.claim_validity_days != null && (
-                            <button
-                              type="button"
-                              onClick={() => handleChange("claim_validity_days", null)}
-                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          type="number"
-                          min={1}
-                          placeholder="e.g. 7"
-                          value={formData.claim_validity_days || ""}
-                          onChange={(e) =>
-                            handleChange(
-                              "claim_validity_days",
-                              e.target.value ? Number(e.target.value) : null
-                            )
-                          }
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                        />
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {[3, 7, 14, 30].map((days) => {
-                            const isSelected = formData.claim_validity_days === days;
-                            return (
-                              <button
-                                key={days}
-                                type="button"
-                                onClick={() => handleToggleClaimValidityDays(days)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors cursor-pointer ${
-                                  isSelected
-                                    ? "bg-purple-500/30 text-purple-200 border-purple-400/60 font-bold ring-1 ring-purple-400/40"
-                                    : "bg-white/5 hover:bg-white/10 text-slate-300 border-white/10"
-                                }`}
-                                title={isSelected ? "Click to unselect and clear" : `Set ${days} days`}
-                              >
-                                {days}d
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Expiration Date */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-medium text-slate-300 flex items-center gap-1">
-                            Campaign Expiry
-                          </label>
-                          {formData.expires_at && (
-                            <button
-                              type="button"
-                              onClick={() => applyExpiresAtOffset(null)}
-                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          type="datetime-local"
-                          value={formData.expires_at || ""}
-                          onChange={(e) => {
-                            handleChange("expires_at", e.target.value);
-                            setActiveExpiresAtPreset(null);
-                          }}
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                        />
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {[
-                            { label: "+7d", days: 7 },
-                            { label: "+14d", days: 14 },
-                            { label: "+30d", days: 30 },
-                          ].map((p) => {
-                            const isSelected = activeExpiresAtPreset === p.label;
-                            return (
-                              <button
-                                key={p.label}
-                                type="button"
-                                onClick={() => applyExpiresAtOffset(p.days, p.label)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors cursor-pointer ${
-                                  isSelected
-                                    ? "bg-emerald-500/25 text-emerald-300 border-emerald-400/50 font-bold ring-1 ring-emerald-400/30"
-                                    : "bg-white/5 hover:bg-white/10 text-slate-300 border-white/10"
-                                }`}
-                                title={isSelected ? "Click to unselect and clear" : `Set ${p.label}`}
-                              >
-                                {p.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className="text-[11px] text-amber-300/80 font-mono">
-                      ⚡ Automatically deactivates and hides from customer storefront when the claim deadline or expiration date passes.
-                    </p>
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs font-semibold text-slate-300">Customer Description</label>
-                    <textarea
-                      rows={2}
-                      placeholder="e.g. Get 20% discount on all mechanical keyboards on orders above ৳1,500."
-                      value={formData.description || ""}
-                      onChange={(e) => handleChange("description", e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none resize-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">Badge Text (Callout Tag)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. HOT DEAL, 20% OFF, LIMITED"
-                      value={formData.badge_text || ""}
-                      onChange={(e) => handleChange("badge_text", e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">Evaluation Priority</label>
-                    <input
-                      type="number"
-                      placeholder="Higher = evaluated earlier (e.g. 10)"
-                      value={formData.priority ?? ""}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleNumericFieldChange("priority", e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">CTA Button Text</label>
-                    <input
-                      type="text"
-                      placeholder="Shop Deals"
-                      value={formData.cta_text || ""}
-                      onChange={(e) => handleChange("cta_text", e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">CTA Target URL</label>
-                    <input
-                      type="text"
-                      placeholder="/products"
-                      value={formData.cta_destination || ""}
-                      onChange={(e) => handleChange("cta_destination", e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 flex items-center gap-3 pt-2">
-                    <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(formData.is_featured)}
-                        onChange={(e) => handleChange("is_featured", e.target.checked)}
-                        className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
-                      />
-                      Feature this promotion prominently on storefront banner and deals page
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 2: Discount Mechanics */}
-            {activeTab === "mechanics" && (
-              <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-5">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Percent className="w-4 h-4 text-amber-400" />
-                  Type & Calculation Mechanics
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Promotion Type */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-300">Promotion Type</label>
@@ -724,6 +542,77 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                     </select>
                   </div>
 
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs font-semibold text-slate-300">Customer Description</label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Get 20% discount on all mechanical keyboards on orders above ৳1,500."
+                      value={formData.description || ""}
+                      onChange={(e) => handleChange("description", e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">Evaluation Priority</label>
+                    <input
+                      type="number"
+                      placeholder="Higher = evaluated earlier (e.g. 10)"
+                      value={formData.priority ?? ""}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => handleNumericFieldChange("priority", e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
+                    />
+                    <p className="text-[10px] text-slate-500">
+                      When multiple promotions are eligible, higher priority promotions evaluate first.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-6">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData.is_featured)}
+                        onChange={(e) => handleChange("is_featured", e.target.checked)}
+                        className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
+                      />
+                      Feature this promotion prominently across deals & campaign lists
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("discount")}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all cursor-pointer"
+                  >
+                    Next: Discount Rules
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: Discount Rules */}
+            {activeTab === "discount" && (
+              <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Percent className="w-4 h-4 text-amber-400" />
+                      Step 2: Discount Calculation Rules
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Define the exact formula, discount amount, maximum cap, and any special Buy X Get Y logic.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                    Step 2 of 7
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Discount Type */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-300">Discount Formula</label>
@@ -837,42 +726,126 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                     </div>
                   )}
                 </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("basic")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("scoping")}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all cursor-pointer"
+                  >
+                    Next: Scope & Audience
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* TAB 3: DEDICATED TIME LIMITS & SCHEDULING (FIRST CLASS) */}
+            {/* STEP 4: Schedule & Limits */}
             {activeTab === "schedule" && (
               <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       <Clock className="w-4 h-4 text-cyan-400" />
-                      Time Limits, Claim Window & Automatic Deactivation
+                      Step 4: Time Windows, Safeguards & Limits
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">
-                      Configure claim cutoffs, validation duration post-claim, and campaign expiration. Expired promotions automatically disappear from the customer storefront and deactivate in the database.
+                      Configure authoritative campaign start/expiry dates, claim deadlines, wallet validity, usage limits, and stacking rules.
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 whitespace-nowrap">
-                    Authoritative Timer
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                    Step 4 of 7
                   </span>
                 </div>
 
-                {/* Card 1: Time Limit to Claim (Claim Window Deadline) */}
-                <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-white flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-amber-400" />
-                      1. Time Limit to Claim (Claim Window Deadline)
-                    </label>
-                    <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                      Storefront Cutoff
-                    </span>
+                {/* Timing Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Starts At */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">Campaign Starts At</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.starts_at || ""}
+                      onChange={(e) => handleChange("starts_at", e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                    />
+                    <p className="text-[10px] text-slate-500">
+                      Leave empty to activate immediately upon publishing.
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Specifies the deadline until which customers are allowed to claim this voucher into their wallet. After this date & time passes, the promotion is <strong className="text-white">hidden from storefront showcases</strong> and <strong className="text-white">automatically deactivated</strong>.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+
+                  {/* Expires At */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-300">Campaign Expires At (Hard Cutoff)</label>
+                      {formData.expires_at && (
+                        <button
+                          type="button"
+                          onClick={() => applyExpiresAtOffset(null)}
+                          className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="datetime-local"
+                      value={formData.expires_at || ""}
+                      onChange={(e) => {
+                        handleChange("expires_at", e.target.value);
+                        setActiveExpiresAtPreset(null);
+                      }}
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                    />
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      {[
+                        { label: "+7 Days", days: 7 },
+                        { label: "+14 Days", days: 14 },
+                        { label: "+30 Days", days: 30 },
+                        { label: "+90 Days", days: 90 },
+                      ].map((p) => {
+                        const isSelected = activeExpiresAtPreset === p.label;
+                        return (
+                          <button
+                            key={p.label}
+                            type="button"
+                            onClick={() => applyExpiresAtOffset(p.days, p.label)}
+                            className={`px-2 py-0.5 rounded text-[10px] border transition-colors cursor-pointer ${
+                              isSelected
+                                ? "bg-emerald-500/25 text-emerald-300 border-emerald-400/50 font-bold ring-1 ring-emerald-400/30"
+                                : "bg-[#12151f] hover:bg-white/10 text-slate-300 border-white/10"
+                            }`}
+                            title={isSelected ? "Click to unselect and clear" : `Set ${p.label}`}
+                          >
+                            {p.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Claim Deadline */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-300">Claim Window Deadline (Storefront Cutoff)</label>
+                      {formData.claim_deadline && (
+                        <button
+                          type="button"
+                          onClick={() => applyClaimDeadlineOffset(null)}
+                          className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="datetime-local"
                       value={formData.claim_deadline || ""}
@@ -882,53 +855,37 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                       }}
                       className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
                     />
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[11px] text-slate-500">Quick Presets:</span>
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
                       {[
-                        { label: "+24 Hours", hours: 24 },
-                        { label: "+3 Days", hours: 72 },
-                        { label: "+7 Days", hours: 168 },
-                        { label: "+14 Days", hours: 336 },
-                        { label: "+30 Days", hours: 720 },
-                      ].map((preset) => {
-                        const isSelected = activeClaimDeadlinePreset === preset.label;
+                        { label: "+24h", hours: 24 },
+                        { label: "+3d", hours: 72 },
+                        { label: "+7d", hours: 168 },
+                        { label: "+14d", hours: 336 },
+                      ].map((p) => {
+                        const isSelected = activeClaimDeadlinePreset === p.label;
                         return (
                           <button
-                            key={preset.label}
+                            key={p.label}
                             type="button"
-                            onClick={() => applyClaimDeadlineOffset(preset.hours, preset.label)}
-                            className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer border ${
+                            onClick={() => applyClaimDeadlineOffset(p.hours, p.label)}
+                            className={`px-2 py-0.5 rounded text-[10px] border transition-colors cursor-pointer ${
                               isSelected
                                 ? "bg-amber-500/25 text-amber-300 border-amber-400/50 font-bold ring-1 ring-amber-400/30"
                                 : "bg-[#12151f] hover:bg-white/10 text-slate-300 border-white/10"
                             }`}
-                            title={isSelected ? "Click to unselect and clear" : `Set ${preset.label}`}
+                            title={isSelected ? "Click to unselect and clear" : `Set ${p.label}`}
                           >
-                            {preset.label}
+                            {p.label}
                           </button>
                         );
                       })}
-                      {formData.claim_deadline && (
-                        <button
-                          type="button"
-                          onClick={() => applyClaimDeadlineOffset(null)}
-                          className="px-2 py-1 rounded-lg text-[11px] text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 cursor-pointer font-semibold"
-                        >
-                          Clear
-                        </button>
-                      )}
                     </div>
                   </div>
-                </div>
 
-                {/* Card 2: Validation Time After Claim (Post-Claim Validity Window) */}
-                <div className="p-4 rounded-xl border border-purple-500/20 bg-purple-500/5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-white flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-purple-400" />
-                      2. Validation Time After Claim (Customer Wallet Validity)
-                    </label>
-                    <div className="flex items-center gap-2">
+                  {/* Claim Validity Days */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-300">Valid After Claim (Days)</label>
                       {formData.claim_validity_days != null && (
                         <button
                           type="button"
@@ -938,47 +895,36 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                           Clear
                         </button>
                       )}
-                      <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                        Post-Claim Duration
-                      </span>
                     </div>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Once a customer claims the voucher into their wallet, how many days does it remain valid before expiring? (e.g. valid for 7 days from the moment of claim).
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min={1}
-                        placeholder="e.g. 7"
-                        value={formData.claim_validity_days ?? ""}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => handleNumericFieldChange("claim_validity_days", e.target.value, { defaultNull: true })}
-                        className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono font-bold pr-16"
-                      />
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">
-                        Days
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[11px] text-slate-500">Quick Presets:</span>
-                      {[3, 7, 14, 30, 60].map((days) => {
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 7"
+                      value={formData.claim_validity_days || ""}
+                      onChange={(e) =>
+                        handleChange(
+                          "claim_validity_days",
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                    />
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      {[3, 7, 14, 30].map((days) => {
                         const isSelected = formData.claim_validity_days === days;
                         return (
                           <button
                             key={days}
                             type="button"
                             onClick={() => handleToggleClaimValidityDays(days)}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer border ${
+                            className={`px-2 py-0.5 rounded text-[10px] border transition-colors cursor-pointer ${
                               isSelected
                                 ? "bg-purple-500/30 text-purple-200 border-purple-400/60 font-bold ring-1 ring-purple-400/40"
                                 : "bg-[#12151f] hover:bg-white/10 text-slate-300 border-white/10"
                             }`}
                             title={isSelected ? "Click to unselect and clear" : `Set ${days} days`}
                           >
-                            {days} Days
+                            {days}d
                           </button>
                         );
                       })}
@@ -986,260 +932,165 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                   </div>
                 </div>
 
-                {/* Card 3: Overall Campaign Dates & Auto-Deactivation Expiry */}
-                <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-white flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-emerald-400" />
-                      3. Overall Campaign Dates & Auto-Deactivation Cutoff
+                {/* Safeguards & Order Limits */}
+                <div className="pt-4 border-t border-white/10 space-y-4">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Order Spend & Usage Limits
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">Minimum Order Subtotal (৳)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="0"
+                        value={formData.min_order_amount ?? ""}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => handleNumericFieldChange("min_order_amount", e.target.value, { isFloat: true })}
+                        className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-slate-300">Max Order Subtotal Limit (৳)</label>
+                        {formData.max_order_amount != null && (
+                          <button
+                            type="button"
+                            onClick={() => handleChange("max_order_amount", null)}
+                            className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="Unlimited"
+                        value={formData.max_order_amount ?? ""}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => handleNumericFieldChange("max_order_amount", e.target.value, { isFloat: true, defaultNull: true })}
+                        className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-slate-300">Total Campaign Usage Limit</label>
+                        {formData.total_usage_limit != null && (
+                          <button
+                            type="button"
+                            onClick={() => handleChange("total_usage_limit", null)}
+                            className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder="Unlimited"
+                        value={formData.total_usage_limit ?? ""}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => handleNumericFieldChange("total_usage_limit", e.target.value, { defaultNull: true })}
+                        className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                      />
+                      <p className="text-[10px] text-slate-500">
+                        Total redemptions across all customers before promotion locks.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">Per-Customer Usage Limit</label>
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder="1"
+                        value={formData.per_customer_usage_limit ?? ""}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => handleNumericFieldChange("per_customer_usage_limit", e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                      />
+                      <p className="text-[10px] text-slate-500">
+                        Times an individual customer (or guest email/phone) can use this.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stacking Rules */}
+                <div className="pt-4 border-t border-white/10 space-y-3">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Stacking & Combination Rules
+                  </h4>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData.is_stackable)}
+                        onChange={(e) => handleChange("is_stackable", e.target.checked)}
+                        className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
+                      />
+                      Allow this promotion to be stacked with other eligible discounts
                     </label>
-                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      Hard Expiry
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    The overall lifecycle of this promotional campaign. Once <code className="text-amber-300">expires_at</code> passes, the entire promotion is automatically set to <code className="text-rose-400">expired</code> status in the database and blocked from all checkout calculations.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-slate-300">Campaign Starts At</label>
-                        {formData.starts_at && (
-                          <button
-                            type="button"
-                            onClick={() => handleChange("starts_at", "")}
-                            className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                       <input
-                        type="datetime-local"
-                        value={formData.starts_at || ""}
-                        onChange={(e) => handleChange("starts_at", e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                        type="checkbox"
+                        checked={Boolean(formData.can_combine_with_free_shipping)}
+                        onChange={(e) => handleChange("can_combine_with_free_shipping", e.target.checked)}
+                        className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
                       />
-                      <span className="text-[10px] text-slate-500">Leave blank to activate immediately upon publish</span>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-slate-300">Campaign Expires At (Hard Cutoff)</label>
-                        {formData.expires_at && (
-                          <button
-                            type="button"
-                            onClick={() => applyExpiresAtOffset(null)}
-                            className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                      <input
-                        type="datetime-local"
-                        value={formData.expires_at || ""}
-                        onChange={(e) => {
-                          handleChange("expires_at", e.target.value);
-                          setActiveExpiresAtPreset(null);
-                        }}
-                        className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                      />
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        {[
-                          { label: "+7 Days", days: 7 },
-                          { label: "+14 Days", days: 14 },
-                          { label: "+30 Days", days: 30 },
-                          { label: "+90 Days", days: 90 },
-                        ].map((p) => {
-                          const isSelected = activeExpiresAtPreset === p.label;
-                          return (
-                            <button
-                              key={p.label}
-                              type="button"
-                              onClick={() => applyExpiresAtOffset(p.days, p.label)}
-                              className={`px-2 py-0.5 rounded text-[10px] border transition-colors cursor-pointer ${
-                                isSelected
-                                  ? "bg-emerald-500/25 text-emerald-300 border-emerald-400/50 font-bold ring-1 ring-emerald-400/30"
-                                  : "bg-[#12151f] hover:bg-white/10 text-slate-300 border-white/10"
-                              }`}
-                              title={isSelected ? "Click to unselect and clear" : `Set ${p.label}`}
-                            >
-                              {p.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                      Can combine with Free Shipping promotions
+                    </label>
                   </div>
                 </div>
 
-                {/* Live Schedule Summary Banner */}
-                <div className="p-3.5 rounded-xl bg-[#12151f] border border-white/10 space-y-1.5">
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-cyan-400" />
-                    Audited Timing Behavior Summary:
-                  </span>
-                  <ul className="text-[11px] text-slate-300 space-y-1 list-disc list-inside font-mono">
-                    <li>
-                      <strong>Start Date:</strong>{" "}
-                      {formData.starts_at ? new Date(formData.starts_at).toLocaleString() : "Immediately active upon publishing"}
-                    </li>
-                    <li>
-                      <strong>Claim Window:</strong>{" "}
-                      {formData.claim_deadline ? (
-                        <span className="text-amber-300">
-                          Customers can claim until {new Date(formData.claim_deadline).toLocaleString()}. Disappears after deadline.
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">Open until overall campaign expiration</span>
-                      )}
-                    </li>
-                    <li>
-                      <strong>Validation After Claim:</strong>{" "}
-                      <span className="text-purple-300">
-                        {formData.claim_validity_days
-                          ? `Customer voucher remains valid for ${formData.claim_validity_days} days post-claim in their wallet.`
-                          : "Customer voucher remains valid until the campaign expires."}
-                      </span>
-                    </li>
-                    <li>
-                      <strong>Campaign Auto-Deactivation:</strong>{" "}
-                      {formData.expires_at ? (
-                        <span className="text-emerald-300">
-                          Automatically marks status as &apos;expired&apos; on {new Date(formData.expires_at).toLocaleString()}.
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">Manual deactivation (No hard expiration date)</span>
-                      )}
-                    </li>
-                  </ul>
+                <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("scoping")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("codes")}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all cursor-pointer"
+                  >
+                    Next: Promo Codes
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* TAB 4: Rules & Limits */}
-            {activeTab === "limits" && (
-              <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-5">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-amber-400" />
-                  Order Minimums & Usage Safeguards
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">Minimum Order Subtotal (৳)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="0"
-                      value={formData.min_order_amount ?? ""}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleNumericFieldChange("min_order_amount", e.target.value, { isFloat: true })}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-300">Max Order Subtotal Limit (৳)</label>
-                      {formData.max_order_amount != null && (
-                        <button
-                          type="button"
-                          onClick={() => handleChange("max_order_amount", null)}
-                          className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="Unlimited"
-                      value={formData.max_order_amount ?? ""}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleNumericFieldChange("max_order_amount", e.target.value, { isFloat: true, defaultNull: true })}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-300">Total Campaign Usage Limit</label>
-                      {formData.total_usage_limit != null && (
-                        <button
-                          type="button"
-                          onClick={() => handleChange("total_usage_limit", null)}
-                          className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="Unlimited"
-                      value={formData.total_usage_limit ?? ""}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleNumericFieldChange("total_usage_limit", e.target.value, { defaultNull: true })}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">Per-Customer Usage Limit</label>
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="1"
-                      value={formData.per_customer_usage_limit ?? ""}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleNumericFieldChange("per_customer_usage_limit", e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                    />
-                  </div>
-
-                  {/* Stacking Rules */}
-                  <div className="md:col-span-2 pt-3 border-t border-white/10 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                      Combination & Stacking Rules
-                    </h4>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(formData.is_stackable)}
-                          onChange={(e) => handleChange("is_stackable", e.target.checked)}
-                          className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
-                        />
-                        Allow this promotion to be stacked with other eligible discounts
-                      </label>
-                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(formData.can_combine_with_free_shipping)}
-                          onChange={(e) => handleChange("can_combine_with_free_shipping", e.target.checked)}
-                          className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
-                        />
-                        Can combine with Free Shipping promotions
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 5: Scoping */}
+            {/* STEP 3: Scope & Audience */}
             {activeTab === "scoping" && (
-              <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-5">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-amber-400" />
-                  Product Scoping & Exclusions
-                </h3>
+              <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-amber-400" />
+                      Step 3: Target Scoping & Customer Audience
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Choose which products, categories, or brands qualify, and specify which customers are eligible.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                    Step 3 of 7
+                  </span>
+                </div>
 
+                {/* Section A: Product Catalog Scope */}
                 <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    A. Catalog Scope
+                  </h4>
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-300">Applies To Scope</label>
                     <select
@@ -1416,17 +1267,205 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                     </div>
                   )}
                 </div>
+
+                {/* Section B: Customer Audience Eligibility */}
+                <div className="pt-4 border-t border-white/10 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-white flex items-center gap-2">
+                      <Users className="w-4 h-4 text-blue-400" />
+                      B. Customer Audience Eligibility
+                    </label>
+                    <span className="text-[10px] font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                      Access Control
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                    {[
+                      { key: "all", label: "All Customers", desc: "Open to all shoppers & guests" },
+                      { key: "first_order_only", label: "First Order Only", desc: "Strictly new customers" },
+                      { key: "existing_customers", label: "Returning Customers", desc: "Prior orders required" },
+                      { key: "specific_customers", label: "Specific Customers", desc: "Designated accounts only" },
+                    ].map((opt) => {
+                      const isSelected = (formData.customer_eligibility || "all") === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => handleChange("customer_eligibility", opt.key)}
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-blue-500/20 border-blue-500/50 text-white ring-1 ring-blue-400/30"
+                              : "bg-[#12151f] hover:bg-white/5 border-white/10 text-slate-400"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-xs font-bold ${isSelected ? "text-blue-300" : "text-white"}`}>
+                              {opt.label}
+                            </span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                          </div>
+                          <span className="text-[10px] text-slate-400 block leading-tight">{opt.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Customer Multi-Selector when specific_customers is chosen */}
+                  {formData.customer_eligibility === "specific_customers" && (
+                    <div className="p-3.5 rounded-xl bg-[#12151f] border border-blue-500/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-blue-300">
+                          Designated Customers ({formData.customer_ids?.length || 0} selected)
+                        </label>
+                        {(formData.customer_ids?.length || 0) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleChange("customer_ids", []);
+                              setSelectedCustomersList([]);
+                            }}
+                            className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                          >
+                            Clear Selected Customers
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Search Input */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={customerSearch}
+                          onChange={(e) => setCustomerSearch(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleSearchCustomers();
+                            }
+                          }}
+                          placeholder="Search by name, email, or phone number..."
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-[#0c0e14] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-blue-400 outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSearchCustomers}
+                          disabled={customerSearchLoading || !customerSearch.trim()}
+                          className="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                          {customerSearchLoading ? "Searching..." : "Search"}
+                        </button>
+                      </div>
+
+                      {/* Search Results */}
+                      {customerSearchResults.length > 0 && (
+                        <div className="max-h-40 overflow-y-auto border border-white/10 rounded-lg divide-y divide-white/5 bg-[#0c0e14]">
+                          {customerSearchResults.map((cust) => {
+                            const isSelected = formData.customer_ids?.includes(cust.id);
+                            return (
+                              <div key={cust.id} className="flex items-center justify-between p-2 text-xs">
+                                <div>
+                                  <span className="font-bold text-white block">{cust.name}</span>
+                                  <span className="text-[10px] text-slate-400">{cust.email} {cust.phone ? `• ${cust.phone}` : ""}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const current = formData.customer_ids || [];
+                                    if (isSelected) {
+                                      handleChange("customer_ids", current.filter((id) => id !== cust.id));
+                                      setSelectedCustomersList((prev) => prev.filter((c) => c.id !== cust.id));
+                                    } else {
+                                      handleChange("customer_ids", [...current, cust.id]);
+                                      if (!selectedCustomersList.some((c) => c.id === cust.id)) {
+                                        setSelectedCustomersList((prev) => [...prev, cust]);
+                                      }
+                                    }
+                                  }}
+                                  className={`px-2.5 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                                    isSelected
+                                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30"
+                                      : "bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30"
+                                  }`}
+                                >
+                                  {isSelected ? "Remove" : "+ Add Customer"}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Selected Customer Badges */}
+                      {selectedCustomersList.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {selectedCustomersList.map((cust) => (
+                            <span
+                              key={cust.id}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-200"
+                            >
+                              <span>{cust.name} ({cust.email})</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleChange("customer_ids", (formData.customer_ids || []).filter((id) => id !== cust.id));
+                                  setSelectedCustomersList((prev) => prev.filter((c) => c.id !== cust.id));
+                                }}
+                                className="hover:text-rose-400 cursor-pointer"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("discount")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("schedule")}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all cursor-pointer"
+                  >
+                    Next: Schedule & Limits
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* TAB 6: Codes */}
+            {/* STEP 5: Promo Codes */}
             {activeTab === "codes" && (
               <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-amber-400" />
-                    Promotion Discount Codes
-                  </h3>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-amber-400" />
+                      Step 5: Promo Code Management
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Add specific coupon codes customers type at checkout, or batch-generate unique single-use codes.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                    Step 5 of 7
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs font-semibold text-slate-300">
+                    Active Promo Codes ({formData.codes?.length || 0})
+                  </span>
                   <button
                     type="button"
                     onClick={handleAddCode}
@@ -1515,59 +1554,470 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                     </button>
                   </div>
                 </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("schedule")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("storefront")}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all cursor-pointer"
+                  >
+                    Next: Storefront Presentation
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* TAB 7: Customer Audience & VIP */}
-            {activeTab === "claim" && (
-              <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-5">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Users className="w-4 h-4 text-amber-400" />
-                  Audience Eligibility & VIP Customer Targeting
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">Customer Audience Eligibility</label>
-                    <select
-                      value={formData.customer_eligibility || "all"}
-                      onChange={(e) => handleChange("customer_eligibility", e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
-                    >
-                      <option value="all">All Registered Customers & Guests</option>
-                      <option value="first_order_only">First Order / New Customers Only</option>
-                      <option value="specific_customers">Specific Target Customers</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-300">
-                        Total Campaign Claim Limit
-                      </label>
-                      {formData.total_claim_limit != null && (
-                        <button
-                          type="button"
-                          onClick={() => handleChange("total_claim_limit", null)}
-                          className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="Unlimited"
-                      value={formData.total_claim_limit ?? ""}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleNumericFieldChange("total_claim_limit", e.target.value, { defaultNull: true })}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                    />
-                    <p className="text-[11px] text-slate-500">
-                      Maximum total times this voucher can be claimed across all customers.
+            {/* STEP 6: Storefront Presentation */}
+            {activeTab === "storefront" && (
+              <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Layout className="w-4 h-4 text-amber-400" />
+                      Step 6: Storefront Presentation & Banners
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Control homepage visibility, promotional banner artwork, headlines, CTA buttons, and campaign terms.
                     </p>
                   </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                    Step 6 of 7
+                  </span>
+                </div>
+
+                {/* Master Storefront Toggle */}
+                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                        <Layout className="w-4 h-4 text-amber-400" />
+                        Display on Customer Storefront
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        When enabled, this promotion publishes to homepage banners, voucher strips, or promotional slots.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData.show_on_storefront)}
+                        onChange={(e) => handleChange("show_on_storefront", e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {formData.show_on_storefront ? (
+                  <div className="space-y-5">
+                    {/* Placement Selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">
+                        Storefront Placement Slot <span className="text-rose-400">*</span>
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {[
+                          { key: "primary_hero", label: "Primary Hero Banner", desc: "Main carousel at top of homepage (1920x600px)" },
+                          { key: "top_strip", label: "Top Announcement Strip", desc: "Sliding promo bar below navbar (1200x300px)" },
+                          { key: "voucher_carousel", label: "Voucher Strip / Carousel", desc: "Interactive voucher cards showcase" },
+                          { key: "flash_sale", label: "Flash Sale Banner", desc: "Countdown deals section banner (1400x400px)" },
+                          { key: "product_grid", label: "Product Grid Banner", desc: "Banner within product listings" },
+                        ].map((p) => {
+                          const isSelected = (formData.storefront_placement || "primary_hero") === p.key;
+                          return (
+                            <button
+                              key={p.key}
+                              type="button"
+                              onClick={() => handleChange("storefront_placement", p.key)}
+                              className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                                isSelected
+                                  ? "bg-amber-500/20 border-amber-500/50 text-white ring-1 ring-amber-400/30"
+                                  : "bg-[#12151f] hover:bg-white/5 border-white/10 text-slate-400"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className={`text-xs font-bold ${isSelected ? "text-amber-300" : "text-white"}`}>
+                                  {p.label}
+                                </span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                              </div>
+                              <span className="text-[10px] text-slate-400 block leading-tight">{p.desc}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Image Upload Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Desktop Banner Image */}
+                      <div className="space-y-2 p-4 rounded-xl bg-[#12151f] border border-white/10">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                            Desktop Banner Artwork
+                          </label>
+                          {formData.banner_image && (
+                            <button
+                              type="button"
+                              onClick={() => handleChange("banner_image", "")}
+                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+
+                        {formData.banner_image ? (
+                          <div className="relative rounded-lg overflow-hidden border border-white/10 aspect-video bg-black/40">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={formData.banner_image}
+                              alt={formData.image_alt_text || "Banner preview"}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : null}
+
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-dashed border-white/20 text-xs text-slate-300 cursor-pointer transition-colors">
+                            <Upload className="w-3.5 h-3.5 text-amber-400" />
+                            <span>{uploadingDesktop ? "Uploading..." : "Upload Desktop Image"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={uploadingDesktop}
+                              onChange={handleDesktopImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Or paste image URL (e.g. /banners/hero.jpg)"
+                          value={formData.banner_image || ""}
+                          onChange={(e) => handleChange("banner_image", e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg bg-[#0c0e14] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none font-mono"
+                        />
+                      </div>
+
+                      {/* Mobile Banner Image */}
+                      <div className="space-y-2 p-4 rounded-xl bg-[#12151f] border border-white/10">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                            Mobile Banner Artwork (Optional)
+                          </label>
+                          {formData.mobile_banner_image && (
+                            <button
+                              type="button"
+                              onClick={() => handleChange("mobile_banner_image", "")}
+                              className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+
+                        {formData.mobile_banner_image ? (
+                          <div className="relative rounded-lg overflow-hidden border border-white/10 aspect-video bg-black/40">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={formData.mobile_banner_image}
+                              alt={formData.image_alt_text || "Mobile banner preview"}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : null}
+
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-dashed border-white/20 text-xs text-slate-300 cursor-pointer transition-colors">
+                            <Upload className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>{uploadingMobile ? "Uploading..." : "Upload Mobile Image"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={uploadingMobile}
+                              onChange={handleMobileImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Or paste mobile image URL"
+                          value={formData.mobile_banner_image || ""}
+                          onChange={(e) => handleChange("mobile_banner_image", e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg bg-[#0c0e14] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Image Alt Text */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">
+                        Image Alt Text (SEO & Accessibility)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Eid Mega Sale with 20% discount on mechanical keyboards"
+                        value={formData.image_alt_text || ""}
+                        onChange={(e) => handleChange("image_alt_text", e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none"
+                      />
+                    </div>
+
+                    {/* Banner Copy Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-300">
+                          Banner Headline
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Defaults to promotion name if blank"
+                          value={formData.headline || ""}
+                          onChange={(e) => handleChange("headline", e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none font-semibold"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-300">
+                          Banner Subheadline
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Up to 20% OFF top gaming & mechanical keyboards"
+                          value={formData.subheadline || ""}
+                          onChange={(e) => handleChange("subheadline", e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-300">
+                          Callout Badge Text
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. HOT DEAL, 20% OFF, LIMITED TIME"
+                          value={formData.badge_text || ""}
+                          onChange={(e) => handleChange("badge_text", e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-300">
+                          CTA Button Text
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Shop Deals"
+                          value={formData.cta_text || ""}
+                          onChange={(e) => handleChange("cta_text", e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-semibold text-slate-300">
+                          CTA Destination URL
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="/products or /promotions/eid-mega-sale"
+                          value={formData.cta_destination || ""}
+                          onChange={(e) => handleChange("cta_destination", e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-semibold text-slate-300">
+                          Terms & Conditions
+                        </label>
+                        <textarea
+                          rows={3}
+                          placeholder="e.g. Valid only on mechanical keyboards. Cannot be combined with other coupons. Limit one per customer."
+                          value={formData.terms_conditions || ""}
+                          onChange={(e) => handleChange("terms_conditions", e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl border border-white/10 bg-[#12151f] text-slate-400 text-xs space-y-1">
+                    <p className="font-semibold text-slate-300">Storefront display is disabled for this promotion.</p>
+                    <p>
+                      This promotion functions strictly as a coupon code or targeted reward. It will not occupy any homepage banner slots or carousel slides.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("codes")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("review")}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all cursor-pointer"
+                  >
+                    Next: Review & Publish
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 7: Review & Publish */}
+            {activeTab === "review" && (
+              <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0c0e14] space-y-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      Step 7: Final Review & Publishing
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Verify all promotion settings before publishing live to customers and storefront.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+                    Step 7 of 7
+                  </span>
+                </div>
+
+                {/* Summary Card */}
+                <div className="p-4 rounded-xl border border-white/10 bg-[#12151f] space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="text-base font-bold text-white">{formData.name || "Untitled Promotion"}</h4>
+                      <p className="text-xs text-slate-400 font-mono mt-0.5">Slug: {formData.slug || "auto-generated"}</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      {formData.promotion_type?.replace(/_/g, " ")}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div className="p-3 rounded-lg bg-black/40 border border-white/5 space-y-1">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Discount Rule</span>
+                      <span className="font-bold text-white">
+                        {formData.discount_type === "percentage"
+                          ? `${formData.discount_value}% OFF`
+                          : formData.discount_type === "fixed_amount"
+                          ? `৳${formData.discount_value} OFF`
+                          : formData.discount_type === "free_shipping"
+                          ? "Free Shipping"
+                          : "Buy X Get Y"}
+                      </span>
+                      {formData.max_discount_amount && (
+                        <span className="text-[10px] text-slate-400 block">Cap: ৳{formData.max_discount_amount}</span>
+                      )}
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-black/40 border border-white/5 space-y-1">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Catalog Scope</span>
+                      <span className="font-bold text-white capitalize">
+                        {formData.applies_to?.replace(/_/g, " ")}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">
+                        Audience: {formData.customer_eligibility?.replace(/_/g, " ")}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-black/40 border border-white/5 space-y-1">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Schedule</span>
+                      <span className="font-bold text-emerald-300">
+                        {formData.expires_at ? `Until ${new Date(formData.expires_at).toLocaleDateString()}` : "No expiry"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">
+                        {formData.claim_deadline ? `Claim by ${new Date(formData.claim_deadline).toLocaleDateString()}` : "No claim cutoff"}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-black/40 border border-white/5 space-y-1">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Storefront Status</span>
+                      <span className={`font-bold ${formData.show_on_storefront ? "text-amber-300" : "text-slate-400"}`}>
+                        {formData.show_on_storefront ? `Visible: ${formData.storefront_placement?.replace(/_/g, " ")}` : "Hidden (Back-office)"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">
+                        Priority: {formData.priority ?? 10}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Promo Codes Snapshot */}
+                  <div className="pt-2 border-t border-white/5 flex items-center gap-2 flex-wrap text-xs">
+                    <span className="text-slate-400 font-semibold">Promo Codes:</span>
+                    {(formData.codes || []).filter((c) => c.code.trim()).length > 0 ? (
+                      (formData.codes || [])
+                        .filter((c) => c.code.trim())
+                        .map((c, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-amber-300 font-bold"
+                          >
+                            {c.code} {c.usage_limit ? `(${c.usage_limit} uses)` : ""}
+                          </span>
+                        ))
+                    ) : (
+                      <span className="text-slate-500 italic">No code required (Automatic / Claimable)</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status Selector Before Publish */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Set Promotion Status</label>
+                  <select
+                    value={formData.status || "active"}
+                    onChange={(e) => handleChange("status", e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-semibold"
+                  >
+                    <option value="active">Active (Live Immediately)</option>
+                    <option value="scheduled">Scheduled (Activates on Starts At date)</option>
+                    <option value="paused">Paused (Inactive)</option>
+                    <option value="draft">Draft (Unpublished)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("storefront")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back to Storefront Presentation
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/10 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    {saving ? "Saving..." : isEdit ? "Update Promotion" : "Publish Promotion Live"}
+                  </button>
                 </div>
               </div>
             )}

@@ -17,9 +17,40 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { CouponCard } from "@/components/promotions/CouponCard";
 import { toast } from "sonner";
 
+function normalizeClaimToPromotion(claim: any): { promotion: Promotion; userClaim: PromotionClaim } {
+  const promo: any = {
+    id: claim.promotion_id || claim.claim_id || claim.id,
+    name: claim.name || "Special Reward",
+    description: claim.description || "",
+    discount_type: claim.discount_type || "percentage",
+    discount_value: claim.discount_value || 0,
+    min_order_amount: claim.min_order_amount || 0,
+    max_discount_amount: claim.max_discount_amount || null,
+    badge_text: claim.badge_text || null,
+    expires_at: claim.expires_at || null,
+    status: claim.status || "active",
+    promotion_type: "claimable_coupon",
+    codes: claim.code ? [{ code: claim.code }] : [],
+  };
+
+  const userClaimObj: any = {
+    id: claim.claim_id || claim.id,
+    user_id: claim.user_id,
+    promotion_id: claim.promotion_id,
+    claimed_code: claim.code || claim.claimed_code,
+    status: claim.status,
+    claimed_at: claim.claimed_at,
+    expires_at: claim.expires_at,
+    redeemed_at: claim.redeemed_at,
+    order_id: claim.order_id,
+  };
+
+  return { promotion: promo, userClaim: userClaimObj };
+}
+
 export default function CustomerCouponsPage() {
   const { isAuthenticated, logout, openAuthModal } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<"available" | "claimed" | "redeemed" | "expired">("available");
+  const [activeTab, setActiveTab] = useState<"all" | "available" | "claimed" | "redeemed" | "expired">("all");
 
   const [claimablePromotions, setClaimablePromotions] = useState<Promotion[]>([]);
   const [userClaims, setUserClaims] = useState<PromotionClaim[]>([]);
@@ -93,7 +124,15 @@ export default function CustomerCouponsPage() {
   const redeemedList = userClaims.filter((c) => c.status === "redeemed");
   const expiredList = userClaims.filter((c) => c.status === "expired");
 
+  const allCouponsList = [
+    ...claimablePromotions.map((p) => ({ type: "available" as const, data: p })),
+    ...claimedList.map((c) => ({ type: "claimed" as const, data: c })),
+    ...redeemedList.map((c) => ({ type: "redeemed" as const, data: c })),
+    ...expiredList.map((c) => ({ type: "expired" as const, data: c })),
+  ];
+
   const tabs = [
+    { key: "all", label: "All Coupons", count: allCouponsList.length, icon: Tag },
     { key: "available", label: "Available", count: claimablePromotions.length, icon: Sparkles },
     { key: "claimed", label: "Claimed", count: claimedList.length, icon: Gift },
     { key: "redeemed", label: "Redeemed", count: redeemedList.length, icon: CheckCircle2 },
@@ -159,18 +198,55 @@ export default function CustomerCouponsPage() {
         })}
       </div>
 
-      {/* 3. Tab Contents */}
+      {/* 3. Tab Contents (Unified Layout across all sections) */}
       {loading ? (
         <div className="py-20 text-center text-slate-400 space-y-2">
           <div className="w-7 h-7 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Loading coupons...</p>
+        </div>
+      ) : activeTab === "all" ? (
+        <div>
+          {allCouponsList.length === 0 ? (
+            <div className="p-10 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 text-center space-y-3 shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400">
+                <Tag className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">No coupons found</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                Check back soon for new promotions, seasonal discounts, and special offers!
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {allCouponsList.map((item, idx) => {
+                if (item.type === "available") {
+                  return (
+                    <CouponCard
+                      key={`avail-${item.data.id || idx}`}
+                      promotion={item.data}
+                      onClaimSuccess={handleClaimSuccess}
+                    />
+                  );
+                }
+                const { promotion, userClaim } = normalizeClaimToPromotion(item.data);
+                return (
+                  <CouponCard
+                    key={`claim-${userClaim.id || idx}`}
+                    promotion={promotion}
+                    userClaim={userClaim}
+                    disabled={item.type === "redeemed" || item.type === "expired"}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       ) : activeTab === "available" ? (
         <div>
           {claimablePromotions.length === 0 ? (
             <div className="p-10 rounded-2xl bg-white dark:bg-[#0f131f] border border-gray-200/80 dark:border-white/10 text-center space-y-3 shadow-sm">
               <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center mx-auto text-slate-400">
-                <Tag className="w-6 h-6" />
+                <Sparkles className="w-6 h-6" />
               </div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-white">No available claimable coupons</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
@@ -210,13 +286,16 @@ export default function CustomerCouponsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {claimedList.map((claim) => (
-                <CouponCard
-                  key={claim.id}
-                  promotion={claim.promotion as any}
-                  userClaim={claim}
-                />
-              ))}
+              {claimedList.map((claim, idx) => {
+                const { promotion, userClaim } = normalizeClaimToPromotion(claim);
+                return (
+                  <CouponCard
+                    key={userClaim.id || idx}
+                    promotion={promotion}
+                    userClaim={userClaim}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -234,14 +313,17 @@ export default function CustomerCouponsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {redeemedList.map((claim) => (
-                <CouponCard
-                  key={claim.id}
-                  promotion={claim.promotion as any}
-                  userClaim={claim}
-                  disabled
-                />
-              ))}
+              {redeemedList.map((claim, idx) => {
+                const { promotion, userClaim } = normalizeClaimToPromotion(claim);
+                return (
+                  <CouponCard
+                    key={userClaim.id || idx}
+                    promotion={promotion}
+                    userClaim={userClaim}
+                    disabled
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -259,14 +341,17 @@ export default function CustomerCouponsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {expiredList.map((claim) => (
-                <CouponCard
-                  key={claim.id}
-                  promotion={claim.promotion as any}
-                  userClaim={claim}
-                  disabled
-                />
-              ))}
+              {expiredList.map((claim, idx) => {
+                const { promotion, userClaim } = normalizeClaimToPromotion(claim);
+                return (
+                  <CouponCard
+                    key={userClaim.id || idx}
+                    promotion={promotion}
+                    userClaim={userClaim}
+                    disabled
+                  />
+                );
+              })}
             </div>
           )}
         </div>
