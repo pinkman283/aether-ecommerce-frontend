@@ -73,7 +73,7 @@ export default function CheckoutPage() {
   }>>([]);
   const [fullAddress, setFullAddress] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
-  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   // Payment Method
   const [paymentMethod, setPaymentMethod] = useState<"cash_on_delivery" | "credit_card">("cash_on_delivery");
@@ -143,12 +143,8 @@ export default function CheckoutPage() {
   const baseShippingRate = !shippingArea
     ? 0
     : (activeZone
-      ? activeZone.rate
-      : (shippingArea === "inside_dhaka" ? (theme.shipping_inside_dhaka_rate ?? 60) : (theme.shipping_outside_dhaka_rate ?? 130)));
-
-  const zoneFreeThreshold = activeZone?.free_threshold ?? (theme.shipping_free_threshold ?? 3000);
-  const isFreeShipping = Boolean(shippingArea) && zoneFreeThreshold > 0 && subtotal >= zoneFreeThreshold;
-  const defaultEffectiveShipping = isFreeShipping ? 0 : baseShippingRate;
+      ? Number(activeZone.rate)
+      : (shippingArea === "inside_dhaka" ? (theme.shipping_inside_dhaka_rate ?? 60) : (theme.shipping_outside_dhaka_rate ?? 120)));
 
   // Authoritative promotion evaluation
   useEffect(() => {
@@ -187,15 +183,11 @@ export default function CheckoutPage() {
     };
   }, [items, appliedCoupon?.code, paymentMethod, shippingArea, baseShippingRate, useStoreCredit, setPromotionEvaluation]);
 
-  // Derived pricing with PromotionEngine
-  const effectiveShipping = !shippingArea
-    ? 0
-    : (promotionEvaluation?.valid && typeof promotionEvaluation.shipping_amount === "number"
-      ? promotionEvaluation.shipping_amount
-      : defaultEffectiveShipping);
+  // Derived pricing: Delivery charge strictly matches selected shipping area
+  const effectiveShipping = !shippingArea ? 0 : baseShippingRate;
 
   const totalDiscount = promotionEvaluation?.valid
-    ? promotionEvaluation.total_discount
+    ? Number(promotionEvaluation.total_discount || 0)
     : getDiscount();
 
   const vatAmount = promotionEvaluation?.valid && typeof promotionEvaluation.tax_amount === "number"
@@ -506,7 +498,10 @@ export default function CheckoutPage() {
             <div className="p-5 sm:p-6 rounded-2xl theme-card border border-white/10 space-y-4 shadow-sm">
               <div className="flex items-center gap-2 pb-2 border-b border-white/5">
                 <span className="w-1.5 h-4.5 rounded-full bg-cyan-400" />
-                <h3 className="text-sm sm:text-base font-black text-white tracking-tight">
+                <h3 
+                  className="text-sm sm:text-base font-black tracking-tight"
+                  style={{ color: "#000000" }}
+                >
                   Order Review
                 </h3>
                 <span className="ml-auto text-[11px] font-bold text-slate-400">
@@ -693,10 +688,10 @@ export default function CheckoutPage() {
                         ) : (
                           <>
                             <option value="inside_dhaka">
-                              Inside Dhaka ({formatPrice(60)})
+                              Inside Dhaka ({formatPrice(theme.shipping_inside_dhaka_rate ?? 60)})
                             </option>
                             <option value="outside_dhaka">
-                              Outside Dhaka ({formatPrice(130)})
+                              Outside Dhaka ({formatPrice(theme.shipping_outside_dhaka_rate ?? 120)})
                             </option>
                           </>
                         )}
@@ -969,8 +964,6 @@ export default function CheckoutPage() {
                   >
                     {!shippingArea ? (
                       <span className="text-slate-400 font-normal italic">Select area</span>
-                    ) : effectiveShipping === 0 ? (
-                      <span className="text-cyan-500 font-bold">FREE</span>
                     ) : (
                       formatPrice(effectiveShipping)
                     )}
