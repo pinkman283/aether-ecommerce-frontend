@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   Upload,
@@ -17,6 +17,11 @@ import {
   Image as ImageIcon,
   Trash2,
   ExternalLink,
+  Lock,
+  ShieldCheck,
+  Info,
+  Gift,
+  Layout,
 } from "lucide-react";
 import { Banner, BannerDestinationType, Category, Brand, Product, Promotion } from "@/types";
 import { adminApi } from "@/lib/adminApi";
@@ -36,12 +41,11 @@ const PLACEMENTS = [
   { id: "bottom_banner", label: "Bottom Banner", desc: "Voucher / bottom carousel" },
 ];
 
-const DESTINATION_TYPES: { id: BannerDestinationType; label: string }[] = [
+const CONTENT_DESTINATION_TYPES: { id: BannerDestinationType; label: string }[] = [
   { id: "custom", label: "Custom URL" },
   { id: "product", label: "Product" },
   { id: "category", label: "Category" },
   { id: "brand", label: "Brand" },
-  { id: "promotion", label: "Promotion / Voucher" },
   { id: "page", label: "Internal Page" },
 ];
 
@@ -52,6 +56,9 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
   const [uploadingMobile, setUploadingMobile] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showMobileUploader, setShowMobileUploader] = useState(false);
+
+  // Binary Banner Type: Promotional (linked to Promotion) vs Content (independent)
+  const [bannerType, setBannerType] = useState<"promotional" | "content">("promotional");
 
   // Lookups
   const [products, setProducts] = useState<Product[]>([]);
@@ -102,9 +109,17 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
     }
   }, [isOpen]);
 
+  // Derive currently selected promotion
+  const selectedPromotion = useMemo(() => {
+    if (!promotionId) return null;
+    return promotions.find((p) => p.id === promotionId) || null;
+  }, [promotions, promotionId]);
+
   // Sync state when banner prop changes
   useEffect(() => {
     if (banner) {
+      const isPromo = Boolean(banner.promotion_id || banner.banner_type === "promotional");
+      setBannerType(isPromo ? "promotional" : "content");
       setTitle(banner.title || "");
       setSubtitle(banner.subtitle || "");
       setEyebrow(banner.eyebrow || "");
@@ -113,7 +128,7 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
       setAltText(banner.alt_text || "");
       setCtaText(banner.cta_text || "Shop Now");
       setCtaLink(banner.cta_link || "/products");
-      setDestinationType(banner.destination_type || "custom");
+      setDestinationType(banner.destination_type || (isPromo ? "promotion" : "custom"));
       setDestinationId(banner.destination_id || null);
       setPromotionId(banner.promotion_id || null);
       setPlacement(
@@ -128,20 +143,21 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
       setShowMobileUploader(Boolean(banner.mobile_image_url));
       setShowAdvanced(Boolean(banner.starts_at || banner.expires_at || (banner.sort_order && banner.sort_order > 0)));
     } else {
+      setBannerType("promotional");
       setTitle("");
       setSubtitle("");
-      setEyebrow("LIMITED DROP");
+      setEyebrow("SPECIAL OFFER");
       setImageUrl("https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1600&q=85");
       setMobileImageUrl("");
       setAltText("");
-      setCtaText("Shop Now");
+      setCtaText("Shop Sale");
       setCtaLink("/products");
-      setDestinationType("custom");
+      setDestinationType("promotion");
       setDestinationId(null);
       setPromotionId(null);
       setPlacement("primary_hero");
-      setBadge("NEW ARRIVAL");
-      setDiscountTag("20% OFF");
+      setBadge("PROMO");
+      setDiscountTag("");
       setSortOrder("0");
       setIsActive(true);
       setStartsAt("");
@@ -151,9 +167,76 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
     }
   }, [banner, isOpen]);
 
-  if (!isOpen) return null;
+  // Handle switching banner type
+  const handleBannerTypeChange = (type: "promotional" | "content") => {
+    setBannerType(type);
+    if (type === "promotional") {
+      setDestinationType("promotion");
+      if (promotions.length > 0 && !promotionId) {
+        handleSelectPromotion(promotions[0].id);
+      }
+    } else {
+      setPromotionId(null);
+      if (destinationType === "promotion") {
+        setDestinationType("custom");
+        setCtaLink("/products");
+      }
+    }
+  };
 
-  // Handle Image Upload
+  // Sync Promotion details into CTA & discount tag
+  const handleSelectPromotion = (id: number) => {
+    setPromotionId(id);
+    const promo = promotions.find((p) => p.id === id);
+    if (promo) {
+      const promoCode = promo.primary_code || promo.codes?.[0]?.code;
+      if (promoCode) {
+        setDiscountTag(`CODE: ${promoCode}`);
+      } else if (promo.formatted_discount) {
+        setDiscountTag(promo.formatted_discount);
+      } else if (promo.discount_type === "percentage") {
+        setDiscountTag(`${promo.discount_value}% OFF`);
+      } else if (promo.discount_type === "free_shipping") {
+        setDiscountTag("FREE SHIPPING");
+      }
+      if (promo.badge || promo.badge_text) {
+        setBadge(promo.badge || promo.badge_text || "");
+        setEyebrow(promo.badge || promo.badge_text || "SPECIAL OFFER");
+      }
+      setCtaLink(`/promotions/${promo.slug}`);
+      if (!title) {
+        setTitle(promo.name);
+      }
+      if (!subtitle && promo.description) {
+        setSubtitle(promo.description);
+      }
+    }
+  };
+
+  const handleSelectProduct = (id: number) => {
+    setDestinationId(id);
+    const prod = products.find((p) => p.id === id);
+    if (prod) {
+      setCtaLink(`/products/${prod.slug}`);
+    }
+  };
+
+  const handleSelectCategory = (id: number) => {
+    setDestinationId(id);
+    const cat = categories.find((c) => c.id === id);
+    if (cat) {
+      setCtaLink(`/products?category=${cat.slug}`);
+    }
+  };
+
+  const handleSelectBrand = (id: number) => {
+    setDestinationId(id);
+    const brand = brands.find((b) => b.id === id);
+    if (brand) {
+      setCtaLink(`/products?brand=${brand.slug}`);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isMobile = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -183,52 +266,6 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
     }
   };
 
-  // Sync Promotion details into CTA & discount tag
-  const handleSelectPromotion = (id: number) => {
-    setPromotionId(id);
-    const promo = promotions.find((p) => p.id === id);
-    if (promo) {
-      const promoCode = promo.primary_code || promo.codes?.[0]?.code;
-      if (promoCode) {
-        setDiscountTag(`USE CODE: ${promoCode}`);
-      } else if (promo.formatted_discount) {
-        setDiscountTag(promo.formatted_discount);
-      } else if (promo.discount_type === "percentage") {
-        setDiscountTag(`${promo.discount_value}% OFF`);
-      } else if (promo.discount_type === "free_shipping") {
-        setDiscountTag("FREE SHIPPING");
-      }
-      if (promo.badge || promo.badge_text) {
-        setBadge(promo.badge || promo.badge_text || "");
-      }
-      setCtaLink(`/promotions/${promo.slug}`);
-    }
-  };
-
-  const handleSelectProduct = (id: number) => {
-    setDestinationId(id);
-    const prod = products.find((p) => p.id === id);
-    if (prod) {
-      setCtaLink(`/products/${prod.slug}`);
-    }
-  };
-
-  const handleSelectCategory = (id: number) => {
-    setDestinationId(id);
-    const cat = categories.find((c) => c.id === id);
-    if (cat) {
-      setCtaLink(`/products?category=${cat.slug}`);
-    }
-  };
-
-  const handleSelectBrand = (id: number) => {
-    setDestinationId(id);
-    const brand = brands.find((b) => b.id === id);
-    if (brand) {
-      setCtaLink(`/products?brand=${brand.slug}`);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || (placement !== "top_strip" && !imageUrl.trim())) {
@@ -236,8 +273,14 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
       return;
     }
 
+    if (bannerType === "promotional" && !promotionId) {
+      toast.error("Please select a valid promotion for this promotional banner.");
+      return;
+    }
+
     setSaving(true);
     try {
+      const isPromo = bannerType === "promotional";
       const payload: Partial<Banner> = {
         title: title.trim(),
         subtitle: subtitle.trim() || null,
@@ -245,18 +288,22 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
         image_url: imageUrl.trim() || (placement === "top_strip" ? "no-image-strip" : ""),
         mobile_image_url: mobileImageUrl.trim() || null,
         alt_text: altText.trim() || null,
-        cta_text: ctaText.trim() || "Shop Now",
-        cta_link: ctaLink.trim() || "/products",
-        destination_type: destinationType,
-        destination_id: destinationId,
-        promotion_id: destinationType === "promotion" ? promotionId : null,
+        cta_text: ctaText.trim() || (isPromo ? "Shop Sale" : "Shop Now"),
+        cta_link: isPromo && selectedPromotion 
+          ? `/promotions/${selectedPromotion.slug}` 
+          : (ctaLink.trim() || "/products"),
+        destination_type: isPromo ? "promotion" : destinationType,
+        destination_id: isPromo ? null : destinationId,
+        promotion_id: isPromo ? promotionId : null,
         placement,
         badge: badge.trim() || null,
-        discount_tag: discountTag.trim() || null,
+        discount_tag: isPromo && selectedPromotion
+          ? (selectedPromotion.formatted_discount || (selectedPromotion.primary_code ? `CODE: ${selectedPromotion.primary_code}` : null))
+          : (discountTag.trim() || null),
         sort_order: parseInt(sortOrder, 10) || 0,
         is_active: isActive,
-        starts_at: startsAt ? startsAt : null,
-        expires_at: expiresAt ? expiresAt : null,
+        starts_at: isPromo && selectedPromotion?.starts_at ? selectedPromotion.starts_at : (startsAt || null),
+        expires_at: isPromo && selectedPromotion?.expires_at ? selectedPromotion.expires_at : (expiresAt || null),
       };
 
       if (banner) {
@@ -276,6 +323,8 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="relative w-full max-w-5xl rounded-2xl bg-[#0d1017] border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
@@ -291,7 +340,7 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
                 {banner ? "Edit Storefront Banner" : "Create Storefront Banner"}
               </h3>
               <p className="text-[11px] text-slate-400">
-                Configure banner image, copy, and destination for your homepage.
+                Configure promotional hero carousels or independent content banners.
               </p>
             </div>
           </div>
@@ -310,6 +359,127 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
           {/* Left Column: Streamlined Form (7 cols) */}
           <div className="lg:col-span-7 p-5 sm:p-6 space-y-5 overflow-y-auto border-b lg:border-b-0 lg:border-r border-white/10">
             
+            {/* 0. Banner Type Selector (Promotional vs Content) */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                <span>Banner Type Architecture</span>
+                <span className="text-[10px] text-amber-400/80 font-normal">
+                  {bannerType === "promotional" ? "Promotion is single source of truth" : "Independent visual banner"}
+                </span>
+              </label>
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-[#090b11] border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => handleBannerTypeChange("promotional")}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    bannerType === "promotional"
+                      ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Gift className="w-4 h-4" />
+                  <span>Promotional Banner</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBannerTypeChange("content")}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    bannerType === "content"
+                      ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Layout className="w-4 h-4" />
+                  <span>Content Banner</span>
+                </button>
+              </div>
+            </div>
+
+            {/* If Promotional Banner: Authoritative Linked Promotion Section */}
+            {bannerType === "promotional" && (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-amber-400" />
+                    <span>Authoritative Promotion Link</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-amber-400/80 bg-amber-500/20 px-2 py-0.5 rounded">
+                    Source of Truth: Promotion
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-slate-300">
+                    Select Promotion <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={promotionId || ""}
+                    onChange={(e) => handleSelectPromotion(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg bg-[#0d1017] border border-amber-500/40 text-xs text-white focus:border-amber-400 outline-none font-semibold"
+                  >
+                    <option value="">Choose a promotion (active or scheduled)...</option>
+                    {promotions.map((p) => {
+                      const code = p.primary_code || p.codes?.[0]?.code;
+                      const disc = p.formatted_discount || `${p.discount_value}%`;
+                      const statusTag = p.status ? `[${p.status.toUpperCase()}] ` : "";
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {statusTag}{p.name} ({disc}) {code ? `[Code: ${code}]` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Read-Only Synced Details Card */}
+                {selectedPromotion ? (
+                  <div className="p-3 rounded-lg bg-black/40 border border-amber-500/20 space-y-2 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase">Discount</span>
+                        <span className="font-bold text-amber-300 flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-amber-400/70" />
+                          {selectedPromotion.formatted_discount || `${selectedPromotion.discount_value}% OFF`}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase">Promo Code</span>
+                        <span className="font-mono font-bold text-white flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-amber-400/70" />
+                          {selectedPromotion.primary_code || selectedPromotion.codes?.[0]?.code || "Auto / No Code"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase">Schedule</span>
+                        <span className="font-medium text-slate-200 truncate block">
+                          {selectedPromotion.expires_at ? `Until ${new Date(selectedPromotion.expires_at).toLocaleDateString()}` : "No expiry"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase">Destination</span>
+                        <a
+                          href={`/promotions/${selectedPromotion.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-amber-400 hover:underline flex items-center gap-0.5 truncate font-mono text-[10px]"
+                        >
+                          <span>/{selectedPromotion.slug}</span>
+                          <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                        </a>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-amber-300/70 pt-1 border-t border-white/5">
+                      ✓ Discount, code, schedule, and destination are automatically enforced from the promotion and cannot be desynchronized.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-amber-400/70">
+                    Select a promotion above to link this banner and lock authoritative discount details.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* 1. Placement Selector */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -447,7 +617,7 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Vortex 75 CNC Gasket Mechanical Keyboard"
+                  placeholder={bannerType === "promotional" ? "e.g. Summer Headphone Sale" : "e.g. Explore Wireless Audio"}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-bold placeholder-slate-500"
@@ -460,7 +630,7 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Anodized 6063 Aluminum Chassis with Five-Layer Acoustic Dampening."
+                  placeholder="e.g. Premium noise cancelling headphones with studio acoustic tuning."
                   value={subtitle}
                   onChange={(e) => setSubtitle(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none placeholder-slate-500"
@@ -481,13 +651,21 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-slate-400">Discount Tag</label>
+                  <label className="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+                    <span>Discount Tag</span>
+                    {bannerType === "promotional" && <Lock className="w-3 h-3 text-amber-400/60" />}
+                  </label>
                   <input
                     type="text"
+                    disabled={bannerType === "promotional"}
                     placeholder="e.g. 20% OFF"
-                    value={discountTag}
+                    value={
+                      bannerType === "promotional" && selectedPromotion
+                        ? selectedPromotion.formatted_discount || (selectedPromotion.primary_code ? `CODE: ${selectedPromotion.primary_code}` : "")
+                        : discountTag
+                    }
                     onChange={(e) => setDiscountTag(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono font-semibold"
+                    className="w-full px-3 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -495,7 +673,7 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
                   <label className="text-[11px] font-medium text-slate-400">Button Text</label>
                   <input
                     type="text"
-                    placeholder="e.g. Configure Keeb"
+                    placeholder="e.g. Shop Now"
                     value={ctaText}
                     onChange={(e) => setCtaText(e.target.value)}
                     className="w-full px-3 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-semibold"
@@ -504,110 +682,94 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
               </div>
             </div>
 
-            {/* 4. Unified Destination Link */}
-            <div className="space-y-2 p-3.5 rounded-xl bg-[#12151f] border border-white/10">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Click Destination
-              </label>
+            {/* 4. Destination Link (Content Banners Only) */}
+            {bannerType === "content" && (
+              <div className="space-y-2 p-3.5 rounded-xl bg-[#12151f] border border-white/10">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Click Destination
+                </label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                {/* Type selector */}
-                <div className="sm:col-span-5">
-                  <select
-                    value={destinationType}
-                    onChange={(e) => {
-                      const dt = e.target.value as BannerDestinationType;
-                      setDestinationType(dt);
-                      setDestinationId(null);
-                      if (dt === "custom" && !ctaLink) setCtaLink("/products");
-                    }}
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-slate-200 focus:border-amber-400 outline-none font-semibold"
-                  >
-                    {DESTINATION_TYPES.map((dt) => (
-                      <option key={dt.id} value={dt.id}>
-                        {dt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Dynamic Target Picker */}
-                <div className="sm:col-span-7">
-                  {destinationType === "product" && (
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  {/* Type selector */}
+                  <div className="sm:col-span-5">
                     <select
-                      value={destinationId || ""}
-                      onChange={(e) => handleSelectProduct(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
+                      value={destinationType}
+                      onChange={(e) => {
+                        const dt = e.target.value as BannerDestinationType;
+                        setDestinationType(dt);
+                        setDestinationId(null);
+                        if (dt === "custom" && !ctaLink) setCtaLink("/products");
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-slate-200 focus:border-amber-400 outline-none font-semibold"
                     >
-                      <option value="">Select product...</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} (৳{p.price})
+                      {CONTENT_DESTINATION_TYPES.map((dt) => (
+                        <option key={dt.id} value={dt.id}>
+                          {dt.label}
                         </option>
                       ))}
                     </select>
-                  )}
+                  </div>
 
-                  {destinationType === "category" && (
-                    <select
-                      value={destinationId || ""}
-                      onChange={(e) => handleSelectCategory(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
-                    >
-                      <option value="">Select category...</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
-                  {destinationType === "brand" && (
-                    <select
-                      value={destinationId || ""}
-                      onChange={(e) => handleSelectBrand(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
-                    >
-                      <option value="">Select brand...</option>
-                      {brands.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
-                  {destinationType === "promotion" && (
-                    <select
-                      value={promotionId || ""}
-                      onChange={(e) => handleSelectPromotion(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-400/40 text-xs text-amber-300 focus:border-amber-400 outline-none font-semibold"
-                    >
-                      <option value="">Link to promotion...</option>
-                      {promotions.map((p) => {
-                        const code = p.primary_code || p.codes?.[0]?.code;
-                        return (
+                  {/* Dynamic Target Picker */}
+                  <div className="sm:col-span-7">
+                    {destinationType === "product" && (
+                      <select
+                        value={destinationId || ""}
+                        onChange={(e) => handleSelectProduct(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
+                      >
+                        <option value="">Select product...</option>
+                        {products.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.name} {code ? `[${code}]` : ""}
+                            {p.name} (৳{p.price})
                           </option>
-                        );
-                      })}
-                    </select>
-                  )}
+                        ))}
+                      </select>
+                    )}
 
-                  {(destinationType === "custom" || destinationType === "page") && (
-                    <input
-                      type="text"
-                      placeholder="/products or https://..."
-                      value={ctaLink}
-                      onChange={(e) => setCtaLink(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
-                    />
-                  )}
+                    {destinationType === "category" && (
+                      <select
+                        value={destinationId || ""}
+                        onChange={(e) => handleSelectCategory(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
+                      >
+                        <option value="">Select category...</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {destinationType === "brand" && (
+                      <select
+                        value={destinationId || ""}
+                        onChange={(e) => handleSelectBrand(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-white focus:border-amber-400 outline-none"
+                      >
+                        <option value="">Select brand...</option>
+                        {brands.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {(destinationType === "custom" || destinationType === "page") && (
+                      <input
+                        type="text"
+                        placeholder="/products or https://..."
+                        value={ctaLink}
+                        onChange={(e) => setCtaLink(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-xs text-white focus:border-amber-400 outline-none font-mono"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* 5. Collapsible Scheduling & Advanced Settings */}
             <div className="border border-white/10 rounded-xl overflow-hidden">
@@ -618,33 +780,44 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
               >
                 <span className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Scheduling & Advanced (Optional)</span>
+                  <span>
+                    {bannerType === "promotional" ? "Advanced Options (Sort Order, Alt Text)" : "Scheduling & Advanced (Optional)"}
+                  </span>
                 </span>
                 {showAdvanced ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
               </button>
 
               {showAdvanced && (
                 <div className="p-4 bg-black/30 space-y-3 border-t border-white/10">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-slate-400">Starts At</label>
-                      <input
-                        type="datetime-local"
-                        value={startsAt}
-                        onChange={(e) => setStartsAt(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white outline-none font-mono"
-                      />
+                  {bannerType === "content" ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-400">Starts At</label>
+                        <input
+                          type="datetime-local"
+                          value={startsAt}
+                          onChange={(e) => setStartsAt(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white outline-none font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-400">Expires At</label>
+                        <input
+                          type="datetime-local"
+                          value={expiresAt}
+                          onChange={(e) => setExpiresAt(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white outline-none font-mono"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-slate-400">Expires At</label>
-                      <input
-                        type="datetime-local"
-                        value={expiresAt}
-                        onChange={(e) => setExpiresAt(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12151f] border border-white/10 text-xs text-white outline-none font-mono"
-                      />
+                  ) : (
+                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-center gap-2">
+                      <Lock className="w-3.5 h-3.5 shrink-0" />
+                      <span>
+                        Schedule is locked to the promotion: {selectedPromotion?.starts_at ? new Date(selectedPromotion.starts_at).toLocaleDateString() : "Immediate"} – {selectedPromotion?.expires_at ? new Date(selectedPromotion.expires_at).toLocaleDateString() : "No expiration"}.
+                      </span>
                     </div>
-                  </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div className="space-y-1">

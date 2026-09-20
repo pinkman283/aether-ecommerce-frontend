@@ -1472,6 +1472,7 @@ export interface Banner {
   impressions_count: number;
   computed_link?: string;
   is_currently_visible?: boolean;
+  banner_type?: 'promotional' | 'content';
   promotion?: Promotion | null;
   product?: { id: number; name: string; slug: string; price: number; compare_at_price?: number | null } | null;
   category?: { id: number; name: string; slug: string } | null;

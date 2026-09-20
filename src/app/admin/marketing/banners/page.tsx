@@ -311,7 +311,8 @@ export default function AdminBannersPage() {
                 <th className="p-4 w-12 text-center">#</th>
                 <th className="p-4">Banner Creative</th>
                 <th className="p-4">Placement</th>
-                <th className="p-4">Destination Target</th>
+                <th className="p-4">Type / Promotion</th>
+                <th className="p-4">Discount & Code</th>
                 <th className="p-4">Schedule</th>
                 <th className="p-4">Status</th>
                 <th className="p-4 text-center">Order</th>
@@ -321,7 +322,7 @@ export default function AdminBannersPage() {
             <tbody className="divide-y divide-white/5 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-slate-400">
+                  <td colSpan={9} className="p-12 text-center text-slate-400">
                     <div className="inline-flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
                       <span>Loading marketing banners...</span>
@@ -330,7 +331,7 @@ export default function AdminBannersPage() {
                 </tr>
               ) : filteredBanners.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-slate-400">
+                  <td colSpan={9} className="p-12 text-center text-slate-400">
                     <div className="max-w-sm mx-auto space-y-3">
                       <Sparkles className="w-8 h-8 text-slate-600 mx-auto" />
                       <p className="text-sm font-bold text-white">No banners found</p>
@@ -344,6 +345,7 @@ export default function AdminBannersPage() {
                 filteredBanners.map((b, idx) => {
                   const status = getBannerStatus(b);
                   const targetUrl = b.computed_link || b.cta_link || "/products";
+                  const isPromo = Boolean(b.promotion_id || b.banner_type === "promotional");
 
                   return (
                     <tr key={b.id} className="hover:bg-white/[0.02] transition-colors group">
@@ -409,34 +411,84 @@ export default function AdminBannersPage() {
                         </span>
                       </td>
 
-                      {/* Destination Target */}
+                      {/* Type / Linked Promotion */}
                       <td className="p-4 max-w-xs">
-                        <div className="space-y-0.5">
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
-                            {b.destination_type || "custom"}
+                        {isPromo ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              Promotional
+                            </span>
+                            {b.promotion ? (
+                              <a
+                                href={`/admin/promotions/${b.promotion.id}`}
+                                className="text-[11px] text-slate-300 hover:text-amber-300 flex items-center gap-1 font-semibold truncate group-hover:underline"
+                                title={`View Promotion: ${b.promotion.name}`}
+                              >
+                                <span className="truncate">{b.promotion.name}</span>
+                                <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-60" />
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 font-mono">Promo #{b.promotion_id}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                              Content
+                            </span>
+                            <a
+                              href={targetUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 truncate font-mono"
+                            >
+                              <span className="truncate">{targetUrl}</span>
+                              <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-60" />
+                            </a>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Discount & Code */}
+                      <td className="p-4 whitespace-nowrap">
+                        {b.promotion ? (
+                          <div className="space-y-0.5">
+                            <span className="font-bold text-amber-300 block text-xs">
+                              {b.promotion.formatted_discount || b.discount_tag || `${b.promotion.discount_value}% OFF`}
+                            </span>
+                            {b.promotion.primary_code ? (
+                              <span className="font-mono text-[10px] bg-black/40 px-1.5 py-0.5 rounded text-slate-300 border border-white/10 inline-block">
+                                {b.promotion.primary_code}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-500">Auto applied</span>
+                            )}
+                          </div>
+                        ) : b.discount_tag ? (
+                          <span className="font-mono text-[11px] text-slate-300 bg-white/5 px-1.5 py-0.5 rounded">
+                            {b.discount_tag}
                           </span>
-                          <a
-                            href={targetUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 truncate group-hover:underline"
-                          >
-                            <span className="truncate">{targetUrl}</span>
-                            <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-60" />
-                          </a>
-                        </div>
+                        ) : (
+                          <span className="text-slate-600 font-mono text-[11px]">—</span>
+                        )}
                       </td>
 
                       {/* Schedule */}
                       <td className="p-4 whitespace-nowrap text-[11px] text-slate-400">
-                        {b.starts_at || b.expires_at ? (
-                          <div className="space-y-0.5">
-                            {b.starts_at && <div>From: {new Date(b.starts_at).toLocaleDateString()}</div>}
-                            {b.expires_at && <div>Until: {new Date(b.expires_at).toLocaleDateString()}</div>}
-                          </div>
-                        ) : (
-                          <span className="text-slate-500">Always Visible</span>
-                        )}
+                        {(() => {
+                          const starts = b.promotion?.starts_at || b.starts_at;
+                          const expires = b.promotion?.expires_at || b.expires_at;
+                          if (starts || expires) {
+                            return (
+                              <div className="space-y-0.5">
+                                {starts && <div>From: {new Date(starts).toLocaleDateString()}</div>}
+                                {expires && <div className="text-amber-300/90">Until: {new Date(expires).toLocaleDateString()}</div>}
+                              </div>
+                            );
+                          }
+                          return <span className="text-slate-500">Always Visible</span>;
+                        })()}
                       </td>
 
                       {/* Status */}
