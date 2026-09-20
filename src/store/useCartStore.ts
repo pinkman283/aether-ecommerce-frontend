@@ -125,9 +125,7 @@ export const useCartStore = create<CartState>()(
         if (promotionEvaluation?.valid && typeof promotionEvaluation.shipping_amount === "number") {
           return Number(promotionEvaluation.shipping_amount);
         }
-        const subtotal = get().getSubtotal();
-        if (subtotal === 0) return 0;
-        return subtotal >= 100 ? 0 : 15;
+        return 0;
       },
 
       getTax: () => {

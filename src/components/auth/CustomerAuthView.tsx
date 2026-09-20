@@ -34,7 +34,7 @@ interface CustomerAuthViewProps {
 export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/dashboard";
+  const redirectUrl = searchParams.get("redirect") || "/";
 
   const { isAuthenticated, setAuth } = useAuthStore();
   const { theme } = useAppTheme();
@@ -122,6 +122,9 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
   const switchTab = (tab: "login" | "register" | "forgot_password") => {
     setError(null);
     setSuccessMessage(null);
+    setPassword("");
+    setConfirmPassword("");
+    setOtp("");
     setActiveTab(tab);
     setRegisterStep(1);
     setForgotStep(1);
@@ -166,9 +169,18 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
             localStorage.removeItem("ecom_remember_login");
           }
         }
-
         setAuth(res.user, res.token);
         toast.success(`Welcome back, ${res.user.name.split(" ")[0]}!`);
+
+        // Clear all form input fields on successful login
+        setEmail("");
+        setPassword("");
+        setConfirmPassword("");
+        setFirstName("");
+        setLastName("");
+        setPhone("");
+        setOtp("");
+
         router.push(redirectUrl);
       } else if (activeTab === "register") {
         if (registerStep === 1) {
@@ -198,15 +210,24 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
             setLoading(false);
             return;
           }
-          const res = await api.registerVerify({ email: email.trim(), otp });
+          await api.registerVerify({ email: email.trim(), otp });
           
           if (typeof window !== "undefined") {
             localStorage.setItem("ecom_remember_login", email.trim());
           }
 
-          setAuth(res.user, res.token);
-          toast.success("Account created successfully!");
-          router.push(redirectUrl);
+          // Clear all form input fields on successful registration
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
+          setFirstName("");
+          setLastName("");
+          setPhone("");
+          setOtp("");
+
+          toast.success("Account created successfully! Please sign in with your credentials.");
+          switchTab("login");
+          router.push("/login");
         }
       } else if (activeTab === "forgot_password") {
         if (forgotStep === 1) {
@@ -246,8 +267,17 @@ export function CustomerAuthView({ defaultTab = "login" }: CustomerAuthViewProps
             password_confirmation: confirmPassword 
           });
           setSuccessMessage(res.message);
-          toast.success("Password reset successfully!");
+          toast.success("Password reset successfully! Please sign in with your new password.");
+
+          // Clear input fields
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
+          setOtp("");
+          setResetToken("");
+
           switchTab("login");
+          router.push("/login");
         }
       }
     } catch (err: any) {

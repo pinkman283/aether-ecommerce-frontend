@@ -38,9 +38,6 @@ export function CartDrawer() {
     setPromotionEvaluation,
     getSubtotal,
     getDiscount,
-    getShipping,
-    getTax,
-    getTotal,
     getItemCount,
   } = useCartStore();
 
@@ -50,9 +47,6 @@ export function CartDrawer() {
 
   const subtotal = getSubtotal();
   const discount = getDiscount();
-  const shipping = getShipping();
-  const tax = getTax();
-  const total = getTotal();
   const itemCount = getItemCount();
 
   // Auto-evaluate promotions on cart change
@@ -449,79 +443,72 @@ export function CartDrawer() {
 
                   {/* Pricing Breakdown */}
                   <div 
-                    className="space-y-1.5 text-xs pt-1"
-                    style={{ color: "var(--theme-text-body, #64748b)" }}
+                    className="space-y-2 text-xs pt-3 border-t"
+                    style={{ 
+                      color: "var(--theme-text-body, #64748b)",
+                      borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.08))"
+                    }}
                   >
-                    <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span 
-                        className="font-medium"
-                        style={{ color: "var(--theme-text-heading, #0f172a)" }}
-                      >
-                        {formatPrice(subtotal)}
-                      </span>
-                    </div>
+                    {discount > 0 ? (
+                      <>
+                        <div className="flex justify-between">
+                          <span>Subtotal</span>
+                          <span 
+                            className="font-medium"
+                            style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                          >
+                            {formatPrice(subtotal)}
+                          </span>
+                        </div>
 
-                    {/* Itemized Applied Promotions */}
-                    {promotionEvaluation?.applied_promotions && promotionEvaluation.applied_promotions.length > 0 ? (
-                      <div 
-                        className="space-y-1 py-1 border-t border-dashed"
-                        style={{ borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))" }}
-                      >
-                        {promotionEvaluation.applied_promotions.map((p, idx) => (
-                          <div key={idx} className="flex justify-between text-[11px] text-amber-500 dark:text-amber-300">
-                            <span className="flex items-center gap-1">
-                              <Sparkles className="w-3 h-3 text-amber-500" />
-                              {p.promotion_name} {p.code ? `(${p.code})` : ""}
-                            </span>
-                            <span className="font-mono font-bold">
-                              {p.discount_amount > 0 ? `-${formatPrice(p.discount_amount)}` : "Applied"}
-                            </span>
+                        {/* Promotion Breakdown List */}
+                        {promotionEvaluation?.valid && promotionEvaluation.applied_promotions.length > 0 ? (
+                          <div 
+                            className="space-y-1.5 p-2 rounded-lg border my-1"
+                            style={{
+                              backgroundColor: "color-mix(in srgb, var(--theme-primary, #6366f1) 5%, transparent)",
+                              borderColor: "color-mix(in srgb, var(--theme-primary, #6366f1) 15%, transparent)"
+                            }}
+                          >
+                            {promotionEvaluation.applied_promotions.map((p, idx) => (
+                              <div key={idx} className="flex justify-between text-[11px] text-amber-500 dark:text-amber-300">
+                                <span className="flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-amber-500" />
+                                  {p.promotion_name} {p.code ? `(${p.code})` : ""}
+                                </span>
+                                <span className="font-mono font-bold">
+                                  {p.discount_amount > 0 ? `-${formatPrice(p.discount_amount)}` : "Applied"}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    ) : discount > 0 ? (
-                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
-                        <span>Discount</span>
-                        <span>-{formatPrice(discount)}</span>
-                      </div>
-                    ) : null}
-
-                    <div className="flex justify-between">
-                      <span>Estimated Shipping</span>
-                      <span 
-                        className="font-medium"
-                        style={{ color: "var(--theme-text-heading, #0f172a)" }}
-                      >
-                        {shipping === 0 ? (
-                          <span className="font-bold" style={{ color: "var(--theme-primary, #6366f1)" }}>FREE</span>
                         ) : (
-                          formatPrice(shipping)
+                          <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                            <span>Discount</span>
+                            <span>-{formatPrice(discount)}</span>
+                          </div>
                         )}
-                      </span>
-                    </div>
 
-                    {promotionEvaluation?.valid && promotionEvaluation.tax_amount > 0 ? (
-                      <div className="flex justify-between">
-                        <span>VAT ({promotionEvaluation?.vat_rate ?? 8}%)</span>
-                        <span 
-                          className="font-medium font-mono"
-                          style={{ color: "var(--theme-text-heading, #0f172a)" }}
+                        <div 
+                          className="flex justify-between text-sm font-black pt-2 border-t"
+                          style={{ borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))" }}
                         >
-                          +{formatPrice(promotionEvaluation.tax_amount)}
+                          <span style={{ color: "var(--theme-text-heading, #0f172a)" }}>Total</span>
+                          <span className="text-base font-black" style={{ color: "var(--theme-primary, #6366f1)" }}>
+                            {formatPrice(Math.max(0, subtotal - discount))}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div 
+                        className="flex justify-between text-sm font-black py-1"
+                      >
+                        <span style={{ color: "var(--theme-text-heading, #0f172a)" }}>Subtotal</span>
+                        <span className="text-base font-black" style={{ color: "var(--theme-primary, #6366f1)" }}>
+                          {formatPrice(subtotal)}
                         </span>
                       </div>
-                    ) : null}
-
-                    <div 
-                      className="flex justify-between text-sm font-black pt-2 border-t"
-                      style={{ borderColor: "var(--theme-card-border, rgba(255, 255, 255, 0.1))" }}
-                    >
-                      <span style={{ color: "var(--theme-text-heading, #0f172a)" }}>Estimated Total</span>
-                      <span className="text-base font-black" style={{ color: "var(--theme-primary, #6366f1)" }}>
-                        {formatPrice(total)}
-                      </span>
-                    </div>
+                    )}
                   </div>
 
                   {/* Checkout CTA */}

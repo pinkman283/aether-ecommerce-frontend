@@ -22,6 +22,16 @@ export function AuthModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const handleClose = () => {
+    setEmail("");
+    setPassword("");
+    setFirstName("");
+    setLastName("");
+    setPhone("");
+    setError(null);
+    setSuccessMessage(null);
+    closeAuthModal();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,18 +44,20 @@ export function AuthModal() {
         const res = await api.login({ email, password });
         setAuth(res.user, res.token);
         toast.success(`Welcome back, ${res.user.name.split(" ")[0]}!`);
+        setEmail("");
+        setPassword("");
         closeAuthModal();
       } else if (authModalTab === "register") {
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
         await api.register({ name: fullName, email, password, phone });
-        // Do NOT log in automatically. Switch to Sign In tab and request credentials.
+        setEmail("");
         setPassword("");
         setFirstName("");
         setLastName("");
         setPhone("");
-        setSuccessMessage("Account created successfully! Please enter your password to sign in.");
+        setSuccessMessage("Account created successfully! Please enter your credentials to sign in.");
         openAuthModal("login");
-        toast.success("Account created successfully! Please enter your password to sign in.");
+        toast.success("Account created successfully! Please sign in with your credentials.");
       } else if (authModalTab === "forgot_password") {
         if (!email.trim()) {
           setError("Please enter your registered account email.");
@@ -91,7 +103,7 @@ export function AuthModal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={closeAuthModal}
+            onClick={handleClose}
             className="fixed inset-0 bg-black/80 backdrop-blur-md"
           />
 
@@ -114,7 +126,7 @@ export function AuthModal() {
 
             {/* Close Button */}
             <button
-              onClick={closeAuthModal}
+              onClick={handleClose}
               className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all z-20 cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -146,7 +158,7 @@ export function AuthModal() {
               <div className="flex bg-white/5 rounded-xl p-1 mb-3.5 border border-white/5 shrink-0">
                 <button
                   type="button"
-                  onClick={() => { setError(null); setSuccessMessage(null); openAuthModal("login"); }}
+                  onClick={() => { setError(null); setSuccessMessage(null); setPassword(""); openAuthModal("login"); }}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     authModalTab === "login" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                   }`}
@@ -155,7 +167,7 @@ export function AuthModal() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setError(null); setSuccessMessage(null); openAuthModal("register"); }}
+                  onClick={() => { setError(null); setSuccessMessage(null); setPassword(""); openAuthModal("register"); }}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     authModalTab === "register" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                   }`}

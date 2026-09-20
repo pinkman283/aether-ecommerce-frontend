@@ -62,7 +62,7 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState(user?.name || "");
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "");
   const [customerEmail, setCustomerEmail] = useState(user?.email || "");
-  const [shippingArea, setShippingArea] = useState<string>("inside_dhaka");
+  const [shippingArea, setShippingArea] = useState<string>("");
   const [shippingZones, setShippingZones] = useState<Array<{
     id: string;
     name: string;
@@ -140,12 +140,14 @@ export default function CheckoutPage() {
   const subtotal = getSubtotal();
 
   const activeZone = shippingZones.find((z) => z.id === shippingArea);
-  const baseShippingRate = activeZone
-    ? activeZone.rate
-    : (shippingArea === "inside_dhaka" ? (theme.shipping_inside_dhaka_rate ?? 60) : (theme.shipping_outside_dhaka_rate ?? 130));
+  const baseShippingRate = !shippingArea
+    ? 0
+    : (activeZone
+      ? activeZone.rate
+      : (shippingArea === "inside_dhaka" ? (theme.shipping_inside_dhaka_rate ?? 60) : (theme.shipping_outside_dhaka_rate ?? 130)));
 
   const zoneFreeThreshold = activeZone?.free_threshold ?? (theme.shipping_free_threshold ?? 3000);
-  const isFreeShipping = zoneFreeThreshold > 0 && subtotal >= zoneFreeThreshold;
+  const isFreeShipping = Boolean(shippingArea) && zoneFreeThreshold > 0 && subtotal >= zoneFreeThreshold;
   const defaultEffectiveShipping = isFreeShipping ? 0 : baseShippingRate;
 
   // Authoritative promotion evaluation
@@ -164,7 +166,8 @@ export default function CheckoutPage() {
           })),
           code: appliedCoupon?.code || undefined,
           payment_method: paymentMethod,
-          shipping_method: shippingArea,
+          shipping_rate: baseShippingRate,
+          shipping_method: shippingArea || undefined,
           use_store_credit: useStoreCredit,
         };
         const res = await api.evaluatePromotions(payload);
@@ -182,12 +185,14 @@ export default function CheckoutPage() {
     return () => {
       isMounted = false;
     };
-  }, [items, appliedCoupon?.code, paymentMethod, shippingArea, useStoreCredit, setPromotionEvaluation]);
+  }, [items, appliedCoupon?.code, paymentMethod, shippingArea, baseShippingRate, useStoreCredit, setPromotionEvaluation]);
 
   // Derived pricing with PromotionEngine
-  const effectiveShipping = promotionEvaluation?.valid && typeof promotionEvaluation.shipping_amount === "number"
-    ? promotionEvaluation.shipping_amount
-    : defaultEffectiveShipping;
+  const effectiveShipping = !shippingArea
+    ? 0
+    : (promotionEvaluation?.valid && typeof promotionEvaluation.shipping_amount === "number"
+      ? promotionEvaluation.shipping_amount
+      : defaultEffectiveShipping);
 
   const totalDiscount = promotionEvaluation?.valid
     ? promotionEvaluation.total_discount
@@ -197,7 +202,7 @@ export default function CheckoutPage() {
     ? promotionEvaluation.tax_amount
     : 0;
 
-  const intermediateTotal = Math.max(0, subtotal - totalDiscount) + effectiveShipping + vatAmount;
+  const intermediateTotal = Math.max(0, subtotal - totalDiscount) + (shippingArea ? effectiveShipping : 0) + vatAmount;
   const storeCreditDeduction = useStoreCredit ? Math.min(storeCreditBalance, intermediateTotal) : 0;
   const total = Math.max(0, intermediateTotal - storeCreditDeduction);
 
@@ -225,7 +230,8 @@ export default function CheckoutPage() {
         })),
         code: couponInput.trim(),
         payment_method: paymentMethod,
-        shipping_method: shippingArea,
+        shipping_rate: baseShippingRate,
+        shipping_method: shippingArea || undefined,
         use_store_credit: useStoreCredit,
       };
       const result = await api.evaluatePromotions(payload);
@@ -264,7 +270,8 @@ export default function CheckoutPage() {
         })),
         code: code,
         payment_method: paymentMethod,
-        shipping_method: shippingArea,
+        shipping_rate: baseShippingRate,
+        shipping_method: shippingArea || undefined,
         use_store_credit: useStoreCredit,
       };
       const result = await api.evaluatePromotions(payload);
@@ -302,7 +309,7 @@ export default function CheckoutPage() {
           phone: customerPhone.trim(),
           email: customerEmail.trim() || null,
           address: fullAddress.trim() || null,
-          city: shippingArea === "inside_dhaka" ? "Inside Dhaka" : "Outside Dhaka",
+          city: shippingArea === "inside_dhaka" ? "Inside Dhaka" : (shippingArea ? "Outside Dhaka" : "Not Selected"),
           postal_code: null,
           cart_items: items.map((i) => ({
             product_id: i.product.id,
@@ -350,6 +357,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!shippingArea) {
+      toast.error("Please select a delivery area.");
+      return;
+    }
+
     if (!agreeTerms) {
       toast.error("Please accept the Terms & Conditions and Privacy Policy to proceed.");
       return;
@@ -371,8 +383,8 @@ export default function CheckoutPage() {
           full_name: customerName.trim(),
           address_line1: fullAddress.trim(),
           address_line2: orderNotes.trim() ? `Note: ${orderNotes.trim()}` : "",
-          city: shippingArea === "inside_dhaka" ? "Dhaka" : (fullAddress.trim().split(",").pop()?.trim() || "Outside Dhaka"),
-          district: shippingArea === "inside_dhaka" ? "Dhaka" : "Outside Dhaka",
+          city: shippingArea === "inside_dhaka" ? "Dhaka" : (shippingArea === "dhaka_suburbs" ? "Gazipur" : "Outside Dhaka"),
+          district: shippingArea === "inside_dhaka" ? "Dhaka" : (shippingArea === "dhaka_suburbs" ? "Gazipur" : "Outside Dhaka"),
           postal_code: "1000",
           country: "Bangladesh",
           phone: cleanPhone,
@@ -380,7 +392,7 @@ export default function CheckoutPage() {
         billing_address: {
           full_name: customerName.trim(),
           address_line1: fullAddress.trim(),
-          city: shippingArea === "inside_dhaka" ? "Dhaka" : "Outside Dhaka",
+          city: shippingArea === "inside_dhaka" ? "Dhaka" : (shippingArea === "dhaka_suburbs" ? "Gazipur" : "Outside Dhaka"),
           postal_code: "1000",
           country: "Bangladesh",
         },
@@ -412,9 +424,13 @@ export default function CheckoutPage() {
       toast.success("Order placed successfully!");
       router.push(`/order-confirmed?order_number=${res.order.order_number}`);
     } catch (err: any) {
-      console.error(err);
-      setError(err.response?.data?.message || "Failed to process order. Please verify your details.");
-      toast.error(err.response?.data?.message || "Failed to process order.");
+      console.warn("Order placement failed:", err);
+      const validationErrors = err.response?.data?.errors;
+      const errorMsg = validationErrors
+        ? Object.values(validationErrors).flat().join(" ")
+        : (err.response?.data?.message || "Failed to process order. Please verify your details.");
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -660,10 +676,14 @@ export default function CheckoutPage() {
                     </label>
                     <div className="relative">
                       <select
+                        required
                         value={shippingArea}
                         onChange={(e) => setShippingArea(e.target.value)}
                         className="w-full theme-input rounded-xl px-3.5 py-2.5 text-xs appearance-none pr-8 focus:outline-none focus:border-cyan-400 transition-all cursor-pointer"
                       >
+                        <option value="" disabled>
+                          Select Shipping Area...
+                        </option>
                         {shippingZones.length > 0 ? (
                           shippingZones.map((zone) => (
                             <option key={zone.id} value={zone.id}>
@@ -947,7 +967,9 @@ export default function CheckoutPage() {
                     className="font-bold font-mono"
                     style={{ color: "var(--theme-text-heading, #0f172a)" }}
                   >
-                    {effectiveShipping === 0 ? (
+                    {!shippingArea ? (
+                      <span className="text-slate-400 font-normal italic">Select area</span>
+                    ) : effectiveShipping === 0 ? (
                       <span className="text-cyan-500 font-bold">FREE</span>
                     ) : (
                       formatPrice(effectiveShipping)
