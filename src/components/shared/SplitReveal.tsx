@@ -21,7 +21,7 @@ function sanitizeAssetUrl(url?: string): string {
   return url;
 }
 
-export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) {
+export function SplitReveal({ initialTheme, onComplete: onCompleteCb }: { initialTheme?: ThemeSettings; onComplete?: () => void }) {
   const pathname = usePathname();
   const { theme } = useAppTheme();
   const isAdmin = pathname?.startsWith("/admin");
@@ -88,7 +88,10 @@ export function SplitReveal({ initialTheme }: { initialTheme?: ThemeSettings }) 
         }
       } catch (e) {}
     }
-  }, [mode]);
+
+    // Notify parent that the split reveal animation has finished
+    onCompleteCb?.();
+  }, [mode, onCompleteCb]);
 
   // Hybrid Real-Time Asset & Hydration Engine
   useEffect(() => {
