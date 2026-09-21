@@ -24,6 +24,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { Brand } from "@/types";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -329,11 +330,10 @@ export default function AdminBrandsPage() {
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
               <th className="p-3.5 w-10 text-center">
-                <input
-                  type="checkbox"
+                <AdminCheckbox
                   checked={displayedBrands.length > 0 && selectedIds.length === displayedBrands.length}
+                  indeterminate={selectedIds.length > 0 && selectedIds.length < displayedBrands.length}
                   onChange={handleToggleSelectAll}
-                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-500/30 cursor-pointer accent-cyan-500"
                   title="Select all brands"
                 />
               </th>
@@ -374,11 +374,10 @@ export default function AdminBrandsPage() {
                     }`}
                   >
                     <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
+                      <AdminCheckbox
                         checked={isSelected}
                         onChange={() => handleToggleSelectRow(b.id)}
-                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-500/30 cursor-pointer accent-cyan-500"
+                        title={`Select ${b.name}`}
                       />
                     </td>
                     <td className="p-3.5 flex items-center gap-3 font-bold text-white">
@@ -700,11 +699,9 @@ export default function AdminBrandsPage() {
 
                 <div className="flex items-end pb-2">
                   <label className="flex items-center gap-2 cursor-pointer text-slate-300 text-xs font-medium">
-                    <input
-                      type="checkbox"
+                    <AdminCheckbox
                       checked={isFeatured}
                       onChange={(e) => setIsFeatured(e.target.checked)}
-                      className="rounded bg-white/5 border-white/20 text-cyan-400 accent-cyan-400 w-4 h-4 cursor-pointer"
                     />
                     <span>Featured Tier</span>
                   </label>

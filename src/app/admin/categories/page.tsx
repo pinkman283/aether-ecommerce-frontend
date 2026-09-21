@@ -1403,11 +1403,9 @@ export default function AdminCategoriesPage() {
 
               <div className="pt-2">
                 <label className="flex items-center gap-2 cursor-pointer text-slate-300 text-xs font-medium">
-                  <input
-                    type="checkbox"
+                  <AdminCheckbox
                     checked={isFeatured}
                     onChange={(e) => setIsFeatured(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/10 bg-[#131722] text-amber-400 focus:ring-0 focus:ring-offset-0"
                   />
                   <span>Feature in Highlights & Menus</span>
                 </label>

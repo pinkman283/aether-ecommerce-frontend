@@ -29,6 +29,7 @@ import {
   AdminPagination,
 } from "@/components/admin/ui";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
@@ -851,8 +852,7 @@ export default function AutomaticDiscountsPage() {
                               key={c.id}
                               className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 cursor-pointer text-slate-300"
                             >
-                              <input
-                                type="checkbox"
+                              <AdminCheckbox
                                 checked={checked}
                                 onChange={(e) => {
                                   if (e.target.checked) {
@@ -861,7 +861,6 @@ export default function AutomaticDiscountsPage() {
                                     setTargetCategoryIds(targetCategoryIds.filter((id) => id !== c.id));
                                   }
                                 }}
-                                className="rounded border-white/20 bg-white/5 text-amber-500 focus:ring-0"
                               />
                               <span className="text-xs">{c.name}</span>
                             </label>
@@ -904,8 +903,7 @@ export default function AutomaticDiscountsPage() {
                               key={b.id}
                               className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 cursor-pointer text-slate-300"
                             >
-                              <input
-                                type="checkbox"
+                              <AdminCheckbox
                                 checked={checked}
                                 onChange={(e) => {
                                   if (e.target.checked) {
@@ -914,7 +912,6 @@ export default function AutomaticDiscountsPage() {
                                     setTargetBrandIds(targetBrandIds.filter((id) => id !== b.id));
                                   }
                                 }}
-                                className="rounded border-white/20 bg-white/5 text-amber-500 focus:ring-0"
                               />
                               <span className="text-xs">{b.name}</span>
                             </label>
@@ -935,11 +932,9 @@ export default function AutomaticDiscountsPage() {
 
                 <div className="space-y-2">
                   <label className="flex items-center gap-2.5 p-2 rounded-lg bg-white/[0.02] border border-white/[0.06] cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <AdminCheckbox
                       checked={isStackable}
                       onChange={(e) => setIsStackable(e.target.checked)}
-                      className="rounded border-white/20 bg-white/5 text-amber-500 focus:ring-0"
                     />
                     <div>
                       <span className="text-xs font-semibold text-white block">
@@ -952,11 +947,9 @@ export default function AutomaticDiscountsPage() {
                   </label>
 
                   <label className="flex items-center gap-2.5 p-2 rounded-lg bg-white/[0.02] border border-white/[0.06] cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <AdminCheckbox
                       checked={canCombineWithFreeShipping}
                       onChange={(e) => setCanCombineWithFreeShipping(e.target.checked)}
-                      className="rounded border-white/20 bg-white/5 text-amber-500 focus:ring-0"
                     />
                     <div>
                       <span className="text-xs font-semibold text-white block">

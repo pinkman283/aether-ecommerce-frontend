@@ -34,6 +34,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { Promotion, Category, Brand, Product, User } from "@/types";
 import { AdminPageHeader } from "@/components/admin/ui";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { PromotionPreview } from "./PromotionPreview";
 import { toast } from "sonner";
 
@@ -570,11 +571,9 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
 
                   <div className="flex items-center gap-3 pt-6">
                     <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
-                      <input
-                        type="checkbox"
+                      <AdminCheckbox
                         checked={Boolean(formData.is_featured)}
                         onChange={(e) => handleChange("is_featured", e.target.checked)}
-                        className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
                       />
                       Feature this promotion prominently across deals & campaign lists
                     </label>
@@ -1027,20 +1026,16 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
                   </h4>
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                      <input
-                        type="checkbox"
+                      <AdminCheckbox
                         checked={Boolean(formData.is_stackable)}
                         onChange={(e) => handleChange("is_stackable", e.target.checked)}
-                        className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
                       />
                       Allow this promotion to be stacked with other eligible discounts
                     </label>
                     <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                      <input
-                        type="checkbox"
+                      <AdminCheckbox
                         checked={Boolean(formData.can_combine_with_free_shipping)}
                         onChange={(e) => handleChange("can_combine_with_free_shipping", e.target.checked)}
-                        className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
                       />
                       Can combine with Free Shipping promotions
                     </label>

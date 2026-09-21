@@ -40,6 +40,7 @@ import { SuspensionModal, SuspensionPayload } from "@/components/admin/Suspensio
 import { ImageUploadAvatar } from "@/components/ui/ImageUploadAvatar";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
@@ -492,14 +493,16 @@ export default function AdminStaffPage() {
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
               <th className="p-3.5 w-10 text-center">
-                <input
-                  type="checkbox"
+                <AdminCheckbox
                   checked={
                     filteredStaff.filter((s) => s.role !== "super_admin" && s.id !== adminUser?.id).length > 0 &&
                     selectedIds.length === filteredStaff.filter((s) => s.role !== "super_admin" && s.id !== adminUser?.id).length
                   }
+                  indeterminate={
+                    selectedIds.length > 0 &&
+                    selectedIds.length < filteredStaff.filter((s) => s.role !== "super_admin" && s.id !== adminUser?.id).length
+                  }
                   onChange={handleToggleSelectAll}
-                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
                   title="Select all deletable staff"
                 />
               </th>
@@ -538,14 +541,10 @@ export default function AdminStaffPage() {
                     }`}
                   >
                     <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
+                      <AdminCheckbox
                         checked={isSelected}
                         disabled={isProtected}
                         onChange={() => handleToggleSelectRow(s.id)}
-                        className={`w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 accent-amber-500 ${
-                          isProtected ? "opacity-30 cursor-not-allowed" : "cursor-pointer"
-                        }`}
                         title={isProtected ? "Protected account cannot be selected for deletion" : "Select row"}
                       />
                     </td>
@@ -1101,11 +1100,10 @@ export default function AdminStaffPage() {
                                       : "bg-white/[0.01] border-white/5 text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
                                   }`}
                                 >
-                                  <input
-                                    type="checkbox"
+                                  <AdminCheckbox
                                     checked={isChecked}
                                     onChange={() => togglePermission(p.id)}
-                                    className="mt-0.5 rounded accent-white bg-white/10"
+                                    className="mt-0.5"
                                   />
                                   <div>
                                     <span className="font-medium text-xs block leading-none">{p.name}</span>

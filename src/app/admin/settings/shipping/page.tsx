@@ -20,6 +20,7 @@ import { adminApi } from "@/lib/adminApi";
 import { ShippingZone } from "@/types";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
 import { AdminPageHeader, AdminEmptyState, AdminSaveBar } from "@/components/admin/ui";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -488,11 +489,9 @@ export default function AdminShippingSettingsPage() {
 
               <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
                 <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
+                  <AdminCheckbox
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 bg-[#131722] text-white focus:ring-0 cursor-pointer"
                   />
                   <div>
                     <span className="text-xs font-medium text-white block">Active Zone</span>

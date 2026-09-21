@@ -28,6 +28,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { Review, ReviewSummary, Product } from "@/types";
 import { AdminPageHeader, AdminStatStrip, AdminStatusBadge, AdminEmptyState, AdminPagination } from "@/components/admin/ui";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { useThemeStore } from "@/store/useThemeStore";
@@ -557,11 +558,11 @@ export default function AdminReviewsPage() {
               <thead className="bg-[#161a26] text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-white/[0.08]">
                 <tr>
                   <th className="py-3 px-4 w-8">
-                    <input
-                      type="checkbox"
+                    <AdminCheckbox
                       checked={reviews.length > 0 && selectedIds.length === reviews.length}
+                      indeterminate={selectedIds.length > 0 && selectedIds.length < reviews.length}
                       onChange={handleSelectAll}
-                      className="rounded border-white/20 bg-[#161a26] text-amber-400 focus:ring-0 cursor-pointer"
+                      title="Select all reviews"
                     />
                   </th>
                   <th className="py-3 px-4">Product</th>
@@ -575,12 +576,11 @@ export default function AdminReviewsPage() {
               <tbody className="divide-y divide-white/[0.06]">
                 {reviews.map((rev) => (
                   <tr key={rev.id} className="hover:bg-white/[0.015] transition-colors">
-                    <td className="py-3.5 px-4">
-                      <input
-                        type="checkbox"
+                    <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                      <AdminCheckbox
                         checked={selectedIds.includes(rev.id)}
                         onChange={() => handleToggleSelect(rev.id)}
-                        className="rounded border-white/20 bg-[#161a26] text-amber-400 focus:ring-0 cursor-pointer"
+                        title="Select review"
                       />
                     </td>
 
@@ -834,21 +834,17 @@ export default function AdminReviewsPage() {
                 </span>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-white transition">
-                    <input
-                      type="checkbox"
+                    <AdminCheckbox
                       checked={formVerified}
                       onChange={(e) => setFormVerified(e.target.checked)}
-                      className="w-4 h-4 rounded text-white bg-[#131722] border-white/20 focus:ring-0 focus:outline-none"
                     />
                     <span>Mark as Verified Purchaser</span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-white transition">
-                    <input
-                      type="checkbox"
+                    <AdminCheckbox
                       checked={formApproved}
                       onChange={(e) => setFormApproved(e.target.checked)}
-                      className="w-4 h-4 rounded text-white bg-[#131722] border-white/20 focus:ring-0 focus:outline-none"
                     />
                     <span>Immediately Approved (Display live on storefront)</span>
                   </label>

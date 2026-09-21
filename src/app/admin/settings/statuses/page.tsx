@@ -20,6 +20,7 @@ import { adminApi } from "@/lib/adminApi";
 import { OrderStatusConfig } from "@/types";
 import { SettingsNavTabs } from "@/components/admin/settings/SettingsNavTabs";
 import { AdminPageHeader, AdminEmptyState, AdminSaveBar } from "@/components/admin/ui";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
@@ -360,21 +361,17 @@ export default function AdminOrderStatusesPage() {
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-white transition">
-                    <input
-                      type="checkbox"
+                    <AdminCheckbox
                       checked={newSmsTrigger}
                       onChange={(e) => setNewSmsTrigger(e.target.checked)}
-                      className="w-4 h-4 rounded text-white bg-[#131722] border-white/20 focus:ring-0 focus:outline-none"
                     />
                     <span>Trigger SMS Notice</span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-white transition">
-                    <input
-                      type="checkbox"
+                    <AdminCheckbox
                       checked={newEmailTrigger}
                       onChange={(e) => setNewEmailTrigger(e.target.checked)}
-                      className="w-4 h-4 rounded text-white bg-[#131722] border-white/20 focus:ring-0 focus:outline-none"
                     />
                     <span>Trigger Email Notice</span>
                   </label>

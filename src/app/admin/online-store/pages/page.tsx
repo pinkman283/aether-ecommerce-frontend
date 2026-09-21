@@ -21,6 +21,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { CmsPage } from "@/types";
 import { AdminPageHeader, AdminStatStrip, AdminStatusBadge, AdminEmptyState } from "@/components/admin/ui";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
@@ -463,12 +464,10 @@ export default function AdminOnlineStorePagesPage() {
 
               {/* Status Toggle */}
               <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
+                <AdminCheckbox
                   id="page_active"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded bg-white/5 border-white/20 text-cyan-400 accent-cyan-400 w-4 h-4 cursor-pointer"
                 />
                 <label htmlFor="page_active" className="text-xs text-slate-300 cursor-pointer select-none">
                   Published and publicly visible on storefront

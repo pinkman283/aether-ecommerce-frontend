@@ -33,6 +33,7 @@ import { useAdminAuthStore } from "@/store/useAdminAuthStore";
 import { Lead, LeadStats } from "@/types";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { toast } from "sonner";
 
 export default function AdminLeadsPage() {
@@ -435,11 +436,11 @@ export default function AdminLeadsPage() {
             <thead className="bg-white/[0.02] border-b border-white/10 uppercase font-bold text-[10px] tracking-wider text-slate-400">
               <tr>
                 <th className="py-3.5 px-4 w-10 min-w-[40px] whitespace-nowrap">
-                  <input
-                    type="checkbox"
+                  <AdminCheckbox
                     checked={leads.length > 0 && selectedIds.length === leads.length}
+                    indeterminate={selectedIds.length > 0 && selectedIds.length < leads.length}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded bg-white/5 border-white/20 text-amber-500 focus:ring-0 cursor-pointer"
+                    title="Select all leads"
                   />
                 </th>
                 <th className="py-3.5 px-4 min-w-[320px] whitespace-nowrap">Prospect Info</th>
@@ -480,12 +481,11 @@ export default function AdminLeadsPage() {
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-4 px-4 w-10 min-w-[40px] whitespace-nowrap">
-                        <input
-                          type="checkbox"
+                      <td className="py-4 px-4 w-10 min-w-[40px] whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <AdminCheckbox
                           checked={isSelected}
                           onChange={() => handleSelectRow(lead.id)}
-                          className="w-4 h-4 rounded bg-white/5 border-white/20 text-amber-500 focus:ring-0 cursor-pointer"
+                          title={`Select lead #${lead.id}`}
                         />
                       </td>
 

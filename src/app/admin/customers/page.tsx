@@ -40,11 +40,13 @@ import { adminApi } from "@/lib/adminApi";
 import { User, Order, CustomerIpHistoryItem, CustomerActivityTimelineItem } from "@/types";
 import { formatPrice, formatDate, formatTime } from "@/lib/utils";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
 import { SuspensionModal, SuspensionPayload } from "@/components/admin/SuspensionModal";
 import { ImageUploadAvatar } from "@/components/ui/ImageUploadAvatar";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
+import { useAdminAuthStore } from "@/store/useAdminAuthStore";
 import { toast } from "sonner";
 import { 
   AdminPageHeader, 
@@ -53,6 +55,12 @@ import {
 } from "@/components/admin/ui";
 
 function AdminCustomersContent() {
+  const { adminUser } = useAdminAuthStore();
+  const canDeleteCustomer = 
+    adminUser?.role === "super_admin" || 
+    adminUser?.role === "admin" || 
+    adminUser?.permissions?.includes("customers.delete");
+
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get("search") || searchParams.get("email") || "";
   const initialViewId = searchParams.get("view");
@@ -132,6 +140,68 @@ function AdminCustomersContent() {
       toast.error("Failed to load customer registry.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === customers.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(customers.map((c) => c.id));
+    }
+  };
+
+  const handleToggleSelectRow = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (!canDeleteCustomer) {
+      toast.error("You lack permission to delete customer records.");
+      return;
+    }
+    if (selectedIds.length === 0) return;
+
+    try {
+      setIsBulkDeleting(true);
+      const res = await adminApi.bulkDeleteCustomers(selectedIds);
+      toast.success(res.message || `Successfully deleted ${selectedIds.length} customer(s).`);
+      setSelectedIds([]);
+      if (selectedCustomer && selectedIds.includes(selectedCustomer.id)) {
+        setSelectedCustomer(null);
+      }
+      loadCustomers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete selected customers.");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleDeleteCustomer = async (customer: User) => {
+    if (!canDeleteCustomer) {
+      toast.error("You lack permission to delete customer records.");
+      return;
+    }
+    if (!confirm(`Are you sure you want to permanently delete customer account "${customer.name}" (${customer.email})? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      const res = await adminApi.deleteCustomer(customer.id);
+      toast.success(res.message || `Customer "${customer.name}" deleted.`);
+      setSelectedIds((prev) => prev.filter((id) => id !== customer.id));
+      if (selectedCustomer?.id === customer.id) {
+        setSelectedCustomer(null);
+      }
+      loadCustomers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete customer.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -389,6 +459,17 @@ function AdminCustomersContent() {
         />
       </div>
 
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={customers.length}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={() => setSelectedIds(customers.map((c) => c.id))}
+        onConfirmDelete={handleBulkDelete}
+        isDeleting={isBulkDeleting}
+        itemName="customer"
+      />
+
       {/* Main Customers Table */}
       <div className="p-4 rounded-xl bg-[#0f121b] border border-white/[0.08] space-y-3 shadow-sm">
         <div className="flex items-center justify-between">
@@ -398,6 +479,14 @@ function AdminCustomersContent() {
           <table className="w-full min-w-[950px] text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-white/[0.06] bg-white/[0.01] text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                <th className="py-2.5 px-3 w-10 min-w-[40px] max-w-[40px] text-center">
+                  <AdminCheckbox
+                    checked={customers.length > 0 && selectedIds.length === customers.length}
+                    indeterminate={selectedIds.length > 0 && selectedIds.length < customers.length}
+                    onChange={handleToggleSelectAll}
+                    title="Select all customers"
+                  />
+                </th>
                 <th className="py-2.5 px-3.5">Customer</th>
                 <th className="py-2.5 px-3.5">Type</th>
                 <th className="py-2.5 px-3.5">Status</th>
@@ -410,7 +499,7 @@ function AdminCustomersContent() {
             <tbody className="divide-y divide-white/[0.04] text-slate-300">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={8} className="py-12 text-center text-slate-500">
                     <div className="inline-flex items-center gap-2">
                       <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
                       <span>Loading customer intelligence...</span>
@@ -419,7 +508,7 @@ function AdminCustomersContent() {
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-0">
+                  <td colSpan={8} className="p-0">
                     <AdminEmptyState
                       icon={Users}
                       title="No Customers Found"
@@ -429,12 +518,26 @@ function AdminCustomersContent() {
                 </tr>
               ) : (
                 customers.map((c) => {
+                  const isSelected = selectedIds.includes(c.id);
                   const isGuest = c.customer_type === "guest";
                   const riskLevel = c.risk_level || "low";
                   const riskScore = c.risk_score ?? 0;
 
                   return (
-                    <tr key={c.id} className="hover:bg-white/[0.02] transition-colors group">
+                    <tr
+                      key={c.id}
+                      className={`transition-colors group ${
+                        isSelected ? "bg-amber-500/10" : "hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      <td className="py-3 px-3 w-10 min-w-[40px] max-w-[40px] text-center" onClick={(e) => e.stopPropagation()}>
+                        <AdminCheckbox
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectRow(c.id)}
+                          title={`Select customer ${c.name}`}
+                        />
+                      </td>
+
                       <td className="py-3 px-3.5">
                         <div className="flex items-center gap-3">
                           <img
@@ -536,6 +639,16 @@ function AdminCustomersContent() {
                               title="Unblock Customer Account"
                             >
                               <ShieldCheck className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {canDeleteCustomer && (
+                            <button
+                              onClick={() => handleDeleteCustomer(c)}
+                              className="p-1.5 rounded-lg bg-white/[0.03] hover:bg-red-500/10 text-slate-400 hover:text-red-400 border border-white/5 transition-all"
+                              title="Delete Customer Account"
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>

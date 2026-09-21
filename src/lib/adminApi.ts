@@ -2479,6 +2479,7 @@ export const ADMIN_PERMISSION_MODULES: PermissionModule[] = [
       { id: "customers.manage", name: "Manage Customers", description: "Create, edit, flag for review, and update internal notes" },
       { id: "customers.suspend", name: "Suspend Customer Accounts", description: "Temporarily suspend or reactivate customer accounts" },
       { id: "customers.block", name: "Block Customer Accounts", description: "Permanently block abusive customer identities" },
+      { id: "customers.delete", name: "Delete Customers", description: "Permanently delete single or multiple customer records" },
     ],
   },
   {

@@ -34,6 +34,7 @@ import { adminApi } from "@/lib/adminApi";
 import { AuditLog, AuditLogStats, AuditLogFacets } from "@/types";
 import { formatDate, formatTime, formatDateTime } from "@/lib/utils";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
 
@@ -576,11 +577,10 @@ export default function AdminAuditLogsPage() {
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
               <th className="p-3.5 w-10 text-center">
-                <input
-                  type="checkbox"
+                <AdminCheckbox
                   checked={logs.length > 0 && selectedIds.length === logs.length}
+                  indeterminate={selectedIds.length > 0 && selectedIds.length < logs.length}
                   onChange={handleToggleSelectAll}
-                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
                   title="Select all audit logs"
                 />
               </th>
@@ -621,11 +621,10 @@ export default function AdminAuditLogsPage() {
                     }`}
                   >
                     <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
+                      <AdminCheckbox
                         checked={isSelected}
                         onChange={() => handleToggleSelectRow(log.id)}
-                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                        title="Select log entry"
                       />
                     </td>
                     <td className="p-3.5 whitespace-nowrap">

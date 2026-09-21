@@ -34,6 +34,7 @@ import {
   AdminPagination,
 } from "@/components/admin/ui";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { toast } from "sonner";
@@ -341,9 +342,9 @@ export default function AdminPromotionsPage() {
           <thead>
             <tr className="border-b border-white/10 bg-white/[0.02] text-slate-400 uppercase tracking-wider font-semibold">
               <th className="p-4 w-10">
-                <input
-                  type="checkbox"
+                <AdminCheckbox
                   checked={promotions.length > 0 && selectedIds.length === promotions.length}
+                  indeterminate={selectedIds.length > 0 && selectedIds.length < promotions.length}
                   onChange={(e) => {
                     if (e.target.checked) {
                       setSelectedIds(promotions.map((p) => p.id));
@@ -351,7 +352,7 @@ export default function AdminPromotionsPage() {
                       setSelectedIds([]);
                     }
                   }}
-                  className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
+                  title="Select all promotions"
                 />
               </th>
               <th className="p-4">Promotion</th>
@@ -390,9 +391,8 @@ export default function AdminPromotionsPage() {
                       isSelected ? "bg-amber-500/5" : ""
                     }`}
                   >
-                    <td className="p-4">
-                      <input
-                        type="checkbox"
+                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                      <AdminCheckbox
                         checked={isSelected}
                         onChange={(e) => {
                           if (e.target.checked) {
@@ -401,7 +401,7 @@ export default function AdminPromotionsPage() {
                             setSelectedIds(selectedIds.filter((id) => id !== p.id));
                           }
                         }}
-                        className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
+                        title={`Select promotion ${p.name}`}
                       />
                     </td>
 

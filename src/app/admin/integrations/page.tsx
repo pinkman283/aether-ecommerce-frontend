@@ -30,6 +30,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { adminApi } from "@/lib/adminApi";
 import { Integration, IntegrationStats } from "@/types";
 import { AdminPageHeader, AdminStatStrip, AdminStatusBadge, AdminEmptyState } from "@/components/admin/ui";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { toast } from "sonner";
 
 interface CredentialFieldDef {
@@ -652,11 +653,9 @@ export default function AdminIntegrationsPage() {
                   <div className="bg-[#121623] border border-white/5 rounded-xl p-3 space-y-2.5">
                     <label className="flex items-center justify-between cursor-pointer select-none">
                       <span className="text-xs text-slate-200 font-medium">Enable Service</span>
-                      <input
-                        type="checkbox"
+                      <AdminCheckbox
                         checked={formData.is_enabled}
                         onChange={(e) => setFormData({ ...formData, is_enabled: e.target.checked })}
-                        className="w-4 h-4 rounded text-amber-500 bg-[#090b10] border-white/20 focus:ring-amber-500 cursor-pointer accent-amber-400"
                       />
                     </label>
 
@@ -664,11 +663,9 @@ export default function AdminIntegrationsPage() {
 
                     <label className="flex items-center justify-between cursor-pointer select-none">
                       <span className="text-xs text-slate-200 font-medium">Sandbox / Test Mode</span>
-                      <input
-                        type="checkbox"
+                      <AdminCheckbox
                         checked={formData.is_test_mode}
                         onChange={(e) => setFormData({ ...formData, is_test_mode: e.target.checked })}
-                        className="w-4 h-4 rounded text-amber-500 bg-[#090b10] border-white/20 focus:ring-amber-500 cursor-pointer accent-amber-400"
                       />
                     </label>
                   </div>

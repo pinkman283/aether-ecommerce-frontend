@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Banner, BannerDestinationType, Category, Brand, Product, Promotion } from "@/types";
 import { adminApi } from "@/lib/adminApi";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { toast } from "sonner";
 
 interface BannerFormModalProps {
@@ -849,11 +850,9 @@ export function BannerFormModal({ isOpen, onClose, onSuccess, banner }: BannerFo
             {/* Visibility Toggle */}
             <div className="flex items-center gap-2 pt-1">
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
+                <AdminCheckbox
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-0"
                 />
                 <span>Enable immediately on storefront</span>
               </label>

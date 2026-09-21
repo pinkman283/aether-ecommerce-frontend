@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { ScrollableTableCard } from "@/components/admin/ScrollableTableCard";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminDropdown } from "@/components/admin/AdminDropdown";
 import { BulkActionBar } from "@/components/admin/BulkActionBar";
 import { formatPrice, formatDate, formatTime } from "@/lib/utils";
@@ -486,11 +487,10 @@ export default function AdminCouponsPage() {
           <thead className="bg-white/5 border-b border-white/10 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
             <tr>
               <th className="p-3.5 w-10 text-center">
-                <input
-                  type="checkbox"
+                <AdminCheckbox
                   checked={filteredCoupons.length > 0 && selectedIds.length === filteredCoupons.length}
+                  indeterminate={selectedIds.length > 0 && selectedIds.length < filteredCoupons.length}
                   onChange={handleToggleSelectAll}
-                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
                   title="Select all coupons"
                 />
               </th>
@@ -529,11 +529,10 @@ export default function AdminCouponsPage() {
                     }`}
                   >
                     <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
+                      <AdminCheckbox
                         checked={isSelected}
                         onChange={() => handleToggleSelectRow(c.id)}
-                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                        title={`Select coupon ${c.code}`}
                       />
                     </td>
                     <td className="p-3.5 font-mono font-black text-amber-400 text-sm tracking-wider whitespace-nowrap">
@@ -838,11 +837,9 @@ export default function AdminCouponsPage() {
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer text-slate-300 pt-1 text-xs">
-                <input
-                  type="checkbox"
+                <AdminCheckbox
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded bg-white/5 border-white/20 text-amber-400 accent-amber-400 w-4 h-4 cursor-pointer"
                 />
                 <span>Coupon is actively redeemable by customers</span>
               </label>

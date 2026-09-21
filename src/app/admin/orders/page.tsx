@@ -1810,11 +1810,9 @@ function OrdersContent() {
                 />
               </div>
               <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
+                <AdminCheckbox
                   checked={restock}
                   onChange={(e) => setRestock(e.target.checked)}
-                  className="rounded text-purple-500 focus:ring-0"
                 />
                 <span>Restock items back into inventory</span>
               </label>

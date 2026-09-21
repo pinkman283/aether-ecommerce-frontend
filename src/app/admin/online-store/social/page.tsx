@@ -21,6 +21,7 @@ import {
 import { adminApi } from "@/lib/adminApi";
 import { SocialLink } from "@/types";
 import { AdminPageHeader, AdminStatStrip, AdminStatusBadge, AdminEmptyState } from "@/components/admin/ui";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
@@ -392,12 +393,10 @@ export default function AdminOnlineStoreSocialPage() {
 
               <div className="pt-1">
                 <label className="flex items-center gap-2 cursor-pointer text-slate-300 text-xs font-medium">
-                  <input
-                    type="checkbox"
+                  <AdminCheckbox
                     id="social_active"
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
-                    className="rounded bg-white/5 border-white/20 text-cyan-400 accent-cyan-400 w-4 h-4 cursor-pointer"
                   />
                   <span>Active (Display in header & footer)</span>
                 </label>
