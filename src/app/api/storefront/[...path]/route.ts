@@ -146,6 +146,15 @@ function matchCacheRule(path: string[], searchParams: URLSearchParams): CacheRul
     };
   }
 
+  // 12. Store Navigation & Footer
+  if (pathStr === "store-navigation") {
+    return {
+      key: () => "aether:store:navigation",
+      ttl: 21600, // 6 hours
+      tags: ["navigation", "footer"],
+    };
+  }
+
   // NOTE: blog/posts/{slug} is intentionally EXCLUDED to ensure view counter increment runs on Laravel.
   // NOTE: promotions/claimable is intentionally EXCLUDED to prevent cross-user state leaks.
 

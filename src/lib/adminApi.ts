@@ -54,6 +54,7 @@ import {
   BlogComment,
   BlogSummary,
   CmsPage,
+  FooterColumn,
   FooterLink,
   SocialLink,
   ReviewSummary,
@@ -1896,35 +1897,142 @@ export const adminApi = {
     return res.data;
   },
 
+  // ==========================================
+  // FOOTER COLUMNS & LINKS
+  // ==========================================
+
+  async getFooterColumns(): Promise<FooterColumn[]> {
+    const res = await adminClient.get("/admin/online-store/footer-columns");
+    return res.data;
+  },
+
+  async createFooterColumn(data: {
+    title: string;
+    sort_order?: number;
+    is_active?: boolean;
+  }): Promise<{ message: string; footer_column: FooterColumn }> {
+    const res = await adminClient.post("/admin/online-store/footer-columns", data);
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["footer", "navigation"] }),
+      }).catch(() => {});
+    }
+    return res.data;
+  },
+
+  async updateFooterColumn(id: number, data: {
+    title: string;
+    sort_order?: number;
+    is_active?: boolean;
+  }): Promise<{ message: string; footer_column: FooterColumn }> {
+    const res = await adminClient.put(`/admin/online-store/footer-columns/${id}`, data);
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["footer", "navigation"] }),
+      }).catch(() => {});
+    }
+    return res.data;
+  },
+
+  async deleteFooterColumn(id: number): Promise<{ message: string }> {
+    const res = await adminClient.delete(`/admin/online-store/footer-columns/${id}`);
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["footer", "navigation"] }),
+      }).catch(() => {});
+    }
+    return res.data;
+  },
+
+  async reorderFooterColumns(column_ids: number[]): Promise<{ message: string }> {
+    const res = await adminClient.post("/admin/online-store/footer-columns/reorder", { column_ids });
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["footer", "navigation"] }),
+      }).catch(() => {});
+    }
+    return res.data;
+  },
+
   async getFooterLinks(): Promise<FooterLink[]> {
     const res = await adminClient.get("/admin/online-store/footer-links");
     return res.data;
   },
 
   async createFooterLink(data: {
-    column_group: string;
+    footer_column_id?: number | null;
+    column_group?: string;
     title: string;
     url: string;
+    is_external?: boolean;
+    open_in_new_tab?: boolean;
     sort_order?: number;
     is_active?: boolean;
   }): Promise<{ message: string; footer_link: FooterLink }> {
     const res = await adminClient.post("/admin/online-store/footer-links", data);
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["footer", "navigation"] }),
+      }).catch(() => {});
+    }
     return res.data;
   },
 
   async updateFooterLink(id: number, data: {
-    column_group: string;
+    footer_column_id?: number | null;
+    column_group?: string;
     title: string;
     url: string;
+    is_external?: boolean;
+    open_in_new_tab?: boolean;
     sort_order?: number;
     is_active?: boolean;
   }): Promise<{ message: string; footer_link: FooterLink }> {
     const res = await adminClient.put(`/admin/online-store/footer-links/${id}`, data);
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["footer", "navigation"] }),
+      }).catch(() => {});
+    }
     return res.data;
   },
 
   async deleteFooterLink(id: number): Promise<{ message: string }> {
     const res = await adminClient.delete(`/admin/online-store/footer-links/${id}`);
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["footer", "navigation"] }),
+      }).catch(() => {});
+    }
+    return res.data;
+  },
+
+  async reorderFooterLinks(link_ids: number[], footer_column_id?: number | null): Promise<{ message: string }> {
+    const res = await adminClient.post("/admin/online-store/footer-links/reorder", {
+      link_ids,
+      footer_column_id: footer_column_id || undefined,
+    });
+    if (typeof window !== "undefined") {
+      fetch("/api/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: ["footer", "navigation"] }),
+      }).catch(() => {});
+    }
     return res.data;
   },
 

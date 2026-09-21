@@ -1411,15 +1411,35 @@ export interface CmsPage {
   updated_at?: string;
 }
 
+export interface FooterColumn {
+  id: number;
+  title: string;
+  sort_order: number;
+  is_active: boolean;
+  links?: FooterLink[];
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface FooterLink {
   id: number;
+  footer_column_id?: number | null;
   column_group: string;
   title: string;
   url: string;
+  is_external?: boolean;
+  open_in_new_tab?: boolean;
   sort_order: number;
   is_active: boolean;
+  column?: FooterColumn;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface StoreNavigationResponse {
+  footer_columns: FooterColumn[];
+  footer_links: Record<string, FooterLink[]>;
+  social_links: SocialLink[];
 }
 
 export interface SocialLink {
