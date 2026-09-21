@@ -2,17 +2,17 @@ import type { Metadata } from "next";
 import ContactClient from "./ContactClient";
 
 export const metadata: Metadata = {
-  title: "Contact & Support Hub",
-  description: "Connect directly with our sound engineers, logistics coordinators, and customer support team.",
+  title: "Contact Us",
+  description: "Get in touch with Inheliq customer care for fast WhatsApp support, order inquiries, and product guidance.",
   openGraph: {
     type: "website",
-    title: "Contact & Support Hub",
-    description: "Connect directly with our sound engineers, logistics coordinators, and customer support team.",
+    title: "Contact Us | Inheliq",
+    description: "Get in touch with Inheliq customer care for fast WhatsApp support, order inquiries, and product guidance.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Contact & Support Hub",
-    description: "Connect directly with our sound engineers, logistics coordinators, and customer support team.",
+    title: "Contact Us | Inheliq",
+    description: "Get in touch with Inheliq customer care for fast WhatsApp support, order inquiries, and product guidance.",
   },
 };
 

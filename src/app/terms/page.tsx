@@ -1,66 +1,99 @@
 import { ContentPageLayout } from "@/components/shared/ContentPageLayout";
-import { BookOpen, Scale, CreditCard, AlertTriangle, CheckCircle } from "lucide-react";
+import { BookOpen, ShieldAlert, CreditCard, BatteryCharging, Scale } from "lucide-react";
 
 export const metadata = {
-  title: "Terms of Service | AETHER Audio & Peripherals",
-  description: "Terms and conditions governing the purchase, calibration, and use of AETHER hardware.",
+  title: "Terms of Service | Inheliq",
+  description: "Terms and conditions governing the purchase of authentic vape hardware and e-liquids on Inheliq.",
 };
 
 export default function TermsOfServicePage() {
   return (
     <ContentPageLayout
-      badge="Legal Framework"
       title="Terms of Service"
-      description="The standard legal agreement establishing guidelines for hardware ordering, pricing accuracy, and user conduct."
-      activeSlug="terms"
+      description="The standard legal terms establishing guidelines for orders, pricing, adult age restrictions, and customer conduct."
+      lastUpdated="September 2026"
     >
-      <div className="space-y-8 text-xs sm:text-sm leading-relaxed" style={{ color: "var(--theme-text-body, #94a3b8)" }}>
-        
-        {/* Section 1 */}
+      <div className="space-y-8 text-xs sm:text-sm leading-relaxed">
+        {/* Section 1: Adult Age Restriction */}
         <section className="space-y-3">
-          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2" style={{ color: "var(--theme-text-heading, #ffffff)" }}>
-            <BookOpen className="w-5 h-5 text-indigo-400 shrink-0" /> 1. Agreement to Terms
+          <h2
+            className="text-base sm:text-lg font-bold flex items-center gap-2"
+            style={{ color: "var(--theme-text-heading, #0f172a)" }}
+          >
+            <ShieldAlert className="w-4 h-4 shrink-0" style={{ color: "var(--theme-primary, #005826)" }} />
+            <span>1. Strict 18+ Adult Age Requirement</span>
           </h2>
           <p>
-            By accessing the AETHER storefront, placing an order for acoustic hardware, peripherals, or modular daily carry items, you agree to be bound by these Terms of Service and all applicable national and international consumer regulations.
+            By accessing Inheliq or placing an order, you certify that you are of legal adult smoking and vaping age (18 years or older). Nicotine is an addictive substance. Our products are exclusively marketed to and intended for existing adult smokers and vapers. We strictly prohibit purchasing on behalf of minors.
           </p>
         </section>
 
-        {/* Section 2 */}
-        <section className="space-y-3 pt-4 border-t border-white/10">
-          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2" style={{ color: "var(--theme-text-heading, #ffffff)" }}>
-            <CreditCard className="w-5 h-5 text-cyan-400 shrink-0" /> 2. Orders, Pricing & Payment Acceptance
+        {/* Section 2: Orders & Pricing */}
+        <section
+          className="space-y-3 pt-6 border-t transition-colors"
+          style={{ borderColor: "var(--theme-card-border, #e2e8f0)" }}
+        >
+          <h2
+            className="text-base sm:text-lg font-bold flex items-center gap-2"
+            style={{ color: "var(--theme-text-heading, #0f172a)" }}
+          >
+            <CreditCard className="w-4 h-4 shrink-0" style={{ color: "var(--theme-primary, #005826)" }} />
+            <span>2. Orders, Pricing & Cash on Delivery (COD)</span>
           </h2>
           <p>
-            All listed prices are displayed in either Bangladeshi Taka (৳/Tk) or USD ($) depending on your active localization configuration. While we strive for absolute accuracy, AETHER reserves the right to correct typographical pricing discrepancies prior to order fulfillment.
+            All listed prices are displayed in Bangladeshi Taka (৳ / Tk). While we strive for complete pricing accuracy, we reserve the right to correct inadvertent errors before shipment.
           </p>
-          <ul className="list-disc pl-5 space-y-1.5 text-slate-300">
-            <li><strong className="text-white">Order Confirmation:</strong> An automated confirmation email verifies receipt of your order request. It does not constitute final contractual fulfillment until the order status changes to Dispatched.</li>
-            <li><strong className="text-white">Cash on Delivery (COD):</strong> For COD orders, customers agree to pay the exact invoice total upon doorstep handover by the carrier.</li>
-            <li><strong className="text-white">Promo Codes:</strong> Promotional vouchers are limited to one per order and cannot be combined unless explicitly stated.</li>
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li>
+              <strong style={{ color: "var(--theme-text-heading, #0f172a)" }}>Order Confirmation:</strong> Order receipts sent via SMS or email confirm reception of your order request. Fulfillment is finalized upon dispatch with our courier partner.
+            </li>
+            <li>
+              <strong style={{ color: "var(--theme-text-heading, #0f172a)" }}>Cash on Delivery Agreement:</strong> When choosing COD, the customer agrees to accept delivery and pay the full invoice amount in cash to the courier representative. Repeated unjustified order refusals at the door will result in permanent account suspension.
+            </li>
+            <li>
+              <strong style={{ color: "var(--theme-text-heading, #0f172a)" }}>Discount Vouchers:</strong> Coupon codes must be entered prior to order checkout and cannot be applied retroactively to already dispatched orders.
+            </li>
           </ul>
         </section>
 
-        {/* Section 3 */}
-        <section className="space-y-3 pt-4 border-t border-white/10">
-          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2" style={{ color: "var(--theme-text-heading, #ffffff)" }}>
-            <Scale className="w-5 h-5 text-emerald-400 shrink-0" /> 3. Intellectual Property
+        {/* Section 3: Battery & Device Safety */}
+        <section
+          className="space-y-3 pt-6 border-t transition-colors"
+          style={{ borderColor: "var(--theme-card-border, #e2e8f0)" }}
+        >
+          <h2
+            className="text-base sm:text-lg font-bold flex items-center gap-2"
+            style={{ color: "var(--theme-text-heading, #0f172a)" }}
+          >
+            <BatteryCharging className="w-4 h-4 shrink-0" style={{ color: "var(--theme-primary, #005826)" }} />
+            <span>3. Lithium-Ion Battery & Device Safety</span>
           </h2>
           <p>
-            All industrial designs, planar magnetic driver acoustic schematics, CNC keyboard frame specifications, brand iconography, and software customizers belong exclusively to AETHER Technologies, Inc. Unauthorized reproduction or reverse engineering is strictly prohibited.
+            Rechargeable vape mods and disposable devices contain lithium-ion batteries that require standard care and proper handling:
           </p>
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li>Always charge devices using certified wall adapters (recommended 5V/1A or 5V/2A) and avoid overnight unattended charging.</li>
+            <li>Never expose devices, disposable pods, or batteries to extreme heat, open flame, direct sunlight, or water submersion.</li>
+            <li>Never carry loose external batteries in pockets or bags alongside metal objects or coins.</li>
+          </ul>
         </section>
 
-        {/* Section 4 */}
-        <section className="space-y-3 pt-4 border-t border-white/10">
-          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2" style={{ color: "var(--theme-text-heading, #ffffff)" }}>
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" /> 4. Limitation of Liability
+        {/* Section 4: Limitation of Liability */}
+        <section
+          className="space-y-3 pt-6 border-t transition-colors"
+          style={{ borderColor: "var(--theme-card-border, #e2e8f0)" }}
+        >
+          <h2
+            className="text-base sm:text-lg font-bold flex items-center gap-2"
+            style={{ color: "var(--theme-text-heading, #0f172a)" }}
+          >
+            <Scale className="w-4 h-4 shrink-0" style={{ color: "var(--theme-primary, #005826)" }} />
+            <span>4. Limitation of Liability & Warranty</span>
           </h2>
           <p>
-            AETHER products are engineered to strict acoustic safety standards. Users are advised to adhere to recommended listening decibel thresholds. AETHER shall not be held liable for incidental hearing fatigue arising from extended misuse beyond designated acoustic volume levels.
+            Inheliq guarantees that all products sold are 100% authentic and sourced from authorized manufacturers. Inheliq shall not be held liable for damages, injuries, or device malfunctions arising from misuse, improper charging, unauthorized device modification, or failure to follow manufacturer instructions.
           </p>
         </section>
-
       </div>
     </ContentPageLayout>
   );
